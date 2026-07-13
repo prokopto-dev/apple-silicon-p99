@@ -23,7 +23,8 @@ EverQuest (32-bit Windows, 2005)
   (P99 requires the Titanium client specifically — see the
   [P99 install guide](https://wiki.project1999.com/Players:Getting_Started).)
 - A free [P99 account](https://www.project1999.com/account/) (forum account + login-server account).
-- [Homebrew](https://brew.sh) (used only to install `upx`).
+- [Homebrew](https://brew.sh) (used only for two small helper tools —
+  `setup.sh` offers to install Homebrew for you if it's missing).
 
 Everything else — the wrapper template, the wine engine, the P99 patch files,
 the fixed anti-cheat DLL — is fetched automatically from its official source.
@@ -31,13 +32,27 @@ the fixed anti-cheat DLL — is fetched automatically from its official source.
 ## Quick start
 
 ```bash
+git clone https://github.com/prokopto-dev/apple-silicon-p99.git
+cd apple-silicon-p99
+./setup.sh
+```
+
+`setup.sh` walks you through everything interactively — it offers to install
+Homebrew if you don't have it, asks where your Titanium folder is, and handles
+the rest. If it fails or you quit partway, just run it again; it resumes.
+
+<details>
+<summary>Prefer to run the steps manually?</summary>
+
+```bash
 cd scripts
-./00-prereqs.sh                                  # Rosetta, Homebrew, upx
+./00-prereqs.sh                                  # Rosetta, Homebrew tools
 ./10-build-wrapper.sh                            # builds /Applications/P99.app
 ./20-install-game.sh /path/to/EverQuest-Titanium # stages game + latest P99 files
 ./30-apply-mac-fixes.sh                          # the 3 fixes that make it work (required)
 ./40-launch.sh                                   # go
 ```
+</details>
 
 Then log in with your P99 **login-server** account. After the first successful
 run you can just double-click `/Applications/P99.app`.
@@ -97,6 +112,7 @@ When those patch notes appear, keep the new DLL instead:
 ## Repo layout
 
 ```
+setup.sh                 guided interactive installer (calls the scripts below)
 scripts/
   config.sh              shared settings + pinned component URLs
   00-prereqs.sh          Rosetta / Homebrew / upx
