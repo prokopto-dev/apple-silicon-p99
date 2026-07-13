@@ -193,6 +193,25 @@ Ideas we'd like help with (PRs welcome):
 - **`.bin`/`.cue` handling** in the media installer, so ripped discs don't
   need a manual conversion step.
 
+## Disclaimer — no warranty
+
+This project is provided **as is, without warranty of any kind** (see
+[LICENSE](LICENSE) for the full MIT terms). In plain language:
+
+- It might not work on your machine, and it might stop working when macOS,
+  wine, or P99 change. Nobody owes you a fix — though issues and PRs are
+  welcome.
+- The scripts modify files only in the documented locations
+  (`/Applications/P99.app`, your game folder, Homebrew) and back up what they
+  replace, but **you run them at your own risk**. Read them first if you
+  like — they're short, plain shell scripts.
+- Your P99 account is your responsibility. The workarounds here are based on
+  what P99 staff have publicly sanctioned *today*; server policy can change,
+  and this project makes no promises about your account's standing.
+- This is a fan effort with **no affiliation** to Daybreak Game Company,
+  the Project 1999 team, CodeWeavers, or the Sikarugir project. EverQuest is
+  a trademark of Daybreak Game Company LLC.
+
 ## Credits & licensing
 
 - [Project 1999](https://www.project1999.com/) — the server, the patch files,

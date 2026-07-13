@@ -44,6 +44,8 @@ cat <<'EOF'
   Nothing here needs sudo except (optionally) installing Homebrew/Rosetta,
   which use Apple's and Homebrew's own installers.
 
+  Provided AS IS, no warranty — see LICENSE and the Disclaimer in README.md.
+
 EOF
 confirm "Ready to begin?" || { echo "Bye — run ./setup.sh whenever you're ready."; exit 0; }
 
