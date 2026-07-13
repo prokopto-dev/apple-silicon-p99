@@ -43,7 +43,7 @@ if [ "$(cat "$MARKER" 2>/dev/null || true)" = "$LATEST" ]; then
 else
   TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
   say "Downloading P99FilesV${LATEST}.zip"
-  curl -fSL -o "$TMP/p99.zip" "${P99FILES_BASE_URL}${LATEST}.zip"
+  curl -fL --progress-bar -o "$TMP/p99.zip" "${P99FILES_BASE_URL}${LATEST}.zip"
   say "Overlaying P99 files onto game directory"
   unzip -o -q "$TMP/p99.zip" -d "$GAME_DIR"
   echo "$LATEST" > "$MARKER"

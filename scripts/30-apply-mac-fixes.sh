@@ -33,7 +33,7 @@ if [ "$(current_md5 DSETUP.dll)" = "$GOOD_MD5" ]; then
   say "  already the V58 build — skipping"
 else
   [ -f DSETUP.dll ] && cp DSETUP.dll "DSETUP.dll.orig.bak" && say "  backed up existing DLL as DSETUP.dll.orig.bak"
-  curl -fSL -o DSETUP.dll.download "$DSETUP_URL"
+  curl -fL --progress-bar -o DSETUP.dll.download "$DSETUP_URL"
   [ "$(current_md5 DSETUP.dll.download)" = "$GOOD_MD5" ] \
     || warn "downloaded dsetup.dll has unexpected md5 ($(current_md5 DSETUP.dll.download)) — P99 may have updated it; proceeding anyway"
   mv DSETUP.dll.download DSETUP.dll

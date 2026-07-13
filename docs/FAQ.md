@@ -29,11 +29,24 @@ doesn't exempt you from any of that.
 It should — the stack is x86_64 already, so Intel Macs simply skip the Rosetta
 layer. It's been verified on Apple Silicon (M3); reports welcome.
 
+## I don't have an EverQuest Titanium install — where do I get one?
+
+Legally, you need a copy of EverQuest Titanium Edition (2005). It hasn't been
+sold digitally in years, so the usual routes are: an old PC or backup drive
+where you once installed it, a friend's install folder (the whole folder
+copies cleanly — no installer needed on the Mac side), or a second-hand
+physical copy (eBay etc. — Titanium is the 10-disc/DVD "all-in-one" release).
+The [P99 Getting Started guide](https://wiki.project1999.com/Players:Getting_Started)
+covers what's acceptable in more detail. This project can't and won't download
+game files for you.
+
 ## How do I uninstall?
 
-Delete `/Applications/P99.app` and (if you don't want the game files either)
-`~/Games/EverQuest`. Nothing else is installed outside those two paths except
-the two Homebrew tools (`brew uninstall upx cabextract`).
+Run `scripts/90-uninstall.sh` — it asks before deleting the wrapper and
+(separately) the game folder, and reminds you the game folder contains your
+keybinds/UI layouts. Manual version: delete `/Applications/P99.app` and
+`~/Games/EverQuest`; the two Homebrew tools go with
+`brew uninstall upx cabextract`.
 
 ---
 

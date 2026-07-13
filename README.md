@@ -52,9 +52,20 @@ keep.
 
 ## Quick start
 
-**No developer tools required to start** — download the ZIP of this repo
-(green **Code** button above → *Download ZIP*), unzip it, then in Terminal
-(Applications → Utilities → Terminal):
+**Never used a terminal? You don't need to.**
+
+1. Download this repo as a ZIP (green **Code** button above → *Download ZIP*)
+   and unzip it (double-click the ZIP in your Downloads folder).
+2. In the unzipped folder, **right-click `Setup.command` → Open → Open**.
+   (The right-click dance is only needed the first time — macOS is cautious
+   about downloaded scripts from unregistered developers. After that, a plain
+   double-click works.)
+3. A window opens and walks you through everything with yes/no questions.
+   When it asks for your EverQuest folder, **drag the folder into the window**
+   and press return.
+
+Prefer a terminal? Same thing by hand (built-in Terminal lives in
+Applications → Utilities → Terminal):
 
 ```bash
 cd ~/Downloads/apple-silicon-p99-main
@@ -147,6 +158,7 @@ When those patch notes appear, keep the new DLL instead:
 ## Repo layout
 
 ```
+Setup.command            double-clickable installer (opens Terminal for you)
 setup.sh                 guided interactive installer (calls the scripts below)
 scripts/
   config.sh              shared settings + pinned component URLs
@@ -156,6 +168,7 @@ scripts/
   30-apply-mac-fixes.sh  the three required fixes (all reversible; .bak files)
   40-launch.sh           launch normally, or --debug for a full wine trace
   50-update.sh           after a P99 patch: fetch newest files + re-apply fixes
+  90-uninstall.sh        guided removal (asks before deleting anything)
 docs/
   HOW-IT-WORKS.md        what each layer does and why each fix is needed
   TROUBLESHOOTING.md     symptom → cause → fix, with real log signatures

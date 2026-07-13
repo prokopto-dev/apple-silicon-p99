@@ -20,6 +20,14 @@ appears when it finishes.
 
 ## Symptom → cause → fix
 
+### macOS: "'Setup.command' cannot be opened because it is from an unidentified developer"
+**Cause:** Gatekeeper flags anything downloaded from the internet; this repo's
+scripts aren't code-signed (they're plain shell scripts you can read).
+**Fix:** right-click (or Control-click) `Setup.command` → **Open** → **Open**.
+Only needed once. If your Mac is managed/locked down, run it from Terminal
+instead: `cd` into the folder and run `./setup.sh` (terminal execution isn't
+subject to the same prompt).
+
 ### macOS dialog: *"a program on your system has crashed…"* immediately-ish after launch
 Trace shows:
 ```

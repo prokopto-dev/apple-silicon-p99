@@ -25,5 +25,25 @@ if [ "${1:-}" = "--debug" ]; then
   say "Game exited. Log: $LOG   (see docs/TROUBLESHOOTING.md for signatures)"
 else
   say "Launching P99 (window appears after the ~1-2 min anti-cheat unpack)"
+  REF=$(stat -f %m "$GAME_DIR/Logs/dbg.txt" 2>/dev/null || echo 0)
   open "$WRAPPER"
+  printf 'Anti-cheat is unpacking (100%% CPU is normal — do NOT force-quit) '
+  ok=""
+  for i in $(seq 1 60); do
+    sleep 5
+    NOW=$(stat -f %m "$GAME_DIR/Logs/dbg.txt" 2>/dev/null || echo 0)
+    if [ "$NOW" != "$REF" ]; then ok=1; break; fi
+    # Give the game ~30 s to appear in the process list before death-checking.
+    if [ "$i" -gt 6 ] && ! pgrep -qf "eqgame.exe"; then break; fi
+    printf '.'
+  done
+  printf '\n'
+  if [ -n "$ok" ]; then
+    say "Engine is up — the EverQuest window should be showing now. Have fun!"
+  elif pgrep -qf "eqgame.exe"; then
+    warn "still unpacking after 5 min — unusual but not fatal; give it a little longer"
+  else
+    warn "the game exited before reaching the engine. Run ./40-launch.sh --debug"
+    warn "and match the log against docs/TROUBLESHOOTING.md"
+  fi
 fi
