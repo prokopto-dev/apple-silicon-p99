@@ -6,6 +6,9 @@ cd "$(dirname "$0")"; source ./config.sh
 
 say "Checking macOS + architecture"
 sw_vers
+
+say "Checking Apple Command Line Tools"
+ensure_clt
 ARCH=$(uname -m)
 if [ "$ARCH" = "arm64" ]; then
   if ! /usr/bin/pgrep -q oahd; then

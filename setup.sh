@@ -48,6 +48,12 @@ confirm "Ready to begin?" || { echo "Bye — run ./setup.sh whenever you're read
 
 # --- Step 1: Homebrew (offer to install) + prereqs ---------------------------
 say "Step 1/5: prerequisites"
+
+# Command Line Tools first — Homebrew's installer needs them, and doing it
+# here (with Apple's own dialog) is clearer than letting brew's wall of text
+# handle it.
+ensure_clt
+
 if ! command -v brew >/dev/null 2>&1; then
   # Homebrew may be installed but not on PATH in this shell (fresh installs).
   for b in /opt/homebrew/bin/brew /usr/local/bin/brew; do

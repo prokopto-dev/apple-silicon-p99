@@ -31,15 +31,23 @@ the fixed anti-cheat DLL — is fetched automatically from its official source.
 
 ## Quick start
 
+**No developer tools required to start** — download the ZIP of this repo
+(green **Code** button above → *Download ZIP*), unzip it, then in Terminal
+(Applications → Utilities → Terminal):
+
 ```bash
-git clone https://github.com/prokopto-dev/apple-silicon-p99.git
-cd apple-silicon-p99
+cd ~/Downloads/apple-silicon-p99-main
 ./setup.sh
 ```
 
-`setup.sh` walks you through everything interactively — it offers to install
-Homebrew if you don't have it, asks where your Titanium folder is, and handles
-the rest. If it fails or you quit partway, just run it again; it resumes.
+(Or, if you're comfortable with git: `git clone https://github.com/prokopto-dev/apple-silicon-p99.git && cd apple-silicon-p99 && ./setup.sh`.)
+
+`setup.sh` walks you through everything interactively. It takes care of the
+plumbing a fresh Mac is missing: Apple's Command Line Tools (~500 MB — *not*
+the giant Xcode app; macOS shows its own install dialog), Homebrew if you
+don't have it, then Rosetta and two small helper tools. After that it asks
+where your Titanium folder is and handles the rest. If it fails or you quit
+partway, just run it again; it resumes where it left off.
 
 <details>
 <summary>Prefer to run the steps manually?</summary>

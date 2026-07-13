@@ -16,9 +16,11 @@ SRC="${1:-}"
 
 if [ -n "$SRC" ]; then
   [ -f "$SRC/eqgame.exe" ] || die "'$SRC' doesn't look like an EverQuest install (no eqgame.exe)"
-  say "Copying Titanium install -> $GAME_DIR (rsync, resumable)"
+  say "Copying Titanium install -> $GAME_DIR (~4.5 GB — this takes a few minutes; resumable)"
   mkdir -p "$GAME_DIR"
-  rsync -a --info=progress2 "$SRC/" "$GAME_DIR/"
+  # Plain -a only: stock macOS ships openrsync, which lacks GNU rsync's
+  # fancier progress flags.
+  rsync -a "$SRC/" "$GAME_DIR/"
 elif [ -f "$GAME_DIR/eqgame.exe" ]; then
   say "Using existing game files at $GAME_DIR"
 else

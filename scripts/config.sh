@@ -46,3 +46,19 @@ wine_env() {
 say()  { printf '\033[1;32m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33mWARN:\033[0m %s\n' "$*" >&2; }
 die()  { printf '\033[1;31mERROR:\033[0m %s\n' "$*" >&2; exit 1; }
+
+# Apple's Command Line Tools (~500 MB — NOT the full Xcode app). Needed by
+# Homebrew and by the python3/git stubs macOS ships. Triggers Apple's own
+# GUI installer and waits for the user to finish it.
+ensure_clt() {
+  xcode-select -p >/dev/null 2>&1 && return 0
+  say "Apple's Command Line Tools are needed (small download — not full Xcode)."
+  say "macOS will show an install dialog: click 'Install' and let it finish."
+  xcode-select --install 2>/dev/null || true
+  until xcode-select -p >/dev/null 2>&1; do
+    printf '.'
+    sleep 5
+  done
+  printf '\n'
+  say "Command Line Tools installed."
+}
