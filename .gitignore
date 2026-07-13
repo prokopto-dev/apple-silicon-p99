@@ -1,0 +1,11 @@
+# Never commit proprietary or downloaded binaries.
+*.zip
+*.tar.xz
+*.dll
+*.exe
+*.dmg
+
+# Local debris
+.DS_Store
+*.log
+*.bak

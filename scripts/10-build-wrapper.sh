@@ -1,0 +1,83 @@
+#!/bin/bash
+# 10-build-wrapper.sh — assemble the P99.app wine wrapper from scratch:
+# Sikarugir template + WineCX engine, then initialize the wine prefix.
+# Idempotent: skips pieces that already exist; delete $WRAPPER to rebuild clean.
+set -euo pipefail
+cd "$(dirname "$0")"; source ./config.sh
+
+TMP=$(mktemp -d)
+trap 'rm -rf "$TMP"' EXIT
+
+if [ ! -d "$WRAPPER" ]; then
+  say "Downloading wrapper template: $TEMPLATE_URL"
+  curl -fSL -o "$TMP/template.tar.xz" "$TEMPLATE_URL"
+  say "Extracting template -> $WRAPPER"
+  mkdir -p "$TMP/t" && tar -xf "$TMP/template.tar.xz" -C "$TMP/t"
+  # The tarball contains a single .app bundle (name varies by template version).
+  APP=$(find "$TMP/t" -maxdepth 2 -name "*.app" -type d | head -1)
+  [ -n "$APP" ] || die "no .app found inside template tarball"
+  mv "$APP" "$WRAPPER"
+else
+  say "Wrapper already exists at $WRAPPER — keeping it"
+fi
+
+if [ ! -x "$WINE" ]; then
+  say "Downloading wine engine: $ENGINE_URL"
+  curl -fSL -o "$TMP/engine.tar.xz" "$ENGINE_URL"
+  say "Extracting engine -> Contents/SharedSupport/wine"
+  mkdir -p "$TMP/e" && tar -xf "$TMP/engine.tar.xz" -C "$TMP/e"
+  [ -d "$TMP/e/wswine.bundle" ] || die "engine tarball missing wswine.bundle"
+  # IMPORTANT: engine must live at SharedSupport/wine, NOT Frameworks/wswine.bundle
+  # (the launcher SDK throws WineAppInitializationError/wineFolderNotFound otherwise).
+  rm -rf "$WRAPPER/Contents/SharedSupport/wine"
+  mkdir -p "$WRAPPER/Contents/SharedSupport"
+  mv "$TMP/e/wswine.bundle" "$WRAPPER/Contents/SharedSupport/wine"
+else
+  say "Engine already installed: $("$WINE" --version 2>/dev/null | head -1 || echo present)"
+fi
+
+say "Stripping macOS quarantine attributes (Gatekeeper would block the unsigned engine)"
+xattr -dr com.apple.quarantine "$WRAPPER" 2>/dev/null || true
+
+say "Configuring Info.plist (what to run when the app is double-clicked)"
+plutil -replace "Program Name and Path" -string "/Program Files/EverQuest/eqgame.exe" "$WRAPPER/Contents/Info.plist"
+plutil -replace "Program Flags" -string "patchme" "$WRAPPER/Contents/Info.plist"
+plutil -replace CFBundleName -string "P99" "$WRAPPER/Contents/Info.plist" 2>/dev/null || true
+
+if [ ! -f "$PREFIX/system.reg" ]; then
+  say "Initializing wine prefix (first run; takes a minute)"
+  wine_env "$WINE" wineboot -i
+else
+  say "Wine prefix already initialized"
+fi
+
+say "Setting Windows version to XP (part of the working recipe)"
+wine_env "$WINE" reg add 'HKCU\Software\Wine' /v Version /d winxp /f >/dev/null
+
+# Microsoft core fonts (Arial etc.). EQ rasterizes its UI text through Windows
+# font APIs; without the real fonts wine substitutes lookalikes and chunks of
+# the UI render fuzzy. Done manually rather than via `winetricks corefonts`
+# because macOS SIP strips DYLD_* env vars through winetricks' /bin/sh,
+# breaking wine invocation inside it. Wine auto-loads everything in Fonts/.
+FONTS_DIR="$PREFIX/drive_c/windows/Fonts"
+if [ -f "$FONTS_DIR/Arial.TTF" ]; then
+  say "MS core fonts already installed"
+else
+  say "Installing MS core fonts (crisp UI text)"
+  mkdir -p "$FONTS_DIR" "$TMP/fonts"
+  for f in arial32 arialb32 comic32 courie32 georgi32 impact32 times32 trebuc32 verdan32 webdin32; do
+    curl -sfL -o "$TMP/fonts/$f.exe" "https://downloads.sourceforge.net/corefonts/$f.exe" \
+      && (cd "$TMP/fonts" && cabextract -q "$f.exe" >/dev/null 2>&1) \
+      || warn "could not fetch/extract $f — continuing"
+  done
+  cp "$TMP"/fonts/*.ttf "$TMP"/fonts/*.TTF "$FONTS_DIR/" 2>/dev/null || true
+  say "  installed $(ls "$FONTS_DIR" | wc -l | tr -d ' ') font files"
+fi
+
+# Keep Contents/drive_c as a convenience symlink into the prefix, as the
+# template expects.
+if [ ! -e "$WRAPPER/Contents/drive_c" ]; then
+  ln -s "SharedSupport/prefix/drive_c" "$WRAPPER/Contents/drive_c"
+fi
+
+say "Wrapper built. Next: ./20-install-game.sh /path/to/your/EverQuest-Titanium-install"
