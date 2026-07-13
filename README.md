@@ -14,20 +14,21 @@ EverQuest (32-bit Windows, 2005)
           └─ macOS
 ```
 
-## What you need
+## System requirements
 
-- A Mac. Apple Silicon (M1–M4) or Intel. ~7 GB free disk.
-- **Your own EverQuest Titanium Edition installation.** The 2005 game files are
-  proprietary and are *not* included or downloaded by these scripts. Copy the
-  install folder from an old PC, an existing installation, or your own media.
-  (P99 requires the Titanium client specifically — see the
-  [P99 install guide](https://wiki.project1999.com/Players:Getting_Started).)
-- A free [P99 account](https://www.project1999.com/account/) (forum account + login-server account).
-- [Homebrew](https://brew.sh) (used only for two small helper tools —
-  `setup.sh` offers to install Homebrew for you if it's missing).
+| | Requirement | Notes |
+|---|---|---|
+| 💻 | **Mac** — Apple Silicon (M1–M4) or Intel | Verified on M3 / macOS 26.5; Rosetta 2 is set up automatically on Apple Silicon |
+| 🍎 | **macOS 11 (Big Sur) or newer** | Older versions may work but are untested |
+| 💾 | **~7 GB free disk** | ~4.5 GB game + ~2 GB wrapper/engine, plus ~1 GB of downloads during setup |
+| 🎮 | **Your own EverQuest Titanium install** | The 2005 game files are proprietary — *not* included or downloaded here. Copy the install folder from an old PC, an existing installation, or your own discs. P99 requires the Titanium client specifically ([P99 install guide](https://wiki.project1999.com/Players:Getting_Started)) |
+| 🔑 | **Free [P99 account](https://www.project1999.com/account/)** | Forum account **plus** a login-server account |
+| 🌐 | **Internet during setup** | Wrapper template, wine engine, P99 patch files, fixed anti-cheat DLL, and fonts are all fetched from their official sources |
+| 🛠 | **Nothing else** | Homebrew and Apple's Command Line Tools are offered/installed automatically by `setup.sh` if missing — no Xcode, no developer knowledge |
 
-Everything else — the wrapper template, the wine engine, the P99 patch files,
-the fixed anti-cheat DLL — is fetched automatically from its official source.
+Any terminal app works for running the setup — the built-in Terminal, iTerm2,
+Warp, whatever you prefer. The quick start uses macOS's built-in Terminal only
+because everyone has it.
 
 ## Quick start
 
