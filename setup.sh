@@ -38,7 +38,8 @@ cat <<'EOF'
     5. launch the game
 
   You need:  your own EverQuest Titanium install folder (proprietary — not
-             downloadable here), a P99 login-server account, and ~7 GB free.
+             downloadable here), a P99 login-server account, and ~8 GB free
+             (~10 GB to be comfortable; less if you already have Homebrew).
 
   Nothing here needs sudo except (optionally) installing Homebrew/Rosetta,
   which use Apple's and Homebrew's own installers.

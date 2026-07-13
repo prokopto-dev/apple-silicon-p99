@@ -20,7 +20,7 @@ EverQuest (32-bit Windows, 2005)
 |---|---|---|
 | 💻 | **Mac** — Apple Silicon (M1–M4) or Intel | Verified on M3 / macOS 26.5; Rosetta 2 is set up automatically on Apple Silicon |
 | 🍎 | **macOS 11 (Big Sur) or newer** | Older versions may work but are untested |
-| 💾 | **~7 GB free disk** | ~4.5 GB game + ~2 GB wrapper/engine, plus ~1 GB of downloads during setup |
+| 💾 | **~8 GB free disk** (10 GB to be comfortable) | Fresh-Mac worst case, everything included — see [Disk space breakdown](#disk-space-breakdown) |
 | 🎮 | **Your own EverQuest Titanium install** | The 2005 game files are proprietary — *not* included or downloaded here. Copy the install folder from an old PC, an existing installation, or your own discs. P99 requires the Titanium client specifically ([P99 install guide](https://wiki.project1999.com/Players:Getting_Started)) |
 | 🔑 | **Free [P99 account](https://www.project1999.com/account/)** | Forum account **plus** a login-server account |
 | 🌐 | **Internet during setup** | Wrapper template, wine engine, P99 patch files, fixed anti-cheat DLL, and fonts are all fetched from their official sources |
@@ -29,6 +29,26 @@ EverQuest (32-bit Windows, 2005)
 Any terminal app works for running the setup — the built-in Terminal, iTerm2,
 Warp, whatever you prefer. The quick start uses macOS's built-in Terminal only
 because everyone has it.
+
+### Disk space breakdown
+
+Measured on a real install (sizes will vary slightly by version):
+
+| Component | On disk | One-time system dependency? |
+|---|---|---|
+| Your EverQuest game folder (`~/Games/EverQuest`) | ~4.5 GB | no — this is the game |
+| `P99.app` wrapper (template + wine engine + prefix) | ~1.1 GB | no — this is the port |
+| Apple Command Line Tools | ~1.8 GB | yes — shared by all developer tooling; you may already have it |
+| Homebrew (fresh install) | ~0.5 GB | yes — shared package manager; already-installed Homebrew adds nothing |
+| `upx` + `cabextract` (via Homebrew) | ~5 MB | yes |
+| Rosetta 2 (Apple Silicon only) | negligible | yes — system component |
+| Setup downloads (template 81 MB, engine 164 MB, P99 files 32 MB, fonts+DLL ~10 MB) | ~290 MB, **transient** | deleted after extraction |
+
+**Totals:** ~5.6 GB if you already have Homebrew and the Command Line Tools
+(most people who've installed *any* dev tool do); **~8 GB worst case** on a
+completely fresh Mac. Uninstalling the game later frees the top two rows
+(~5.6 GB); the system dependencies are useful beyond this project and safe to
+keep.
 
 ## Quick start
 
