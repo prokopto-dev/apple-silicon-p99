@@ -21,7 +21,7 @@ EverQuest (32-bit Windows, 2005)
 | 💻 | **Mac** — Apple Silicon (M1–M4) or Intel | Verified on M3 / macOS 26.5; Rosetta 2 is set up automatically on Apple Silicon |
 | 🍎 | **macOS 11 (Big Sur) or newer** | Older versions may work but are untested |
 | 💾 | **~8 GB free disk** (10 GB to be comfortable) | Fresh-Mac worst case, everything included — see [Disk space breakdown](#disk-space-breakdown) |
-| 🎮 | **Your own EverQuest Titanium install** | The 2005 game files are proprietary — *not* included or downloaded here. Copy the install folder from an old PC, an existing installation, or your own discs. P99 requires the Titanium client specifically ([P99 install guide](https://wiki.project1999.com/Players:Getting_Started)) |
+| 🎮 | **Your own EverQuest Titanium install** | The 2005 game files are proprietary — *not* included or downloaded here. An installed folder from an old PC works, and so do your original **discs/ISOs** (the setup can run the original installer for you). P99 requires the Titanium client specifically ([P99 install guide](https://wiki.project1999.com/Players:Getting_Started)) |
 | 🔑 | **Free [P99 account](https://www.project1999.com/account/)** | Forum account **plus** a login-server account |
 | 🌐 | **Internet during setup** | Wrapper template, wine engine, P99 patch files, fixed anti-cheat DLL, and fonts are all fetched from their official sources |
 | 🛠 | **Nothing else** | Homebrew and Apple's Command Line Tools are offered/installed automatically by `setup.sh` if missing — no Xcode, no developer knowledge |
@@ -164,6 +164,7 @@ scripts/
   config.sh              shared settings + pinned component URLs
   00-prereqs.sh          Rosetta / Homebrew / upx
   10-build-wrapper.sh    assemble P99.app (template + wine engine + prefix)
+  15-install-from-media.sh  install Titanium from your ISOs/discs via the wrapper
   20-install-game.sh     stage Titanium files, overlay newest P99FilesV*.zip
   30-apply-mac-fixes.sh  the three required fixes (all reversible; .bak files)
   40-launch.sh           launch normally, or --debug for a full wine trace
@@ -174,6 +175,23 @@ docs/
   TROUBLESHOOTING.md     symptom → cause → fix, with real log signatures
   FAQ.md                 nParse, custom UIs, file locations, rules questions
 ```
+
+## Roadmap
+
+Ideas we'd like help with (PRs welcome):
+
+- **A real GUI installer.** Today's `setup.sh` already uses native macOS
+  dialogs for folder picking, but the goal is a single signed
+  `P99 Installer.app`: drag-and-drop your Titanium source, watch a progress
+  bar, get a Play button. The plan: wrap the existing scripts (they're the
+  tested logic and stay the source of truth) in a SwiftUI shell or
+  [Platypus](https://sveinbjorn.org/platypus), then code-sign + notarize so
+  Gatekeeper stops requiring the right-click dance. Signing needs an Apple
+  Developer ID ($99/yr) — the main reason this isn't done yet.
+- **Intel Mac verification.** The stack should work unchanged (it's x86_64
+  end-to-end); needs someone with the hardware to confirm.
+- **`.bin`/`.cue` handling** in the media installer, so ripped discs don't
+  need a manual conversion step.
 
 ## Credits & licensing
 

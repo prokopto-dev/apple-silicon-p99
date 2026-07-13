@@ -40,6 +40,22 @@ The [P99 Getting Started guide](https://wiki.project1999.com/Players:Getting_Sta
 covers what's acceptable in more detail. This project can't and won't download
 game files for you.
 
+## I have the install discs / ISOs, not an installed folder — can I use those?
+
+Yes — `setup.sh` asks which you have, or run `scripts/15-install-from-media.sh`
+directly. It merges all discs into one folder (so the installer never asks you
+to swap discs), then runs the original Windows installer inside the wrapper —
+you click through it like it's 2005. Notes:
+
+- Works with `.iso` files **or** physical discs in a drive (add them one at a
+  time when prompted). `.bin`/`.cue` rips need converting first
+  (`brew install bchunk`, then `bchunk file.bin file.cue out`).
+- Use the **default install location** the installer suggests, and at the end
+  **uncheck "launch EverQuest"** — the official patcher must never run
+  (it would patch past what P99 supports; P99's own files come next).
+- Temporarily needs ~8 GB free (staged discs + the install) on top of the
+  usual requirements.
+
 ## How do I uninstall?
 
 Run `scripts/90-uninstall.sh` — it asks before deleting the wrapper and

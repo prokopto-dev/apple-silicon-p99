@@ -83,19 +83,37 @@ say "Step 2/5: building the wine wrapper (downloads ~350 MB on first run)"
 
 # --- Step 3: game files -------------------------------------------------------
 say "Step 3/5: your EverQuest Titanium files"
+
+# Native Finder folder picker; returns the chosen path, empty on cancel/error.
+pick_folder() {
+  osascript -e "POSIX path of (choose folder with prompt \"$1\")" 2>/dev/null || true
+}
+
 if [ -f "$GAME_DIR/eqgame.exe" ]; then
   echo "Found existing game files at: $GAME_DIR"
   ./20-install-game.sh
 else
-  echo "Point me at your EverQuest Titanium install folder — the one that"
-  echo "contains eqgame.exe. (Copied from an old PC, external drive, etc.)"
-  while :; do
-    ask "Path to your Titanium folder:"
-    SRC="${REPLY/#\~/$HOME}"
-    if [ -f "$SRC/eqgame.exe" ]; then break; fi
-    echo "  '$SRC' has no eqgame.exe — try again (drag the folder into this window to paste its path)."
-  done
-  ./20-install-game.sh "$SRC"
+  echo "You can provide EverQuest Titanium two ways:"
+  echo "  1) an existing install FOLDER (copied from an old PC — contains eqgame.exe)"
+  echo "  2) your install DISCS or ISO files (the original installer runs in a window)"
+  ask "Which do you have? [1=folder / 2=discs or ISOs]"
+  if [ "${REPLY:-1}" = "2" ]; then
+    ./15-install-from-media.sh
+    ./20-install-game.sh
+  else
+    echo "A Finder window will open — pick your Titanium folder."
+    echo "(No dialog? You can also type or drag the folder's path here.)"
+    while :; do
+      SRC=$(pick_folder "Select your EverQuest Titanium folder (contains eqgame.exe)")
+      if [ -z "$SRC" ]; then
+        ask "Path to your Titanium folder (drag the folder into this window):"
+        SRC="${REPLY/#\~/$HOME}"
+      fi
+      [ -n "$SRC" ] && [ -f "$SRC/eqgame.exe" ] && break
+      echo "  '$SRC' has no eqgame.exe — let's try again."
+    done
+    ./20-install-game.sh "$SRC"
+  fi
 fi
 
 # --- Step 4: the Mac fixes ----------------------------------------------------
