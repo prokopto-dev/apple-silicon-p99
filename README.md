@@ -89,6 +89,12 @@ When something goes wrong, [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
 maps every crash signature we encountered to its cause and fix — including
 several dead ends that *look* like wine problems but aren't.
 
+Beyond setup, [docs/FAQ.md](docs/FAQ.md) covers quality-of-life topics:
+setting up **nParse** (map overlay/timers — it runs natively on macOS, no
+wine needed), installing **custom UIs** (DuxaUI etc.), where logs and
+character settings live, resizing the window, and the "will this get me
+banned?" question.
+
 **Is the V58 DLL legit?** Yes — it's hosted on project1999.com and was posted
 by **Rogean, P99's server administrator**, who stated the server deliberately
 continues to accept it because of these compatibility issues, and that the Mac
@@ -132,6 +138,7 @@ scripts/
 docs/
   HOW-IT-WORKS.md        what each layer does and why each fix is needed
   TROUBLESHOOTING.md     symptom → cause → fix, with real log signatures
+  FAQ.md                 nParse, custom UIs, file locations, rules questions
 ```
 
 ## Credits & licensing
