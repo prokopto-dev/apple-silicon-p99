@@ -7,6 +7,8 @@ notes automatically (see "Cutting a release" in the README).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-14
+
 ### Added
 - **Anti-cheat fix toggle** in the installer app (Settings on the status
   screen): the V58 `dsetup.dll` swap can now be turned off — for the day P99
