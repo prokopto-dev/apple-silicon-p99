@@ -7,6 +7,8 @@ notes automatically (see "Cutting a release" in the README).
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-07-14
+
 ### Fixed
 - Test-run hang diagnostics: `p99tests` output is line-buffered on CI and its
   watchdog now names the last completed assertion, so any recurrence of the
