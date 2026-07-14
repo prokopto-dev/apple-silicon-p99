@@ -9,3 +9,7 @@
 .DS_Store
 *.log
 *.bak
+
+# Build output
+app/.build/
+dist/

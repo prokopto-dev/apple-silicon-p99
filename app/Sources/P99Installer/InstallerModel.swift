@@ -1,0 +1,213 @@
+import SwiftUI
+import Observation
+
+enum Phase: Equatable {
+    case status        // main screen: checklist + actions
+    case homebrewGate  // brew missing: hand off to Terminal, poll until present
+    case sourcePicker  // where are the Titanium files?
+    case run(RunKind)  // a script pipeline is running (or just finished/failed)
+}
+
+enum RunKind: Equatable {
+    case install, update, uninstall, launch
+
+    var title: String {
+        switch self {
+        case .install:   "Installing Project 1999"
+        case .update:    "Updating P99 files"
+        case .uninstall: "Uninstalling"
+        case .launch:    "Launching Project 1999"
+        }
+    }
+}
+
+enum RunState: Equatable {
+    case running
+    case success
+    case failure(String)
+}
+
+@Observable @MainActor
+final class InstallerModel {
+    var phase: Phase = .status
+    var status = P99Status()
+    var statusLoaded = false
+
+    // Run-screen state
+    var runKind: RunKind = .install
+    var runState: RunState = .running
+    var steps: [StepRun] = []
+    var currentStep = 0
+    var headline = ""
+    var percent: Double?
+    var logLines: [String] = []
+
+    private var runner: ScriptRunner?
+    private var runTask: Task<Void, Never>?
+
+    // MARK: - Status
+
+    func refreshStatus() async {
+        do {
+            let tsv = try await ScriptRunner.capture(script: ScriptLocator.script("status.sh"))
+            status = P99Status(tsv: tsv)
+        } catch {
+            logLines.append("status.sh failed: \(error.localizedDescription)")
+        }
+        statusLoaded = true
+    }
+
+    // MARK: - Install flow
+
+    /// Entry from the Install button. Routes through the Homebrew gate and
+    /// source picker as needed; both loop back here when satisfied.
+    func beginInstall() {
+        guard status.brewInstalled else {
+            phase = .homebrewGate
+            return
+        }
+        if status.gameInstalled {
+            startRun(.install, steps: Steps.install(source: .existing))
+        } else {
+            phase = .sourcePicker
+        }
+    }
+
+    func install(source: SourceChoice) {
+        startRun(.install, steps: Steps.install(source: source))
+    }
+
+    func update() {
+        startRun(.update, steps: [StepRun(title: "Download + apply newest P99 files", script: "50-update.sh")])
+    }
+
+    func play() {
+        startRun(.launch, steps: [StepRun(title: "Launch Project 1999", script: "40-launch.sh")])
+    }
+
+    func uninstall(removeWrapper: Bool, removeGame: Bool) {
+        startRun(.uninstall,
+                 steps: [StepRun(title: "Remove selected components", script: "90-uninstall.sh")],
+                 extraEnv: ["P99_NONINTERACTIVE": "1",
+                            "P99_REMOVE_WRAPPER": removeWrapper ? "1" : "0",
+                            "P99_REMOVE_GAMEDIR": removeGame ? "1" : "0"])
+    }
+
+    func cancelRun() {
+        runTask?.cancel()
+        runner?.terminate()
+        backToStatus()
+    }
+
+    func backToStatus() {
+        phase = .status
+        Task { await refreshStatus() }
+    }
+
+    // MARK: - Homebrew gate
+
+    /// Homebrew's installer is interactive and asks for the user's macOS
+    /// password (sudo). The app must never see that password, so it hands the
+    /// official install command to Terminal.app — a real tty — via a .command
+    /// file, then polls status.sh until brew appears.
+    func openHomebrewInstaller() {
+        let script = """
+        #!/bin/bash
+        echo "This installs Homebrew, the Mac package manager (https://brew.sh)."
+        echo "It will ask for your macOS login password — that prompt comes from"
+        echo "Homebrew's own installer running in this Terminal window."
+        echo "P99 Installer never sees your password."
+        echo
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        echo
+        echo "Done — you can close this window. P99 Installer continues automatically."
+        """
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("Install Homebrew.command")
+        do {
+            try script.write(to: url, atomically: true, encoding: .utf8)
+            try FileManager.default.setAttributes([.posixPermissions: 0o755],
+                                                  ofItemAtPath: url.path)
+            NSWorkspace.shared.open(url)
+        } catch {
+            logLines.append("could not stage Homebrew installer: \(error.localizedDescription)")
+        }
+    }
+
+    /// Runs while the Homebrew gate is showing; auto-advances when brew lands.
+    func pollHomebrew() async {
+        while phase == .homebrewGate {
+            await refreshStatus()
+            if status.brewInstalled {
+                beginInstall()
+                return
+            }
+            try? await Task.sleep(for: .seconds(2))
+        }
+    }
+
+    // MARK: - Pipeline runner
+
+    private func startRun(_ kind: RunKind, steps: [StepRun], extraEnv: [String: String] = [:]) {
+        runKind = kind
+        self.steps = steps
+        currentStep = 0
+        headline = ""
+        percent = nil
+        logLines = []
+        runState = .running
+        phase = .run(kind)
+        runTask = Task { await runAll(extraEnv: extraEnv) }
+    }
+
+    private func runAll(extraEnv: [String: String]) async {
+        var lastError: String?
+        for (index, step) in steps.enumerated() {
+            currentStep = index
+            percent = nil
+            headline = step.title
+            let runner = ScriptRunner()
+            self.runner = runner
+            do {
+                let stream = runner.stream(script: ScriptLocator.script(step.script),
+                                           arguments: step.arguments,
+                                           extraEnv: extraEnv)
+                for try await line in stream {
+                    if Task.isCancelled { return }
+                    handle(line: line, lastError: &lastError)
+                }
+            } catch is CancellationError {
+                return // user cancelled; cancelRun() already reset the phase
+            } catch {
+                if Task.isCancelled { return }
+                let message = lastError ?? error.localizedDescription
+                runState = .failure(message)
+                await refreshStatus()
+                return
+            }
+            if Task.isCancelled { return }
+        }
+        currentStep = steps.count
+        runState = .success
+        await refreshStatus()
+    }
+
+    private func handle(line: String, lastError: inout String?) {
+        switch OutputParser.parse(line) {
+        case .say(let s):
+            headline = s
+            percent = nil
+            logLines.append("==> " + s)
+        case .warn(let s):
+            logLines.append("WARN: " + s)
+        case .error(let s):
+            lastError = s
+            logLines.append("ERROR: " + s)
+        case .percent(let p):
+            percent = p
+        case .raw(let s):
+            if !s.isEmpty { logLines.append(s) }
+        }
+        if logLines.count > 2400 { logLines.removeFirst(400) }
+    }
+}
