@@ -7,7 +7,28 @@ notes automatically (see "Cutting a release" in the README).
 
 ## [Unreleased]
 
-## [0.2.0] - 2026-07-14
+### Added
+- **Installer Updates window** ("Installer Updates…" on the status screen):
+  checks GitHub for newer releases of this app and lists the changelog for
+  every version between yours and the latest, with a download button. The
+  app bundle now carries its real version (stamped from this changelog at
+  build time), and the old "Check for Updates" button is renamed
+  "Update Game Files" to keep the two kinds of update distinct.
+
+### Fixed
+- CI kept stalling in the coverage step: `ScriptRunner` relied on Foundation
+  closing the parent's copy of the output pipe after spawning, which macOS 15
+  runners don't do reliably — EOF never arrived and the test run hung. The
+  write end is now closed explicitly, and `p99tests` gained a 3-minute
+  watchdog so any future hang fails fast with a diagnostic instead of
+  wedging the pipeline.
+
+## [0.2.0] - 2026-07-14 [UNPUBLISHED]
+
+Tag exists but its CI runs stalled in the coverage step (the ScriptRunner
+pipe-EOF bug fixed in 0.3.0 — tag re-runs rebuild the tag's own code, so they
+could never pick up the fix). No artifacts; these changes first shipped in
+a release with 0.3.0.
 
 ### Added
 - **Anti-cheat fix toggle** in the installer app (Settings on the status

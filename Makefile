@@ -12,6 +12,9 @@
 #   make clean
 
 APP_NAME  := P99 Installer
+# App version = newest released section in CHANGELOG.md; stamped into the
+# bundle so the in-app update checker knows what it's running.
+VERSION   := $(shell awk -F'[][]' '/^\#\# \[[0-9]/{print $$2; exit}' CHANGELOG.md)
 DIST      := dist
 APP       := $(DIST)/$(APP_NAME).app
 BINARY    := app/.build/release/P99Installer
@@ -62,6 +65,7 @@ app:
 	mkdir -p "$(APP)/Contents/MacOS" "$(APP)/Contents/Resources"
 	cp "$(BINARY)" "$(APP)/Contents/MacOS/P99Installer"
 	cp app/Resources/Info.plist "$(APP)/Contents/Info.plist"
+	plutil -replace CFBundleShortVersionString -string "$(VERSION)" "$(APP)/Contents/Info.plist"
 	cp app/Resources/AppIcon.icns "$(APP)/Contents/Resources/AppIcon.icns"
 	# The scripts stay the source of truth in scripts/; each build bundles a
 	# fresh copy so the .app is fully self-contained.

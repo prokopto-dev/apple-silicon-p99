@@ -8,6 +8,7 @@ import SwiftUI
 struct StatusView: View {
     @Environment(InstallerModel.self) private var model
     @State private var showUninstall = false
+    @State private var showAppUpdates = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -24,6 +25,7 @@ struct StatusView: View {
             footer
         }
         .sheet(isPresented: $showUninstall) { UninstallSheet() }
+        .sheet(isPresented: $showAppUpdates) { AppUpdatesSheet() }
     }
 
     private var header: some View {
@@ -37,7 +39,8 @@ struct StatusView: View {
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
             Text("The app never asks for your password. If Homebrew or Rosetta are needed, "
-                 + "macOS and Homebrew's own installers do the asking.")
+                 + "macOS and Homebrew's own installers do the asking. "
+                 + "Installer v\(InstallerModel.appVersion).")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center)
@@ -101,6 +104,8 @@ struct StatusView: View {
         HStack {
             Button("Uninstall…") { showUninstall = true }
                 .disabled(!model.status.anythingInstalled)
+            Button("Installer Updates…") { showAppUpdates = true }
+                .help("Check for a newer version of this installer app")
             Button {
                 Task { await model.refreshStatus() }
             } label: {
@@ -109,7 +114,8 @@ struct StatusView: View {
             .help("Re-check what's installed")
             Spacer()
             if model.readyToPlay {
-                Button("Check for Updates") { model.update() }
+                Button("Update Game Files") { model.update() }
+                    .help("Fetch the newest P99 patch files and re-apply the Mac fixes")
                 Button("Play") { model.play() }
                     .keyboardShortcut(.defaultAction)
                     .buttonStyle(.borderedProminent)

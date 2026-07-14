@@ -48,6 +48,7 @@ public final class ScriptRunner: @unchecked Sendable {
             DispatchQueue.global().async {
                 do {
                     try p.run()
+                    try? out.fileHandleForWriting.close() // see stream(): EOF guarantee
                     let data = out.fileHandleForReading.readDataToEndOfFile()
                     p.waitUntilExit()
                     guard p.terminationStatus == 0 else {
@@ -146,6 +147,11 @@ public final class ScriptRunner: @unchecked Sendable {
 
             do {
                 try p.run()
+                // Close our reference to the write end. The child owns its
+                // dup; without this, whether EOF ever reaches the reader
+                // depends on Foundation closing it for us — which differs
+                // across macOS versions (macOS 15 CI runners stalled here).
+                try? pipe.fileHandleForWriting.close()
             } catch {
                 continuation.finish(throwing: error)
             }

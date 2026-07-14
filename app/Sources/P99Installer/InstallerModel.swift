@@ -46,6 +46,39 @@ final class InstallerModel {
     /// fullyInstalled, but honoring user-disabled optional fixes.
     var readyToPlay: Bool { status.fullyInstalled(waiving: waivedKeys) }
 
+    // MARK: - Installer app updates
+
+    enum AppUpdateState: Equatable {
+        case idle, checking, upToDate
+        case available([AppRelease])
+        case failed(String)
+    }
+    var appUpdateState: AppUpdateState = .idle
+
+    /// Version stamped into the bundle by `make app` (from CHANGELOG.md).
+    static var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.0"
+    }
+
+    /// Asks GitHub for newer installer releases; each release's notes are its
+    /// CHANGELOG section, so the sheet can show everything the user missed.
+    func checkAppUpdates() async {
+        appUpdateState = .checking
+        do {
+            var request = URLRequest(url: AppUpdates.releasesAPI)
+            request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+            let (data, response) = try await URLSession.shared.data(for: request)
+            if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+                throw ScriptFailure(script: "GitHub API", exitCode: Int32(http.statusCode))
+            }
+            let missed = AppUpdates.newer(than: Self.appVersion,
+                                          in: try AppUpdates.releases(fromJSON: data))
+            appUpdateState = missed.isEmpty ? .upToDate : .available(missed)
+        } catch {
+            appUpdateState = .failed(error.localizedDescription)
+        }
+    }
+
     // Run-screen state
     var runKind: RunKind = .install
     var runState: RunState = .running
