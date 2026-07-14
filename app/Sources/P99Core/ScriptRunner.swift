@@ -113,22 +113,33 @@ public final class ScriptRunner: @unchecked Sendable {
                 }
             }
 
-            pipe.fileHandleForReading.readabilityHandler = { fh in
-                let data = fh.availableData
-                lock.lock()
-                if data.isEmpty { // EOF: every writer (incl. children) is gone
-                    fh.readabilityHandler = nil
-                    let tail = String(data: buffer, encoding: .utf8) ?? ""
-                    buffer.removeAll()
-                    sawEOF = true
-                    if !tail.isEmpty { continuation.yield(tail) }
-                    finishIfComplete()
+            // Dedicated blocking reader thread instead of readabilityHandler:
+            // the GCD-callback machinery hung intermittently on cold
+            // instrumented starts (CI watchdog: frozen entering the first
+            // stream, zero lines delivered). A plain blocking read loop has
+            // no callback semantics to race — data or EOF, nothing else.
+            let readHandle = pipe.fileHandleForReading
+            Thread.detachNewThread {
+                // POSIX read, not FileHandle.availableData: read() returns 0
+                // at EOF and -1 after the cancel path closes the fd — no
+                // ObjC exceptions to dodge.
+                let fd = readHandle.fileDescriptor
+                var chunk = [UInt8](repeating: 0, count: 65536)
+                while true {
+                    let n = read(fd, &chunk, chunk.count)
+                    if n <= 0 { break }
+                    lock.lock()
+                    let lines = drain(Data(bytes: chunk, count: n))
                     lock.unlock()
-                    return
+                    for line in lines { continuation.yield(line) }
                 }
-                let lines = drain(data)
+                lock.lock()
+                let tail = String(data: buffer, encoding: .utf8) ?? ""
+                buffer.removeAll()
+                sawEOF = true
+                if !tail.isEmpty { continuation.yield(tail) }
+                finishIfComplete()
                 lock.unlock()
-                for line in lines { continuation.yield(line) }
             }
 
             p.terminationHandler = { proc in
@@ -138,8 +149,9 @@ public final class ScriptRunner: @unchecked Sendable {
                 if signaled {
                     // SIGTERM (user cancel): orphaned children (e.g. curl) can
                     // hold the pipe open indefinitely — don't wait for EOF.
-                    pipe.fileHandleForReading.readabilityHandler = nil
+                    // Closing the read end also unblocks the reader thread.
                     sawEOF = true
+                    try? readHandle.close()
                 }
                 finishIfComplete()
                 lock.unlock()
