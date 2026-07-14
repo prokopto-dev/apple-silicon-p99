@@ -1,3 +1,4 @@
+import P99Core
 import SwiftUI
 
 /// Shown when Homebrew is missing. Its installer needs a real terminal and

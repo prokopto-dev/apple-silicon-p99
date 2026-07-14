@@ -56,6 +56,10 @@ keep.
 
 ### Option A: the GUI installer (P99 Installer.app)
 
+<img src="docs/img/installer-status.png" width="560"
+     alt="P99 Installer status screen: green checkmarks for prerequisites, wrapper, game files and Mac fixes, with Check for Updates and Play buttons">
+
+
 1. Download `P99-Installer.zip` from the
    [latest release](https://github.com/prokopto-dev/apple-silicon-p99/releases/latest)
    (or build it yourself — see
@@ -214,9 +218,16 @@ just orchestrates them, so script fixes don't require app-code changes.
 `scripts/status.sh` powers its "already done" checklist and is nice on its
 own: run it any time to see the state of your install.
 
-Releases are automated: CI builds and selftests the app on every push, and
-pushing a version tag (`git tag v0.1.0 && git push origin v0.1.0`) attaches
-`P99-Installer.zip` to a GitHub Release — that's the download link above.
+`make test` runs the test suite: Swift unit tests for the app's core (output
+parsing, status model, script running — a plain `swift run p99tests`
+executable, since the Command Line Tools ship no test framework) plus
+offline script-layer tests (`scripts/tests.sh`) for the status probes and
+non-interactive uninstall.
+
+Releases are automated: CI tests, builds, and selftests the app on every
+push, and pushing a version tag (`git tag v0.1.2 && git push origin v0.1.2`)
+attaches `P99-Installer.zip` to a GitHub Release — that's the download link
+above.
 
 ## Roadmap
 

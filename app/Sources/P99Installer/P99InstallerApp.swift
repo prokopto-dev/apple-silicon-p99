@@ -1,3 +1,4 @@
+import P99Core
 import SwiftUI
 
 // NOTE: must be @main in a non-main.swift file so SwiftPM compiles the target

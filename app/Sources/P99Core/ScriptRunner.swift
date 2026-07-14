@@ -1,21 +1,26 @@
 import Foundation
 
-struct ScriptFailure: Error, LocalizedError {
-    let script: String
-    let exitCode: Int32
-    var errorDescription: String? { "\(script) exited with code \(exitCode)" }
+public struct ScriptFailure: Error, LocalizedError {
+    public init(script: String, exitCode: Int32) {
+        self.script = script
+        self.exitCode = exitCode
+    }
+    public let script: String
+    public let exitCode: Int32
+    public var errorDescription: String? { "\(script) exited with code \(exitCode)" }
 }
 
 /// Runs one bash script, streaming its merged stdout+stderr line by line.
 /// Lines are split on both \n and \r so curl --progress-bar updates
 /// (carriage-return-delimited) arrive as individual chunks.
-final class ScriptRunner: @unchecked Sendable {
+public final class ScriptRunner: @unchecked Sendable {
+    public init() {}
     private let process = Process()
 
     /// Environment for script children. Finder-launched apps get a bare PATH
     /// that lacks Homebrew's bin dirs, so prepend them (setup.sh does the
     /// equivalent with `brew shellenv` — the GUI bypasses setup.sh).
-    static func environment(extra: [String: String] = [:]) -> [String: String] {
+    public static func environment(extra: [String: String] = [:]) -> [String: String] {
         var env = ProcessInfo.processInfo.environment
         var path = env["PATH"] ?? "/usr/bin:/bin:/usr/sbin:/sbin"
         for dir in ["/usr/local/bin", "/opt/homebrew/bin"]
@@ -29,7 +34,7 @@ final class ScriptRunner: @unchecked Sendable {
 
     /// One-shot helper: run a script to completion and return its stdout.
     /// Used for the fast, read-only status.sh.
-    static func capture(script: URL, arguments: [String] = []) async throws -> String {
+    public static func capture(script: URL, arguments: [String] = []) async throws -> String {
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/bin/bash")
         p.arguments = [script.path] + arguments
@@ -57,7 +62,7 @@ final class ScriptRunner: @unchecked Sendable {
         }
     }
 
-    func stream(script: URL, arguments: [String] = [],
+    public func stream(script: URL, arguments: [String] = [],
                 extraEnv: [String: String] = [:]) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             let p = process
@@ -128,7 +133,7 @@ final class ScriptRunner: @unchecked Sendable {
     /// SIGTERM the script. Every script is idempotent, so a cancelled run is
     /// safe: re-running resumes where it left off. (An in-flight curl child
     /// may linger until its download completes — harmless.)
-    func terminate() {
+    public func terminate() {
         if process.isRunning { process.terminate() }
     }
 }

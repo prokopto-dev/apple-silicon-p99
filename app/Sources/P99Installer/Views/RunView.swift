@@ -1,3 +1,4 @@
+import P99Core
 import SwiftUI
 
 /// Shared screen for every script pipeline: install, update, uninstall, launch.

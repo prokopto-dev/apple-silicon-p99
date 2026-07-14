@@ -3,6 +3,7 @@
 #
 #   make            same as `make app`
 #   make app        build dist/P99 Installer.app (ad-hoc signed, runs locally)
+#   make test       Swift unit tests (swift run p99tests) + script-layer tests
 #   make zip        dist/P99-Installer.zip for distribution
 #   make icon       regenerate AppIcon.icns from app/Resources/icon-1024.png
 #   make notarize   Developer-ID sign + notarize (needs DEVELOPER_ID + NOTARY_PROFILE)
@@ -14,7 +15,11 @@ APP       := $(DIST)/$(APP_NAME).app
 BINARY    := app/.build/release/P99Installer
 ICONSET   := $(DIST)/AppIcon.iconset
 
-.PHONY: app zip icon notarize clean
+.PHONY: app test zip icon notarize clean
+
+test:
+	swift run -c release --package-path app p99tests
+	./scripts/tests.sh
 
 app:
 	swift build -c release --package-path app
