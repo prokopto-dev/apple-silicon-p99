@@ -100,6 +100,28 @@ bother.)
 **Fix:** include `P99.app/Contents/Frameworks` in it (the scripts' `wine_env`
 helper and the app launcher both do).
 
+### `dyld: Library not loaded: @rpath/libinotify.0.dylib` from **wineserver**
+**Cause:** the engine's binaries look for their dylibs at
+`Contents/SharedSupport/` (their `@rpath` is `bin/../../`), but the template
+ships them in `Contents/Frameworks/` — and `DYLD_FALLBACK_LIBRARY_PATH` does
+not survive into wine's child processes like `wineserver`.
+**Fix:** `10-build-wrapper.sh` symlinks every `Frameworks/*.dylib` into
+`SharedSupport/`. Re-run it if you see this.
+
+### `missing LC_LOAD_DYLIB (must link with at least libSystem.dylib)` + `Abort trap: 6` at wineboot or launch
+**Cause:** macOS 26 (Tahoe) dyld refuses executables built against SDK ≥ 26
+that link no dylibs — and some engine builds ship exactly such a
+`wine-preloader` (it's deliberately freestanding: its job is reserving the
+low 32-bit address range before wine starts). Upstream report:
+[Sikarugir#130](https://github.com/Sikarugir-App/Sikarugir/issues/130).
+Do **not** just delete the preloader: wine then boots, but `eqgame.exe`
+fails with `err:virtual:map_fixed_area out of memory for 0x400000` /
+`status c0000018` (nothing reserved its fixed load address).
+**Fix:** rewrite the preloader's SDK stamp to pre-26 so dyld treats it as a
+legacy binary — `10-build-wrapper.sh` now detects and patches this
+automatically (`vtool -set-version-min macos 10.7 15.0` + ad-hoc re-sign).
+Re-run it if you hit this on an existing wrapper.
+
 ### Worked yesterday; today it crashes at launch or the server rejects me
 **Cause:** P99 released a patch (check the
 [Patch Notes forum](https://www.project1999.com/forums/forumdisplay.php?f=10)).

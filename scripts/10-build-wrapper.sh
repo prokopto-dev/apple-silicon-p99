@@ -39,10 +39,42 @@ fi
 say "Stripping macOS quarantine attributes (Gatekeeper would block the unsigned engine)"
 xattr -dr com.apple.quarantine "$WRAPPER" 2>/dev/null || true
 
+# macOS 26 (Tahoe) dyld refuses executables that were built against SDK >= 26
+# yet link no dylibs: "missing LC_LOAD_DYLIB (must link with at least
+# libSystem.dylib)", Abort trap: 6. Some engine builds ship exactly such a
+# wine-preloader (it's deliberately freestanding — its whole job is reserving
+# the low 32-bit address range before wine starts, and eqgame.exe cannot map
+# at its fixed 0x400000 base without it, failing with STATUS c0000018).
+# Rewriting the SDK stamp to pre-26 makes dyld accept it as a legacy binary.
+# Upstream: https://github.com/Sikarugir-App/Sikarugir/issues/130
+# Runs on every invocation; no-op once the stamp reads < 26.
+PRELOADER="$WRAPPER/Contents/SharedSupport/wine/bin/wine-preloader"
+preloader_sdk() {
+  otool -l "$PRELOADER" 2>/dev/null \
+    | awk '/LC_VERSION_MIN_MACOSX|LC_BUILD_VERSION/{f=1} f && $1=="sdk"{print $2; exit}'
+}
+if [ -f "$PRELOADER" ] \
+   && ! otool -l "$PRELOADER" 2>/dev/null | grep -q 'LC_LOAD_DYLIB$' \
+   && [ "$(preloader_sdk | cut -d. -f1)" -ge 26 ] 2>/dev/null; then
+  say "Patching wine-preloader SDK stamp (macOS 26's dyld rejects it as shipped)"
+  xcrun vtool -set-version-min macos 10.7 15.0 -replace -output "$PRELOADER" "$PRELOADER" 2>/dev/null
+  codesign -f -s - "$PRELOADER" 2>/dev/null || true
+fi
+
 say "Configuring Info.plist (what to run when the app is double-clicked)"
 plutil -replace "Program Name and Path" -string "/Program Files/EverQuest/eqgame.exe" "$WRAPPER/Contents/Info.plist"
 plutil -replace "Program Flags" -string "patchme" "$WRAPPER/Contents/Info.plist"
 plutil -replace CFBundleName -string "P99" "$WRAPPER/Contents/Info.plist" 2>/dev/null || true
+
+# The engine's binaries find their bundled dylibs via @rpath = bin/../../,
+# which is Contents/SharedSupport/ after the engine move above — but the
+# template ships the dylibs in Contents/Frameworks. Link them across, or
+# wineserver dies with "Library not loaded: @rpath/libinotify.0.dylib"
+# (DYLD_FALLBACK_LIBRARY_PATH does not survive into wine's child processes).
+say "Linking engine libraries into SharedSupport (engine rpath expects them there)"
+for lib in "$FRAMEWORKS"/*.dylib; do
+  ln -sf "../Frameworks/$(basename "$lib")" "$WRAPPER/Contents/SharedSupport/$(basename "$lib")"
+done
 
 if ! check_prefix; then
   say "Initializing wine prefix (first run; takes a minute)"
