@@ -17,7 +17,10 @@ notes automatically (see "Cutting a release" in the README).
 - This changelog, wired into CI: a release's notes now come from its section
   here instead of auto-generated commit lists.
 
-## [0.1.4] - 2026-07-14
+## [0.1.4] - 2026-07-14 [UNPUBLISHED]
+
+Tag exists but its CI run was cancelled mid-build; no artifacts. These
+changes first shipped in a release with 0.2.0.
 
 ### Added
 - The wrapper template and wine engine downloads are now **pinned by sha256**
