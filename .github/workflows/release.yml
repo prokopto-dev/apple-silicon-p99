@@ -27,6 +27,39 @@ jobs:
       - name: Unit + script tests
         run: make test
 
+      - name: Coverage
+        run: |
+          make coverage
+          PCT=$(cat dist/coverage-percent.txt)
+          {
+            echo "### Test coverage: ${PCT}% (P99Core lines)"
+            echo '```'
+            cat dist/coverage.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # The README's coverage badge is an SVG on the orphan `badges` branch,
+      # regenerated on every main push — no external coverage service needed.
+      - name: Update coverage badge
+        if: github.ref == 'refs/heads/main'
+        run: |
+          PCT=$(cat dist/coverage-percent.txt)
+          COLOR=$(awk -v p="$PCT" 'BEGIN{print (p>=90?"brightgreen":p>=75?"green":p>=60?"yellow":"red")}')
+          curl -sf "https://img.shields.io/badge/coverage-${PCT}%25-${COLOR}" -o /tmp/coverage.svg
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git fetch origin badges 2>/dev/null; then
+            git worktree add /tmp/badges FETCH_HEAD
+            cd /tmp/badges && git checkout -B badges FETCH_HEAD
+          else
+            git worktree add --detach /tmp/badges
+            cd /tmp/badges && git checkout --orphan badges && git rm -rfq . 2>/dev/null || true
+          fi
+          cp /tmp/coverage.svg coverage.svg
+          git add coverage.svg
+          git commit -m "Coverage badge: ${PCT}%" || exit 0
+          git push origin badges
+
       - name: Build app + zip
         run: make zip
 

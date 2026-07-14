@@ -1,5 +1,8 @@
 # Project 1999 on Apple Silicon Macs
 
+[![Build installer app](https://github.com/prokopto-dev/apple-silicon-p99/actions/workflows/release.yml/badge.svg)](https://github.com/prokopto-dev/apple-silicon-p99/actions/workflows/release.yml)
+![Test coverage](https://raw.githubusercontent.com/prokopto-dev/apple-silicon-p99/badges/coverage.svg)
+
 Scripts and documentation to run **[Project 1999](https://www.project1999.com/)**
 (the classic EverQuest emulator) natively-ish on a modern Mac — Apple Silicon or
 Intel — using an entirely **free and open-source** stack. No CrossOver license,

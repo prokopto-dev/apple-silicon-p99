@@ -4,6 +4,7 @@
 #   make            same as `make app`
 #   make app        build dist/P99 Installer.app (ad-hoc signed, runs locally)
 #   make test       Swift unit tests (swift run p99tests) + script-layer tests
+#   make coverage   test coverage report for P99Core (llvm-cov, ships with CLT)
 #   make zip        dist/P99-Installer.zip for distribution
 #   make icon       regenerate AppIcon.icns from app/Resources/icon-1024.png
 #   make notarize   Developer-ID sign + notarize (needs DEVELOPER_ID + NOTARY_PROFILE)
@@ -15,11 +16,28 @@ APP       := $(DIST)/$(APP_NAME).app
 BINARY    := app/.build/release/P99Installer
 ICONSET   := $(DIST)/AppIcon.iconset
 
-.PHONY: app test zip icon notarize clean
+.PHONY: app test coverage zip icon notarize clean
 
 test:
 	swift run -c release --package-path app p99tests
 	./scripts/tests.sh
+
+# Line-coverage report over P99Core (the testable logic). Writes:
+#   dist/coverage.txt          per-file table (also printed)
+#   dist/coverage-percent.txt  the total line-coverage number, e.g. "93.1"
+COVBIN := app/.build/debug/p99tests
+
+coverage:
+	mkdir -p $(DIST)
+	swift build --package-path app -Xswiftc -profile-generate -Xswiftc -profile-coverage-mapping
+	LLVM_PROFILE_FILE="$(abspath $(DIST))/p99tests.profraw" "$(COVBIN)"
+	xcrun llvm-profdata merge -sparse "$(DIST)/p99tests.profraw" -o "$(DIST)/p99tests.profdata"
+	xcrun llvm-cov report "$(COVBIN)" -instr-profile "$(DIST)/p99tests.profdata" \
+	  -ignore-filename-regex 'Sources/p99tests' | tee "$(DIST)/coverage.txt"
+	@xcrun llvm-cov export -summary-only "$(COVBIN)" -instr-profile "$(DIST)/p99tests.profdata" \
+	  -ignore-filename-regex 'Sources/p99tests' > "$(DIST)/coverage.json"
+	@python3 -c "import json; print(round(json.load(open('$(DIST)/coverage.json'))['data'][0]['totals']['lines']['percent'], 1))" > "$(DIST)/coverage-percent.txt"
+	@echo "Total line coverage: $$(cat $(DIST)/coverage-percent.txt)%"
 
 app:
 	swift build -c release --package-path app
