@@ -90,6 +90,7 @@ struct P99InstallerApp: App {
     }
 }
 
+@MainActor
 struct ContentView: View {
     @Environment(InstallerModel.self) private var model
 

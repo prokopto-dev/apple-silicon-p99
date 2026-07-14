@@ -1,5 +1,9 @@
 import SwiftUI
 
+// @MainActor on every view struct (not just body): older SDKs (Xcode 15)
+// only isolate `body`, so helper properties touching the model won't compile
+// there without it.
+@MainActor
 struct StatusView: View {
     @Environment(InstallerModel.self) private var model
     @State private var showUninstall = false

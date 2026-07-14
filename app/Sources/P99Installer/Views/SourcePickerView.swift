@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 /// EverQuest Titanium is proprietary, so the user must supply it: either an
 /// existing install folder (copied from an old PC etc.) or the original
 /// discs/ISOs, which run through the real Windows installer under Wine.
+@MainActor
 struct SourcePickerView: View {
     @Environment(InstallerModel.self) private var model
     @State private var isoURLs: [URL] = []

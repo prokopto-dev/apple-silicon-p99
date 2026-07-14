@@ -3,6 +3,7 @@ import SwiftUI
 /// Shared screen for every script pipeline: install, update, uninstall, launch.
 /// Shows the step list, the current `==>` status line, a progress bar during
 /// downloads, and a collapsible raw log.
+@MainActor
 struct RunView: View {
     @Environment(InstallerModel.self) private var model
     @State private var showLog = false

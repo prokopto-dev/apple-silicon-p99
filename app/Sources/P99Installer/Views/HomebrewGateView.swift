@@ -4,6 +4,7 @@ import SwiftUI
 /// asks for the user's macOS password itself — this app must never handle
 /// that password, so the install is handed off to Terminal.app and the gate
 /// polls until brew appears.
+@MainActor
 struct HomebrewGateView: View {
     @Environment(InstallerModel.self) private var model
     @State private var opened = false

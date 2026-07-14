@@ -1,5 +1,6 @@
 import SwiftUI
 
+@MainActor
 struct UninstallSheet: View {
     @Environment(InstallerModel.self) private var model
     @Environment(\.dismiss) private var dismiss
