@@ -7,7 +7,15 @@ notes automatically (see "Cutting a release" in the README).
 
 ## [Unreleased]
 
-## [0.3.0] - 2026-07-14
+### Fixed
+- Test-run hang diagnostics: `p99tests` output is line-buffered on CI and its
+  watchdog now names the last completed assertion, so any recurrence of the
+  coverage-step stall pinpoints itself instead of wedging silently.
+
+## [0.3.0] - 2026-07-14 [UNPUBLISHED]
+
+Tag's CI run hit the test-run stall before the diagnostics existed; no
+artifacts. These changes first shipped in a release with 0.3.1.
 
 ### Added
 - **Installer Updates window** ("Installer Updates…" on the status screen):
