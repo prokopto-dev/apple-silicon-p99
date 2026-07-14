@@ -54,6 +54,25 @@ keep.
 
 **Never used a terminal? You don't need to.**
 
+### Option A: the GUI installer (P99 Installer.app)
+
+1. Download `P99-Installer.zip` from the
+   [latest release](https://github.com/prokopto-dev/apple-silicon-p99/releases/latest)
+   (or build it yourself — see
+   [Building the installer app](#building-the-installer-app)) and unzip it.
+2. **Right-click `P99 Installer.app` → Open → Open.** (Needed only the first
+   time — the app isn't code-signed yet, so macOS is cautious. See Roadmap.)
+3. The app shows what's already installed, walks you through the rest with
+   native windows and progress bars, and gives you a Play button at the end.
+   It never asks for your password: if Homebrew or Rosetta are needed, macOS
+   and Homebrew's own installers do the asking.
+
+The app is a thin shell over the same scripts documented below — anything it
+does can also be done in the terminal, and a half-finished GUI install can be
+finished by `setup.sh` (and vice versa). It also has an **Uninstall** screen.
+
+### Option B: the guided terminal setup
+
 1. Download this repo as a ZIP (green **Code** button above → *Download ZIP*)
    and unzip it (double-click the ZIP in your Downloads folder).
 2. In the unzipped folder, **right-click `Setup.command` → Open → Open**.
@@ -160,8 +179,11 @@ When those patch notes appear, keep the new DLL instead:
 ```
 Setup.command            double-clickable installer (opens Terminal for you)
 setup.sh                 guided interactive installer (calls the scripts below)
+Makefile                 builds dist/P99 Installer.app from app/ + scripts/
+app/                     SwiftUI GUI installer (thin shell over scripts/)
 scripts/
-  config.sh              shared settings + pinned component URLs
+  config.sh              shared settings, pinned URLs, check_* status probes
+  status.sh              read-only "what's already done?" report (GUI + humans)
   00-prereqs.sh          Rosetta / Homebrew / upx
   10-build-wrapper.sh    assemble P99.app (template + wine engine + prefix)
   15-install-from-media.sh  install Titanium from your ISOs/discs via the wrapper
@@ -176,18 +198,36 @@ docs/
   FAQ.md                 nParse, custom UIs, file locations, rules questions
 ```
 
+## Building the installer app
+
+Needs only Apple's Command Line Tools (which the setup installs anyway) — not
+Xcode:
+
+```bash
+make app     # → dist/P99 Installer.app  (ad-hoc signed, runs locally)
+make zip     # → dist/P99-Installer.zip  (what you'd hand to a friend)
+```
+
+The app targets macOS 14+ (older Macs: use `setup.sh`, same result). All
+install logic lives in `scripts/` — the app bundles a copy at build time and
+just orchestrates them, so script fixes don't require app-code changes.
+`scripts/status.sh` powers its "already done" checklist and is nice on its
+own: run it any time to see the state of your install.
+
+Releases are automated: CI builds and selftests the app on every push, and
+pushing a version tag (`git tag v0.1.0 && git push origin v0.1.0`) attaches
+`P99-Installer.zip` to a GitHub Release — that's the download link above.
+
 ## Roadmap
 
 Ideas we'd like help with (PRs welcome):
 
-- **A real GUI installer.** Today's `setup.sh` already uses native macOS
-  dialogs for folder picking, but the goal is a single signed
-  `P99 Installer.app`: drag-and-drop your Titanium source, watch a progress
-  bar, get a Play button. The plan: wrap the existing scripts (they're the
-  tested logic and stay the source of truth) in a SwiftUI shell or
-  [Platypus](https://sveinbjorn.org/platypus), then code-sign + notarize so
-  Gatekeeper stops requiring the right-click dance. Signing needs an Apple
-  Developer ID ($99/yr) — the main reason this isn't done yet.
+- ~~**A real GUI installer.**~~ **Done** — `P99 Installer.app` (SwiftUI,
+  in `app/`) wraps the scripts with a status checklist, progress bars, native
+  folder/ISO pickers, a Play button, and an uninstall screen. Still open:
+  **code-signing + notarization**, so Gatekeeper stops requiring the
+  right-click → Open dance. That needs an Apple Developer ID ($99/yr); the
+  `make notarize` target is already wired up for when one exists.
 - **Intel Mac verification.** The stack should work unchanged (it's x86_64
   end-to-end); needs someone with the hardware to confirm.
 - **`.bin`/`.cue` handling** in the media installer, so ripped discs don't

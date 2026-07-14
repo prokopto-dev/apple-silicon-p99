@@ -1,0 +1,44 @@
+# Builds P99 Installer.app on every push/PR (CI smoke test), and attaches
+# P99-Installer.zip to a GitHub Release whenever a version tag is pushed:
+#
+#   git tag v0.1.0 && git push origin v0.1.0
+#
+# The Release's zip is the user-facing download link ("Releases" in the repo
+# sidebar / releases/latest). The per-push workflow artifact is only for CI
+# inspection (requires a GitHub login and expires).
+name: Build installer app
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: macos-14
+    permissions:
+      contents: write # needed to create the Release on tag pushes
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build app + zip
+        run: make zip
+
+      # The binary's hidden selftest verifies the bundled scripts resolve and
+      # the runner/parser work — a release never ships a broken bundle.
+      - name: Selftest
+        run: '"./dist/P99 Installer.app/Contents/MacOS/P99Installer" --selftest'
+
+      - name: Upload CI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: P99-Installer
+          path: dist/P99-Installer.zip
+
+      - name: Attach zip to Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/P99-Installer.zip
+          generate_release_notes: true

@@ -5,6 +5,12 @@ of the three fixes is required. Everything here was established empirically by
 instrumented wine runs (`WINEDEBUG=+seh,+loaddll`) during the original
 debugging session, on an Apple M3 / macOS 26.5.
 
+> **About the GUI installer:** `P99 Installer.app` contains no install logic of
+> its own — it bundles and runs the same `scripts/` described in this repo, and
+> reads `scripts/status.sh` (the same idempotency probes the scripts use) for
+> its "already done" checklist. Anything the app does can be done in the
+> terminal, and a partial install started in one can be finished by the other.
+
 ## The problem space
 
 EverQuest Titanium (2005) is a **32-bit x86 Windows** program. A modern Mac is
