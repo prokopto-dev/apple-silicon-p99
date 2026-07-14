@@ -48,9 +48,11 @@ jobs:
           curl -sf "https://img.shields.io/badge/coverage-${PCT}%25-${COLOR}" -o /tmp/coverage.svg
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git fetch origin badges 2>/dev/null; then
-            git worktree add /tmp/badges FETCH_HEAD
-            cd /tmp/badges && git checkout -B badges FETCH_HEAD
+          # Fetch into an explicit remote-tracking ref: FETCH_HEAD is
+          # per-worktree and unresolvable inside the new worktree.
+          if git fetch origin badges:refs/remotes/origin/badges 2>/dev/null; then
+            git worktree add -B badges /tmp/badges origin/badges
+            cd /tmp/badges
           else
             git worktree add --detach /tmp/badges
             cd /tmp/badges && git checkout --orphan badges && git rm -rfq . 2>/dev/null || true

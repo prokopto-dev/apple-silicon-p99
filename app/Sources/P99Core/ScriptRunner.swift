@@ -75,11 +75,20 @@ public final class ScriptRunner: @unchecked Sendable {
             p.standardOutput = pipe
             p.standardError = pipe
 
+            // All reading happens through the readabilityHandler; the stream
+            // finishes only once BOTH pipe EOF and process termination have
+            // been observed. Never mix readToEnd() with a readabilityHandler:
+            // for fast-exiting processes the handler machinery may already
+            // have slurped the fd when terminationHandler cancels it, and a
+            // readToEnd() there reads nothing — silently losing all output
+            // (caught by p99tests on the faster CI runners).
             let lock = NSLock()
             var buffer = Data()
+            var sawEOF = false
+            var exitState: (status: Int32, signaled: Bool)?
 
+            // Callers must hold `lock` for both helpers.
             func drain(_ incoming: Data) -> [String] {
-                lock.lock(); defer { lock.unlock() }
                 buffer.append(incoming)
                 var lines: [String] = []
                 while let brk = buffer.firstIndex(where: { $0 == 0x0A || $0 == 0x0D }) {
@@ -91,35 +100,48 @@ public final class ScriptRunner: @unchecked Sendable {
                 }
                 return lines
             }
-
-            pipe.fileHandleForReading.readabilityHandler = { fh in
-                let data = fh.availableData
-                guard !data.isEmpty else { fh.readabilityHandler = nil; return }
-                for line in drain(data) { continuation.yield(line) }
-            }
-
-            p.terminationHandler = { proc in
-                pipe.fileHandleForReading.readabilityHandler = nil
-                // After SIGTERM, orphaned children (e.g. curl) can hold the
-                // pipe's write end open indefinitely — skip the final read.
-                if proc.terminationReason != .uncaughtSignal,
-                   let rest = try? pipe.fileHandleForReading.readToEnd(), !rest.isEmpty {
-                    for line in drain(rest) { continuation.yield(line) }
-                }
-                lock.lock()
-                let tail = String(data: buffer, encoding: .utf8) ?? ""
-                buffer.removeAll()
-                lock.unlock()
-                if !tail.isEmpty { continuation.yield(tail) }
-
-                if proc.terminationReason == .uncaughtSignal {
+            func finishIfComplete() {
+                guard sawEOF, let exit = exitState else { return }
+                if exit.signaled {
                     continuation.finish(throwing: CancellationError())
-                } else if proc.terminationStatus == 0 {
+                } else if exit.status == 0 {
                     continuation.finish()
                 } else {
                     continuation.finish(throwing: ScriptFailure(script: script.lastPathComponent,
-                                                                exitCode: proc.terminationStatus))
+                                                                exitCode: exit.status))
                 }
+            }
+
+            pipe.fileHandleForReading.readabilityHandler = { fh in
+                let data = fh.availableData
+                lock.lock()
+                if data.isEmpty { // EOF: every writer (incl. children) is gone
+                    fh.readabilityHandler = nil
+                    let tail = String(data: buffer, encoding: .utf8) ?? ""
+                    buffer.removeAll()
+                    sawEOF = true
+                    if !tail.isEmpty { continuation.yield(tail) }
+                    finishIfComplete()
+                    lock.unlock()
+                    return
+                }
+                let lines = drain(data)
+                lock.unlock()
+                for line in lines { continuation.yield(line) }
+            }
+
+            p.terminationHandler = { proc in
+                lock.lock()
+                let signaled = proc.terminationReason == .uncaughtSignal
+                exitState = (proc.terminationStatus, signaled)
+                if signaled {
+                    // SIGTERM (user cancel): orphaned children (e.g. curl) can
+                    // hold the pipe open indefinitely — don't wait for EOF.
+                    pipe.fileHandleForReading.readabilityHandler = nil
+                    sawEOF = true
+                }
+                finishIfComplete()
+                lock.unlock()
             }
 
             do {
