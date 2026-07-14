@@ -76,9 +76,25 @@ jobs:
           name: P99-Installer
           path: dist/P99-Installer.zip
 
+      # Release notes come from this version's CHANGELOG.md section
+      # (make release keeps it populated). Falls back to a stub if missing.
+      - name: Extract changelog section
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VER="${GITHUB_REF#refs/tags/v}"
+          awk -v ver="$VER" '
+            $0 ~ "^## \\[" ver "\\]" {on=1; next}
+            on && /^## \[/ {exit}
+            on {print}
+          ' CHANGELOG.md | sed -e '/./,$!d' > /tmp/notes.md
+          if [ ! -s /tmp/notes.md ]; then
+            echo "_No CHANGELOG.md entry for ${VER} — see commit history._" > /tmp/notes.md
+          fi
+          cat /tmp/notes.md
+
       - name: Attach zip to Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: dist/P99-Installer.zip
-          generate_release_notes: true
+          body_path: /tmp/notes.md

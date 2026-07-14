@@ -8,8 +8,16 @@ Scripts and documentation to run **[Project 1999](https://www.project1999.com/)*
 Intel — using an entirely **free and open-source** stack. No CrossOver license,
 no virtual machine, no Windows install.
 
-Verified working: Apple M3, macOS 26.5 · MacBook Pro 13" (M1, 8 GB RAM) —
-P99 Green, sound + video on both.
+### Verified working on
+
+| Hardware | macOS | Result |
+|---|---|---|
+| 🟢 Apple M3 | 26.5 (Tahoe) | Full success — P99 Green, video + sound, gameplay |
+| 🟢 MacBook Pro 13″ · M1 · 8 GB | — | Full success — same result |
+| ⚪ Intel Macs | — | Should work (stack is x86_64 end-to-end) — [report yours!](https://github.com/prokopto-dev/apple-silicon-p99/issues) |
+
+Running it on hardware not listed here? [Open an issue](https://github.com/prokopto-dev/apple-silicon-p99/issues)
+with your machine + macOS version and we'll add it.
 
 ```
 EverQuest (32-bit Windows, 2005)
@@ -228,10 +236,16 @@ executable, since the Command Line Tools ship no test framework) plus
 offline script-layer tests (`scripts/tests.sh`) for the status probes and
 non-interactive uninstall.
 
-Releases are automated: CI tests, builds, and selftests the app on every
-push, and pushing a version tag (`git tag v0.1.2 && git push origin v0.1.2`)
-attaches `P99-Installer.zip` to a GitHub Release — that's the download link
-above.
+Releases are automated. To cut one: put the changes under `[Unreleased]` in
+[CHANGELOG.md](CHANGELOG.md), then
+
+```bash
+make release V=0.2.0
+```
+
+That verifies tests pass and the changelog section isn't empty, stamps the
+version + date, commits, tags, and pushes — CI builds the app and publishes
+the GitHub Release with that changelog section as its notes.
 
 ## Roadmap
 

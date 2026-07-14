@@ -43,6 +43,14 @@ func runP99StatusTests() {
     T.expect(!P99Status(tsv: tsv(["fix_dpvs": "missing"])).fullyInstalled,
              "one missing fix blocks fullyInstalled")
 
+    // Waiving (the app's "V58 fix disabled" setting).
+    let noDsetup = P99Status(tsv: tsv(["fix_dsetup": "missing"]))
+    T.expect(!noDsetup.fullyInstalled, "missing dsetup blocks by default")
+    T.expect(noDsetup.fullyInstalled(waiving: ["fix_dsetup"]), "waived dsetup satisfies")
+    T.expect(!noDsetup.fullyInstalled(waiving: ["fix_dpvs"]), "waiving the wrong key doesn't help")
+    let noGame2 = P99Status(tsv: tsv(["game": "missing"]))
+    T.expect(!noGame2.fullyInstalled(waiving: ["game"]), "the game itself can never be waived")
+
     let malformed = P99Status(tsv: "garbage line no tab\n\nclt\tok")
     T.expect(malformed.isOK("clt"), "valid line survives malformed neighbors")
     T.equal(malformed.value("garbage line no tab"), "?", "malformed line ignored")

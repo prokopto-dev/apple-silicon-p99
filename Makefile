@@ -7,6 +7,7 @@
 #   make coverage   test coverage report for P99Core (llvm-cov, ships with CLT)
 #   make zip        dist/P99-Installer.zip for distribution
 #   make icon       regenerate AppIcon.icns from app/Resources/icon-1024.png
+#   make release V=0.2.0   cut a release: stamp CHANGELOG, commit, tag, push
 #   make notarize   Developer-ID sign + notarize (needs DEVELOPER_ID + NOTARY_PROFILE)
 #   make clean
 
@@ -16,7 +17,23 @@ APP       := $(DIST)/$(APP_NAME).app
 BINARY    := app/.build/release/P99Installer
 ICONSET   := $(DIST)/AppIcon.iconset
 
-.PHONY: app test coverage zip icon notarize clean
+.PHONY: app test coverage zip icon release notarize clean
+
+# Cut a release: verify tests pass and CHANGELOG's [Unreleased] section has
+# content, stamp it as [$(V)] with today's date, commit, tag v$(V), push.
+# CI then builds and publishes the GitHub Release using that section as notes.
+release:
+	@test -n "$(V)" || { echo "usage: make release V=0.2.0"; exit 1; }
+	@git diff --quiet && git diff --cached --quiet || { echo "ERROR: uncommitted changes — commit or stash first"; exit 1; }
+	@awk '/^## \[Unreleased\]/{f=1;next} /^## \[/{exit} f && NF {found=1} END{exit !found}' CHANGELOG.md \
+	  || { echo "ERROR: CHANGELOG.md [Unreleased] section is empty — write the notes first"; exit 1; }
+	$(MAKE) test
+	perl -pi -e 's/^## \[Unreleased\]$$/## [Unreleased]\n\n## [$(V)] - '"$$(date +%Y-%m-%d)"'/' CHANGELOG.md
+	git add CHANGELOG.md
+	git commit -m "Release v$(V)"
+	git tag "v$(V)"
+	git push origin main "v$(V)"
+	@echo "v$(V) pushed — CI will attach P99-Installer.zip with these notes."
 
 test:
 	swift run -c release --package-path app p99tests

@@ -47,8 +47,15 @@ public struct P99Status: Equatable {
     /// game-dependent checks resolve once the game exists).
     public static let requiredKeys = ["clt", "rosetta", "brew", "tools", "wrapper", "engine",
                                "prefix", "fonts", "game", "fix_dsetup", "fix_dpvs", "fix_ini"]
-    public var fullyInstalled: Bool {
-        !values.isEmpty && Self.requiredKeys.allSatisfy { isDone($0) } && gameInstalled
+    public var fullyInstalled: Bool { fullyInstalled(waiving: []) }
+
+    /// `waiving` lets the app treat user-disabled optional fixes (e.g. the
+    /// V58 dsetup swap once P99 ships its own fixed DLL) as satisfied.
+    /// The game itself can never be waived.
+    public func fullyInstalled(waiving waived: Set<String>) -> Bool {
+        !values.isEmpty
+            && Self.requiredKeys.allSatisfy { isDone($0) || waived.contains($0) }
+            && gameInstalled
     }
     public var anythingInstalled: Bool { isOK("wrapper") || gameInstalled }
 }

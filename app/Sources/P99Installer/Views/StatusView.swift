@@ -67,12 +67,33 @@ struct StatusView: View {
                     ("P99 patch files", model.status.value("p99files")),
                 ])
                 CheckGroup(title: "Mac fixes", rows: [
-                    ("dsetup.dll (V58 build)", model.status.value("fix_dsetup")),
+                    ("dsetup.dll (V58 build)",
+                     model.applyDsetupFix ? model.status.value("fix_dsetup") : "skipped"),
                     ("dpvs.dll unpacked", model.status.value("fix_dpvs")),
                     ("eqclient.ini applied", model.status.value("fix_ini")),
                 ])
+                settingsBox
             }
             .padding(16)
+        }
+    }
+
+    private var settingsBox: some View {
+        @Bindable var model = model
+        return GroupBox("Settings") {
+            Toggle(isOn: $model.applyDsetupFix) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Anti-cheat compatibility fix (V58 dsetup.dll)")
+                    Text("Leave this on. Turn it off only when P99's patch notes announce a "
+                         + "new anti-cheat DLL that replaces the V58 workaround — then run "
+                         + "Check for Updates so the new DLL is kept.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.vertical, 4)
+            .padding(.horizontal, 6)
         }
     }
 
@@ -87,7 +108,7 @@ struct StatusView: View {
             }
             .help("Re-check what's installed")
             Spacer()
-            if model.status.fullyInstalled {
+            if model.readyToPlay {
                 Button("Check for Updates") { model.update() }
                 Button("Play") { model.play() }
                     .keyboardShortcut(.defaultAction)
@@ -137,6 +158,9 @@ private struct CheckGroup: View {
         case "n/a":
             Label("Not needed", systemImage: "minus.circle")
                 .foregroundStyle(.tertiary)
+        case "skipped":
+            Label("Off (by choice)", systemImage: "hand.raised")
+                .foregroundStyle(.orange)
         default: // p99files version, e.g. "V62" or "none"
             if value.hasPrefix("V") {
                 Label(value, systemImage: "checkmark.circle.fill")

@@ -34,6 +34,18 @@ final class InstallerModel {
     var status = P99Status()
     var statusLoaded = false
 
+    /// The V58 dsetup.dll swap (Mac fix 1). Default on. The off switch exists
+    /// for the day P99 ships a DLL update that supersedes the V58 workaround —
+    /// staff have said that's coming — so users of an old installer build can
+    /// keep updating without the script downgrading the new DLL. Persisted.
+    static let dsetupFixKey = "applyDsetupFix"
+    var applyDsetupFix: Bool = UserDefaults.standard.object(forKey: dsetupFixKey) as? Bool ?? true {
+        didSet { UserDefaults.standard.set(applyDsetupFix, forKey: Self.dsetupFixKey) }
+    }
+    private var waivedKeys: Set<String> { applyDsetupFix ? [] : ["fix_dsetup"] }
+    /// fullyInstalled, but honoring user-disabled optional fixes.
+    var readyToPlay: Bool { status.fullyInstalled(waiving: waivedKeys) }
+
     // Run-screen state
     var runKind: RunKind = .install
     var runState: RunState = .running
@@ -158,7 +170,13 @@ final class InstallerModel {
         logLines = []
         runState = .running
         phase = .run(kind)
-        runTask = Task { await runAll(extraEnv: extraEnv) }
+        var env = extraEnv
+        if !applyDsetupFix {
+            // 30-apply-mac-fixes.sh and 50-update.sh honor this: keep the
+            // dsetup.dll that the P99 patch shipped instead of the V58 swap.
+            env["SKIP_DSETUP_FIX"] = "1"
+        }
+        runTask = Task { await runAll(extraEnv: env) }
     }
 
     private func runAll(extraEnv: [String: String]) async {
