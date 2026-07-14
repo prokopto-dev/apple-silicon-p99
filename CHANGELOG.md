@@ -7,6 +7,8 @@ notes automatically (see "Cutting a release" in the README).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-14
+
 ### Added
 - **Installer Updates window** ("Installer Updates…" on the status screen):
   checks GitHub for newer releases of this app and lists the changelog for
