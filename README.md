@@ -8,7 +8,8 @@ Scripts and documentation to run **[Project 1999](https://www.project1999.com/)*
 Intel — using an entirely **free and open-source** stack. No CrossOver license,
 no virtual machine, no Windows install.
 
-Verified working: Apple M3, macOS 26.5, P99 Green, sound + video.
+Verified working: Apple M3, macOS 26.5 · MacBook Pro 13" (M1, 8 GB RAM) —
+P99 Green, sound + video on both.
 
 ```
 EverQuest (32-bit Windows, 2005)
@@ -21,12 +22,12 @@ EverQuest (32-bit Windows, 2005)
 
 | | Requirement | Notes |
 |---|---|---|
-| 💻 | **Mac** — Apple Silicon (M1–M4) or Intel | Verified on M3 / macOS 26.5; Rosetta 2 is set up automatically on Apple Silicon |
+| 💻 | **Mac** — Apple Silicon (M1–M4) or Intel | Verified on M3 (macOS 26.5) and MacBook Pro 13" M1 8 GB; Rosetta 2 is set up automatically on Apple Silicon |
 | 🍎 | **macOS 11 (Big Sur) or newer** | Older versions may work but are untested |
 | 💾 | **~8 GB free disk** (10 GB to be comfortable) | Fresh-Mac worst case, everything included — see [Disk space breakdown](#disk-space-breakdown) |
 | 🎮 | **Your own EverQuest Titanium install** | The 2005 game files are proprietary — *not* included or downloaded here. An installed folder from an old PC works, and so do your original **discs/ISOs** (the setup can run the original installer for you). P99 requires the Titanium client specifically ([P99 install guide](https://wiki.project1999.com/Players:Getting_Started)) |
 | 🔑 | **Free [P99 account](https://www.project1999.com/account/)** | Forum account **plus** a login-server account |
-| 🌐 | **Internet during setup** | Wrapper template, wine engine, P99 patch files, fixed anti-cheat DLL, and fonts are all fetched from their official sources |
+| 🌐 | **Internet during setup** | Wrapper template, wine engine, P99 patch files, fixed anti-cheat DLL, and fonts are all fetched from their official sources. The template and engine are sha256-pinned, with an automatic fallback to a byte-identical [mirror](https://github.com/prokopto-dev/apple-silicon-p99/releases/tag/engine-mirror-1) in this repo if upstream files change or vanish |
 | 🛠 | **Nothing else** | Homebrew and Apple's Command Line Tools are offered/installed automatically by `setup.sh` if missing — no Xcode, no developer knowledge |
 
 Any terminal app works for running the setup — the built-in Terminal, iTerm2,

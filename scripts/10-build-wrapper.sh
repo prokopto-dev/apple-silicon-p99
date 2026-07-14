@@ -9,8 +9,7 @@ TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
 if ! check_wrapper; then
-  say "Downloading wrapper template: $TEMPLATE_URL"
-  curl -fL --progress-bar -o "$TMP/template.tar.xz" "$TEMPLATE_URL"
+  fetch_component "$TMP/template.tar.xz" "$TEMPLATE_SHA256" "$TEMPLATE_URL" "$TEMPLATE_MIRROR_URL"
   say "Extracting template -> $WRAPPER"
   mkdir -p "$TMP/t" && tar -xf "$TMP/template.tar.xz" -C "$TMP/t"
   # The tarball contains a single .app bundle (name varies by template version).
@@ -22,8 +21,7 @@ else
 fi
 
 if ! check_engine; then
-  say "Downloading wine engine: $ENGINE_URL"
-  curl -fL --progress-bar -o "$TMP/engine.tar.xz" "$ENGINE_URL"
+  fetch_component "$TMP/engine.tar.xz" "$ENGINE_SHA256" "$ENGINE_URL" "$ENGINE_MIRROR_URL"
   say "Extracting engine -> Contents/SharedSupport/wine"
   mkdir -p "$TMP/e" && tar -xf "$TMP/engine.tar.xz" -C "$TMP/e"
   [ -d "$TMP/e/wswine.bundle" ] || die "engine tarball missing wswine.bundle"

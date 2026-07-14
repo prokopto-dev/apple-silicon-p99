@@ -60,6 +60,35 @@ rm "$G/.p99files-version"
 OUT=$(WRAPPER="$W" GAME_DIR="$G" ./status.sh)
 assert_eq "fake: no marker reads none" "none" "$(field "$OUT" p99files)"
 
+# --- fetch_component: checksum pin + mirror fallback (offline via file://) ----
+source ./config.sh
+GOOD="$T/good.bin"; BAD="$T/bad.bin"; OUT="$T/fetched.bin"
+echo "known good payload" > "$GOOD"
+echo "tampered payload"   > "$BAD"
+GOOD_SHA=$(shasum -a 256 "$GOOD" | cut -d' ' -f1)
+
+# primary healthy -> served from primary
+fetch_component "$OUT" "$GOOD_SHA" "file://$GOOD" "file://$T/never-used" >/dev/null 2>&1
+assert_eq "fetch: healthy primary" "$(cat "$GOOD")" "$(cat "$OUT")"
+
+# primary tampered (checksum mismatch) -> mirror takes over
+rm -f "$OUT"
+fetch_component "$OUT" "$GOOD_SHA" "file://$BAD" "file://$GOOD" >/dev/null 2>&1
+assert_eq "fetch: tampered primary falls back to mirror" "$(cat "$GOOD")" "$(cat "$OUT")"
+
+# primary missing (download error) -> mirror takes over
+rm -f "$OUT"
+fetch_component "$OUT" "$GOOD_SHA" "file://$T/does-not-exist" "file://$GOOD" >/dev/null 2>&1
+assert_eq "fetch: dead primary falls back to mirror" "$(cat "$GOOD")" "$(cat "$OUT")"
+
+# every source bad -> nonzero exit, nothing usable
+rm -f "$OUT"
+if (fetch_component "$OUT" "$GOOD_SHA" "file://$BAD" "file://$T/does-not-exist") >/dev/null 2>&1; then
+  bad "fetch: all sources bad must fail" "nonzero exit" "exit 0"
+else
+  ok
+fi
+
 # --- 90-uninstall.sh: non-interactive flags -----------------------------------
 run_uninstall() { # run_uninstall <wrapper-flag> <game-flag>
   WRAPPER="$W" GAME_DIR="$G" P99_NONINTERACTIVE=1 \

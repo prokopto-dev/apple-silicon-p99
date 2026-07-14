@@ -11,12 +11,24 @@ WRAPPER="${WRAPPER:-/Applications/P99.app}"
 GAME_DIR="${GAME_DIR:-$HOME/Games/EverQuest}"
 
 # --- Pinned component versions (known-good together) -------------------------
+# Each big component is pinned by sha256, with an automatic fallback to a
+# byte-identical mirror in this project's own GitHub releases. Upstream has
+# replaced release assets in-place before (same URL, different bits); the
+# checksum catches that and the mirror takes over. When bumping to a new
+# upstream version: update URL + sha256 here, upload the new tarball to a
+# fresh engine-mirror-N release, and update the mirror URL.
+MIRROR_BASE="${MIRROR_BASE:-https://github.com/prokopto-dev/apple-silicon-p99/releases/download/engine-mirror-1}"
+
 # Sikarugir wrapper template (open-source Wineskin successor).
 TEMPLATE_URL="${TEMPLATE_URL:-https://github.com/Sikarugir-App/Wrapper/releases/download/v1.0/Template-1.0.11.tar.xz}"
+TEMPLATE_MIRROR_URL="${TEMPLATE_MIRROR_URL:-$MIRROR_BASE/Template-1.0.11.tar.xz}"
+TEMPLATE_SHA256="${TEMPLATE_SHA256:-9fa15479e7ff6abd99c1d07be285fb95f41fc6991586502427152b1f7d6ccb8a}"
 
 # Wine engine: community build of CodeWeavers' LGPL CrossOver 24.0.7 wine source.
 # Runs 32-bit Windows apps on Apple Silicon via wine's WoW64 mode + Rosetta 2.
 ENGINE_URL="${ENGINE_URL:-https://github.com/Sikarugir-App/Engines/releases/download/v1.0/WS12WineCX24.0.7_6.tar.xz}"
+ENGINE_MIRROR_URL="${ENGINE_MIRROR_URL:-$MIRROR_BASE/WS12WineCX24.0.7_6.tar.xz}"
+ENGINE_SHA256="${ENGINE_SHA256:-cff03a9e86024464589383a9c1451bd1bb87c783d5753e0a4641fc3af0de8a12}"
 
 # P99's officially-hosted older dsetup.dll (the "V58" build). The dsetup.dll
 # shipped inside recent P99Files zips is broken on modern macOS; P99 staff host
@@ -49,6 +61,28 @@ wine_env() {
 say()  { printf '\033[1;32m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33mWARN:\033[0m %s\n' "$*" >&2; }
 die()  { printf '\033[1;31mERROR:\033[0m %s\n' "$*" >&2; exit 1; }
+
+# fetch_component <dest> <sha256> <url> [fallback-url ...]
+# Downloads from the first source whose contents match the pinned sha256.
+# Exists because upstream GitHub release assets have been replaced in-place
+# before (same URL, different — broken — bits); the checksum catches that and
+# the mirror in our own repo takes over automatically.
+fetch_component() {
+  local dest="$1" sha="$2" url
+  shift 2
+  for url in "$@"; do
+    say "Downloading $(basename "$dest") from $url"
+    if curl -fL --progress-bar -o "$dest" "$url"; then
+      if [ "$(shasum -a 256 "$dest" | cut -d' ' -f1)" = "$sha" ]; then
+        return 0
+      fi
+      warn "checksum mismatch from $url (file changed upstream?) — trying next source"
+    else
+      warn "download failed from $url — trying next source"
+    fi
+  done
+  die "could not fetch a verified copy of $(basename "$dest") from any source"
+}
 
 # --- Idempotency probes -------------------------------------------------------
 # One function per "is this piece already done?" check. The install scripts use
