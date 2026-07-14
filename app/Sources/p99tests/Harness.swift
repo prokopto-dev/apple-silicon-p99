@@ -8,9 +8,11 @@ import Foundation
 enum T {
     static var passed = 0
     static var failed = 0
+    static var lastLabel = "(none)" // for the watchdog's hang diagnostic
 
     static func expect(_ condition: @autoclosure () -> Bool, _ label: String,
                        file: StaticString = #file, line: UInt = #line) {
+        lastLabel = label
         if condition() {
             passed += 1
         } else {
@@ -22,6 +24,7 @@ enum T {
 
     static func equal<V: Equatable>(_ actual: V, _ expected: V, _ label: String,
                                     file: StaticString = #file, line: UInt = #line) {
+        lastLabel = label
         if actual == expected {
             passed += 1
         } else {
