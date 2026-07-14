@@ -5,7 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"; source ./config.sh
 
-[ -f "$GAME_DIR/eqgame.exe" ] || die "no game files at $GAME_DIR — run 20-install-game.sh first"
+check_game || die "no game files at $GAME_DIR — run 20-install-game.sh first"
 cd "$GAME_DIR"
 
 # ---------------------------------------------------------------------------
@@ -22,7 +22,8 @@ say "Fix 1/3: dsetup.dll -> official V58 build"
 if [ "${SKIP_DSETUP_FIX:-0}" = "1" ]; then
   say "  SKIP_DSETUP_FIX=1 — keeping the dsetup.dll shipped by the P99 patch"
 else
-GOOD_MD5="b02ab111c9b95c2ddad4e3bdbe9c53cd"
+# GOOD_MD5 (the V58 build's checksum) is defined in config.sh, shared with
+# the check_fix_dsetup probe.
 current_md5() { md5 -q "$1" 2>/dev/null || true; }
 
 # The file may exist as dsetup.dll and/or DSETUP.dll depending on source.

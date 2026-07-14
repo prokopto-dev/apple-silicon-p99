@@ -9,7 +9,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"; source ./config.sh
 
-[ -x "$WINE" ] || die "wrapper not built — run 10-build-wrapper.sh"
+check_engine || die "wrapper not built — run 10-build-wrapper.sh"
 [ -e "$GAME_LINK" ] || die "game not linked into prefix — run 20-install-game.sh"
 
 if [ "${1:-}" = "--debug" ]; then

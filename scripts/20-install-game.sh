@@ -21,7 +21,7 @@ if [ -n "$SRC" ]; then
   # Plain -a only: stock macOS ships openrsync, which lacks GNU rsync's
   # fancier progress flags.
   rsync -a "$SRC/" "$GAME_DIR/"
-elif [ -f "$GAME_DIR/eqgame.exe" ]; then
+elif check_game; then
   say "Using existing game files at $GAME_DIR"
 else
   die "no source given and $GAME_DIR has no eqgame.exe — run: $0 /path/to/titanium"

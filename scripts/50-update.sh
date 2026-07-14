@@ -20,7 +20,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"; source ./config.sh
 
-[ -f "$GAME_DIR/eqgame.exe" ] || die "no existing install at $GAME_DIR — run 20-install-game.sh first"
+check_game || die "no existing install at $GAME_DIR — run 20-install-game.sh first"
 
 BEFORE=$(cat "$GAME_DIR/.p99files-version" 2>/dev/null || echo "unknown")
 say "Currently applied P99 files version: V$BEFORE"

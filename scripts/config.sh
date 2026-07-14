@@ -28,6 +28,9 @@ DSETUP_URL="${DSETUP_URL:-https://www.project1999.com/files/dsetup.dll}"
 P99FILES_BASE_URL="${P99FILES_BASE_URL:-https://www.project1999.com/files/P99FilesV}"
 P99FILES_MIN_VERSION="${P99FILES_MIN_VERSION:-62}"
 
+# md5 of the known-good "V58" dsetup.dll build (see 30-apply-mac-fixes.sh).
+GOOD_MD5="${GOOD_MD5:-b02ab111c9b95c2ddad4e3bdbe9c53cd}"
+
 # --- Derived paths (don't edit) ----------------------------------------------
 PREFIX="$WRAPPER/Contents/SharedSupport/prefix"
 WINE="$WRAPPER/Contents/SharedSupport/wine/bin/wine"
@@ -47,15 +50,33 @@ say()  { printf '\033[1;32m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33mWARN:\033[0m %s\n' "$*" >&2; }
 die()  { printf '\033[1;31mERROR:\033[0m %s\n' "$*" >&2; exit 1; }
 
+# --- Idempotency probes -------------------------------------------------------
+# One function per "is this piece already done?" check. The install scripts use
+# these to skip finished work, and status.sh uses the same functions to report
+# state — sharing them keeps the two from drifting.
+check_clt()       { xcode-select -p >/dev/null 2>&1; }
+check_rosetta()   { [ "$(uname -m)" != "arm64" ] || /usr/bin/pgrep -q oahd; }
+check_brew()      { command -v brew >/dev/null 2>&1 || [ -x /opt/homebrew/bin/brew ] || [ -x /usr/local/bin/brew ]; }
+check_tools()     { command -v upx >/dev/null 2>&1 && command -v cabextract >/dev/null 2>&1; }
+check_wrapper()   { [ -d "$WRAPPER" ]; }
+check_engine()    { [ -x "$WINE" ]; }
+check_prefix()    { [ -f "$PREFIX/system.reg" ]; }
+check_fonts()     { [ -f "$PREFIX/drive_c/windows/Fonts/Arial.TTF" ]; }
+check_game()      { [ -f "$GAME_DIR/eqgame.exe" ]; }
+p99files_version(){ cat "$GAME_DIR/.p99files-version" 2>/dev/null || echo "none"; }
+check_fix_dsetup(){ [ "$(md5 -q "$GAME_DIR/DSETUP.dll" 2>/dev/null)" = "$GOOD_MD5" ]; }
+check_fix_dpvs()  { [ -f "$GAME_DIR/dpvs.dll" ] && ! head -c 4096 "$GAME_DIR/dpvs.dll" | grep -q UPX; }
+check_fix_ini()   { [ -f "$GAME_DIR/eqclient.ini.pre-mac.bak" ]; }
+
 # Apple's Command Line Tools (~500 MB — NOT the full Xcode app). Needed by
 # Homebrew and by the python3/git stubs macOS ships. Triggers Apple's own
 # GUI installer and waits for the user to finish it.
 ensure_clt() {
-  xcode-select -p >/dev/null 2>&1 && return 0
+  check_clt && return 0
   say "Apple's Command Line Tools are needed (small download — not full Xcode)."
   say "macOS will show an install dialog: click 'Install' and let it finish."
   xcode-select --install 2>/dev/null || true
-  until xcode-select -p >/dev/null 2>&1; do
+  until check_clt; do
     printf '.'
     sleep 5
   done

@@ -8,7 +8,7 @@ cd "$(dirname "$0")"; source ./config.sh
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
-if [ ! -d "$WRAPPER" ]; then
+if ! check_wrapper; then
   say "Downloading wrapper template: $TEMPLATE_URL"
   curl -fL --progress-bar -o "$TMP/template.tar.xz" "$TEMPLATE_URL"
   say "Extracting template -> $WRAPPER"
@@ -21,7 +21,7 @@ else
   say "Wrapper already exists at $WRAPPER — keeping it"
 fi
 
-if [ ! -x "$WINE" ]; then
+if ! check_engine; then
   say "Downloading wine engine: $ENGINE_URL"
   curl -fL --progress-bar -o "$TMP/engine.tar.xz" "$ENGINE_URL"
   say "Extracting engine -> Contents/SharedSupport/wine"
@@ -44,7 +44,7 @@ plutil -replace "Program Name and Path" -string "/Program Files/EverQuest/eqgame
 plutil -replace "Program Flags" -string "patchme" "$WRAPPER/Contents/Info.plist"
 plutil -replace CFBundleName -string "P99" "$WRAPPER/Contents/Info.plist" 2>/dev/null || true
 
-if [ ! -f "$PREFIX/system.reg" ]; then
+if ! check_prefix; then
   say "Initializing wine prefix (first run; takes a minute)"
   wine_env "$WINE" wineboot -i
 else
@@ -60,7 +60,7 @@ wine_env "$WINE" reg add 'HKCU\Software\Wine' /v Version /d winxp /f >/dev/null
 # because macOS SIP strips DYLD_* env vars through winetricks' /bin/sh,
 # breaking wine invocation inside it. Wine auto-loads everything in Fonts/.
 FONTS_DIR="$PREFIX/drive_c/windows/Fonts"
-if [ -f "$FONTS_DIR/Arial.TTF" ]; then
+if check_fonts; then
   say "MS core fonts already installed"
 else
   say "Installing MS core fonts (crisp UI text)"

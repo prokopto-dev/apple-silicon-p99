@@ -15,8 +15,8 @@
 set -euo pipefail
 cd "$(dirname "$0")"; source ./config.sh
 
-[ -x "$WINE" ] || die "wrapper not built yet — run ./10-build-wrapper.sh first"
-if [ -f "$GAME_DIR/eqgame.exe" ]; then
+check_engine || die "wrapper not built yet — run ./10-build-wrapper.sh first"
+if check_game; then
   die "game files already exist at $GAME_DIR — nothing to install (delete that folder first if you really want to reinstall)"
 fi
 
