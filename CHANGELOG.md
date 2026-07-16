@@ -7,6 +7,13 @@ notes automatically (see "Cutting a release" in the README).
 
 ## [Unreleased]
 
+### Added
+- Documented Apple's announced general-purpose Rosetta 2 horizon and the
+  investigation into a native ARM64 Wine + FEX successor.
+- Made the project's post-Rosetta constraint explicit: the intended solution
+  remains a direct, free/open-source macOS runtime rather than a bundled Linux
+  or Windows virtual machine.
+
 ## [0.3.1] - 2026-07-14
 
 ### Fixed

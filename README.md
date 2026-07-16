@@ -26,6 +26,20 @@ EverQuest (32-bit Windows, 2005)
           └─ macOS
 ```
 
+> **Rosetta 2 has a known horizon.** [Apple says](https://developer.apple.com/documentation/Apple-Silicon/about-the-rosetta-translation-environment)
+> general-purpose Rosetta will remain available through macOS 27, then only a
+> subset intended for certain older games will remain. The current P99 engine
+> depends on general-purpose Rosetta, and this project does **not** assume it
+> will qualify for that exception. We are investigating a native Apple Silicon Wine +
+> [FEX](https://github.com/FEX-Emu/FEX) runtime that would translate the
+> game's x86 code without Rosetta. This is research, not a working secondary
+> engine yet; see [the post-Rosetta direction](docs/HOW-IT-WORKS.md#post-rosetta-direction).
+>
+> Keeping this a direct macOS application is a project goal. We are focusing
+> on a **non-VM** replacement rather than hiding a Linux or Windows virtual
+> machine inside the installer. A VM can be a useful personal fallback, but it
+> is not the portability path this project intends to ship.
+
 ## System requirements
 
 | | Requirement | Notes |
@@ -259,6 +273,11 @@ Ideas we'd like help with (PRs welcome):
   `make notarize` target is already wired up for when one exists.
 - **Intel Mac verification.** The stack should work unchanged (it's x86_64
   end-to-end); needs someone with the hardware to confirm.
+- **Post-Rosetta Apple Silicon runtime.** Prototype native ARM64 Wine with
+  FEX's Wine-facing x86/WoW64 emulation module, starting with small 32-bit
+  exception and self-modifying-code tests before attempting P99's anti-cheat.
+  The intended result remains a direct macOS app using free/open-source
+  components, not a bundled Linux or Windows VM.
 - **`.bin`/`.cue` handling** in the media installer, so ripped discs don't
   need a manual conversion step.
 

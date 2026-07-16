@@ -35,6 +35,46 @@ runs 32-bit apps. (CodeWeavers' older "wine32on64" hack was the alternative;
 the freely available builds of it are too old to matter now — see
 TROUBLESHOOTING for the archaeology.)
 
+## Post-Rosetta direction
+
+[Apple has announced](https://developer.apple.com/documentation/Apple-Silicon/about-the-rosetta-translation-environment)
+that Rosetta remains a general-purpose Intel translation environment through
+macOS 27, after which only limited support for certain older games will
+remain. The current Sikarugir Wine engine is an x86_64 macOS binary, so it
+requires general-purpose Rosetta on Apple Silicon. We cannot assume that
+launching a Windows game through Wine will be covered by Apple's later
+game-only exception.
+
+The replacement path under investigation is:
+
+```
+EverQuest (32-bit x86 Windows code)
+  └─ Wine WoW64 + FEX's Wine emulation module
+      └─ native ARM64 Wine Unix/macOS side
+          └─ macOS on Apple Silicon
+```
+
+[FEX already supplies Wine-facing CPU-emulation modules on ARM64](https://wiki.fex-emu.com/index.php/Development:ARM64EC).
+In that arrangement Wine handles Windows APIs and native host integration
+while FEX translates x86 instructions; it does not require FEX's full Linux
+application environment or an x86 Linux root filesystem. A usable macOS
+engine still needs upstream or project work around the native ARM64 Wine host,
+FEX's Darwin platform support, JIT memory, exceptions, and 32-bit WoW64
+correctness.
+
+This project is deliberately pursuing a **non-VM** solution. Bundling an ARM
+Linux VM (or a full emulated x86 machine) would add another operating system,
+disk image, graphics boundary, and update surface. It may remain a personal
+fallback, but it is not the planned successor to the current direct macOS
+wrapper.
+
+The first useful proof is intentionally smaller than EverQuest: build an
+unbundled native ARM64 Wine/FEX test runtime, run 32-bit Windows smoke tests,
+then exercise structured exceptions, memory-protection changes, and
+self-modifying code. Only after those pass should the runtime be tested
+against P99's Themida-packed `DSETUP.dll`. Until that proof exists, the
+Rosetta engine documented below remains the only supported backend.
+
 ## Fix 1: `DSETUP.dll` — the anti-cheat that couldn't
 
 P99 distributes a custom `dsetup.dll` (~5 MB — the real DirectX helper it
