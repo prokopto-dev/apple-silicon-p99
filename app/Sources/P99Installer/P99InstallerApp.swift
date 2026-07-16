@@ -83,7 +83,7 @@ struct P99InstallerApp: App {
     }
 
     var body: some Scene {
-        WindowGroup("P99 Installer") {
+        WindowGroup(InstallerModel.isFEXBeta ? "P99 FEX Beta" : "P99 Installer") {
             ContentView()
                 .environment(model)
         }

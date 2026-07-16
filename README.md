@@ -236,7 +236,17 @@ Xcode:
 ```bash
 make app     # → dist/P99 Installer.app  (ad-hoc signed, runs locally)
 make zip     # → dist/P99-Installer.zip  (what you'd hand to a friend)
+make beta    # → dist/P99 FEX Beta.app   (experimental channel; still Rosetta for now)
+make beta-zip # → dist/P99-FEX-Beta.zip
 ```
+
+The FEX beta is built from the same sources but has a separate app name,
+bundle identifier, and preferences domain. It is a development channel for
+the future runtime and does not replace the stable installer or the installed
+`/Applications/P99.app`. Until the native Wine/FEX backend passes its smoke
+tests, the beta deliberately continues to use the supported Rosetta engine
+and labels that fact in the UI. Runtime experiments live separately in
+[`experiments/arm64-wine-fex/`](experiments/arm64-wine-fex/README.md).
 
 The app targets macOS 14+ (older Macs: use `setup.sh`, same result). All
 install logic lives in `scripts/` — the app bundles a copy at build time and

@@ -30,6 +30,14 @@ struct StatusView: View {
 
     private var header: some View {
         VStack(spacing: 6) {
+            if InstallerModel.isFEXBeta {
+                Label("FEX RUNTIME BETA", systemImage: "testtube.2")
+                    .font(.caption.bold())
+                    .foregroundStyle(.orange)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(.orange.opacity(0.12), in: Capsule())
+            }
             Text("Project 1999 for Mac")
                 .font(.largeTitle.bold())
             Text("Sets up classic EverQuest (Project 1999) on your Mac — Apple Silicon included. "
@@ -45,6 +53,14 @@ struct StatusView: View {
                 .foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
+            if InstallerModel.isFEXBeta {
+                Text("Experimental build channel. It currently retains the supported "
+                     + "Rosetta runtime while the native Wine/FEX backend is developed.")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+            }
         }
         .padding(.vertical, 16)
         .frame(maxWidth: .infinity)

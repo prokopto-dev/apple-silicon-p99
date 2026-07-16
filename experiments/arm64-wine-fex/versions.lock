@@ -1,0 +1,21 @@
+# Exact upstream inputs for the experimental runtime. These are shell
+# assignments so the build scripts can source them without another parser.
+
+FEX_REPO=https://github.com/FEX-Emu/FEX.git
+FEX_REF=FEX-2607
+FEX_COMMIT=1cc4b93e7a71c883ec021b71359f136394dc1f3c
+
+# FEX's ARM64EC documentation currently recommends this Wine fork over
+# upstream Wine for the most complete integration.
+WINE_REPO=https://github.com/bylaws/wine.git
+WINE_REF=upstream-arm64ec
+WINE_COMMIT=a6844d10622fc1a973ec1f22fc4f78a0fcd6cb29
+
+# Toolchain linked by FEX's ARM64EC build documentation. There is no assumed
+# macOS binary package; the doctor reports whether its tools are on PATH.
+TOOLCHAIN_REPO=https://github.com/bylaws/llvm-mingw.git
+TOOLCHAIN_REF=20250920
+TOOLCHAIN_COMMIT=b21616256053c65c95e44c9a4477727e32351460
+TOOLCHAIN_ARCHIVE=llvm-mingw-20250920-ucrt-macos-universal.tar.xz
+TOOLCHAIN_URL=https://github.com/bylaws/llvm-mingw/releases/download/20250920/llvm-mingw-20250920-ucrt-macos-universal.tar.xz
+TOOLCHAIN_SHA256=30681fa016b4a8a5dad4918193f5f4f99a01361b9f44810cf2337cf74fdbf81c

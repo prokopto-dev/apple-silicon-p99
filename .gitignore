@@ -13,3 +13,6 @@
 # Build output
 app/.build/
 dist/
+experiments/**/.cache/
+experiments/**/build/
+experiments/**/stage/

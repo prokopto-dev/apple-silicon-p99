@@ -13,6 +13,13 @@ notes automatically (see "Cutting a release" in the README).
 - Made the project's post-Rosetta constraint explicit: the intended solution
   remains a direct, free/open-source macOS runtime rather than a bundled Linux
   or Windows virtual machine.
+- Added a separately named FEX beta installer build with its own bundle ID,
+  preferences domain, archive target, and visible experimental-channel banner;
+  it shares production sources without changing the stable installer build.
+- Added a pinned, non-vendored ARM64 Wine/FEX experiment harness, including
+  host/toolchain diagnostics, source verification, the documented dual FEX
+  Windows-module build, a checksum-verified local ARM64EC toolchain installer,
+  and a runtime-tested Darwin port of FEX 2607's Wine unixlib.
 
 ## [0.3.1] - 2026-07-14
 

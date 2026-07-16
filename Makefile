@@ -3,6 +3,7 @@
 #
 #   make            same as `make app`
 #   make app        build dist/P99 Installer.app (ad-hoc signed, runs locally)
+#   make beta       build dist/P99 FEX Beta.app (separate experimental channel)
 #   make test       Swift unit tests (swift run p99tests) + script-layer tests
 #   make coverage   test coverage report for P99Core (llvm-cov, ships with CLT)
 #   make zip        dist/P99-Installer.zip for distribution
@@ -17,10 +18,13 @@ APP_NAME  := P99 Installer
 VERSION   := $(shell awk -F'[][]' '/^\#\# \[[0-9]/{print $$2; exit}' CHANGELOG.md)
 DIST      := dist
 APP       := $(DIST)/$(APP_NAME).app
+BETA_NAME := P99 FEX Beta
+BETA_APP  := $(DIST)/$(BETA_NAME).app
+BETA_ZIP  := $(DIST)/P99-FEX-Beta.zip
 BINARY    := app/.build/release/P99Installer
 ICONSET   := $(DIST)/AppIcon.iconset
 
-.PHONY: app test coverage zip icon release notarize clean
+.PHONY: app beta beta-zip test coverage zip icon release notarize clean
 
 # Cut a release: verify tests pass and CHANGELOG's [Unreleased] section has
 # content, stamp it as [$(V)] with today's date, commit, tag v$(V), push.
@@ -72,6 +76,30 @@ app:
 	cp -R scripts "$(APP)/Contents/Resources/scripts"
 	codesign --force --deep --sign - "$(APP)"
 	@echo "Built: $(APP)  (unsigned build — first open needs right-click -> Open)"
+
+# Experimental distribution channel. It deliberately shares the production
+# sources and scripts so fixes cannot drift, but has a different app name,
+# bundle identifier, and UserDefaults domain. Building it does not modify the
+# stable installer artifact or an installed /Applications/P99.app wrapper.
+beta:
+	swift build -c release --package-path app
+	rm -rf "$(BETA_APP)"
+	mkdir -p "$(BETA_APP)/Contents/MacOS" "$(BETA_APP)/Contents/Resources"
+	cp "$(BINARY)" "$(BETA_APP)/Contents/MacOS/P99Installer"
+	cp app/Resources/Info.plist "$(BETA_APP)/Contents/Info.plist"
+	plutil -replace CFBundleName -string "$(BETA_NAME)" "$(BETA_APP)/Contents/Info.plist"
+	plutil -replace CFBundleDisplayName -string "$(BETA_NAME)" "$(BETA_APP)/Contents/Info.plist"
+	plutil -replace CFBundleIdentifier -string "com.p99mac.installer.fex-beta" "$(BETA_APP)/Contents/Info.plist"
+	plutil -replace CFBundleShortVersionString -string "$(VERSION)" "$(BETA_APP)/Contents/Info.plist"
+	plutil -replace P99BuildChannel -string "fex-beta" "$(BETA_APP)/Contents/Info.plist"
+	cp app/Resources/AppIcon.icns "$(BETA_APP)/Contents/Resources/AppIcon.icns"
+	cp -R scripts "$(BETA_APP)/Contents/Resources/scripts"
+	codesign --force --deep --sign - "$(BETA_APP)"
+	@echo "Built: $(BETA_APP)  (experimental channel; stable installer untouched)"
+
+beta-zip: beta
+	ditto -c -k --keepParent "$(BETA_APP)" "$(BETA_ZIP)"
+	@echo "Built: $(BETA_ZIP)"
 
 zip: app
 	ditto -c -k --keepParent "$(APP)" "$(DIST)/P99-Installer.zip"

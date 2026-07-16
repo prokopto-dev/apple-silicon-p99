@@ -34,6 +34,14 @@ final class InstallerModel {
     var status = P99Status()
     var statusLoaded = false
 
+    /// Build-time distribution channel stamped by the Makefile. The FEX beta
+    /// uses a separate bundle identifier, so its preferences cannot leak into
+    /// the stable installer even though both apps share this source code.
+    static var buildChannel: String {
+        Bundle.main.object(forInfoDictionaryKey: "P99BuildChannel") as? String ?? "stable"
+    }
+    static var isFEXBeta: Bool { buildChannel == "fex-beta" }
+
     /// The V58 dsetup.dll swap (Mac fix 1). Default on. The off switch exists
     /// for the day P99 ships a DLL update that supersedes the V58 workaround —
     /// staff have said that's coming — so users of an old installer build can
