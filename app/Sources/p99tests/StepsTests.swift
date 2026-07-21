@@ -30,24 +30,39 @@ func runStepsTests() {
                 "fixes always last")
     }
 
-    // Performance run: renderer first, then the eqclient.ini keys. Both take their
-    // apply/revert mode from the environment, so they carry no positional args.
+    // Performance run: stack recorded first (so the renderer applies inside the
+    // wrapper future launches use), then renderer, then the eqclient.ini keys.
+    // All take their apply/revert mode from the environment — no positional args.
     let perf = Steps.performance()
-    T.equal(perf.map(\.script), ["60-renderer.sh", "35-perf-ini.sh"],
-            "performance: renderer then eqclient.ini")
+    T.equal(perf.map(\.script), ["70-stack.sh", "60-renderer.sh", "35-perf-ini.sh"],
+            "performance: stack, renderer, then eqclient.ini")
     T.expect(perf.allSatisfy { $0.arguments.isEmpty }, "performance: no arguments (mode via env)")
+
+    // FEX setup pipeline: build the side-by-side wrapper, link the shared game
+    // dir, record the stack, smoke-test — all under the P99_STACK=fex overlay.
+    let fex = Steps.fexSetup()
+    T.equal(fex.map(\.script),
+            ["10-build-wrapper.sh", "20-install-game.sh", "70-stack.sh", "75-fex-smoke.sh"],
+            "fexSetup: build, link, switch, smoke")
+    // 20 must run bare so it reuses the existing shared GAME_DIR (never copies).
+    T.expect(fex.allSatisfy { $0.arguments.isEmpty }, "fexSetup: no arguments (stack via env)")
+    T.equal(Steps.fexSetupEnv(), ["P99_STACK": "fex"], "fexSetup: env overlay is exactly P99_STACK")
 
     // The panel-choice → script-env contract (docs/PERFORMANCE.md documents the
     // same variables). Everything off must still run the INI patcher in revert
     // mode so previously applied keys get cleaned out.
-    let off = Steps.performanceEnv(renderer: "wined3d", smoother: false, indirectMaps: false,
-                                   fpsCap: "", rendererDebug: false, fpsOverlay: false)
+    let off = Steps.performanceEnv(stack: "rosetta", renderer: "wined3d", smoother: false,
+                                   indirectMaps: false, fpsCap: "", rendererDebug: false,
+                                   fpsOverlay: false)
+    T.equal(off["P99_STACK"] ?? "", "rosetta", "perfEnv: stack passthrough")
     T.equal(off["P99_RENDERER"] ?? "", "wined3d", "perfEnv: renderer passthrough")
     T.equal(off["P99_APPLY_PERF"] ?? "", "0", "perfEnv: all-off reverts the INI keys")
     T.equal(off["P99_DXVK_INDIRECT_MAPS"] ?? "?", "", "perfEnv: indirect maps off is empty")
 
-    let allOn = Steps.performanceEnv(renderer: "d9vk", smoother: true, indirectMaps: true,
-                                     fpsCap: "60", rendererDebug: true, fpsOverlay: true)
+    let allOn = Steps.performanceEnv(stack: "fex", renderer: "d9vk", smoother: true,
+                                     indirectMaps: true, fpsCap: "60", rendererDebug: true,
+                                     fpsOverlay: true)
+    T.equal(allOn["P99_STACK"] ?? "", "fex", "perfEnv: fex stack passthrough")
     T.equal(allOn["P99_APPLY_PERF"] ?? "", "1", "perfEnv: smoother applies INI")
     T.equal(allOn["P99_PERF_PROFILE"] ?? "", "smoother", "perfEnv: smoother profile")
     T.equal(allOn["EQ_FPS_CAP"] ?? "", "60", "perfEnv: fps cap passthrough")
@@ -56,8 +71,9 @@ func runStepsTests() {
     T.equal(allOn["P99_DXVK_HUD"] ?? "", "fps,frametimes", "perfEnv: hud value")
 
     // An FPS cap alone must run the INI patcher in apply mode (no smoother profile).
-    let capOnly = Steps.performanceEnv(renderer: "wined3d", smoother: false, indirectMaps: false,
-                                       fpsCap: "30", rendererDebug: false, fpsOverlay: false)
+    let capOnly = Steps.performanceEnv(stack: "rosetta", renderer: "wined3d", smoother: false,
+                                       indirectMaps: false, fpsCap: "30", rendererDebug: false,
+                                       fpsOverlay: false)
     T.equal(capOnly["P99_APPLY_PERF"] ?? "", "1", "perfEnv: cap alone applies INI")
     T.equal(capOnly["P99_PERF_PROFILE"] ?? "?", "", "perfEnv: cap alone has no profile")
 }

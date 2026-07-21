@@ -10,7 +10,7 @@ enum Phase: Equatable {
 }
 
 enum RunKind: Equatable {
-    case install, update, uninstall, launch, performance
+    case install, update, uninstall, launch, performance, fexSetup
 
     var title: String {
         switch self {
@@ -19,6 +19,7 @@ enum RunKind: Equatable {
         case .uninstall:   "Uninstalling"
         case .launch:      "Launching Project 1999"
         case .performance: "Applying performance settings"
+        case .fexSetup:    "Setting up the FEX stack (experimental)"
         }
     }
 }
@@ -46,6 +47,31 @@ final class InstallerModel {
     private var waivedKeys: Set<String> { applyDsetupFix ? [] : ["fix_dsetup"] }
     /// fullyInstalled, but honoring user-disabled optional fixes.
     var readyToPlay: Bool { status.fullyInstalled(waiving: waivedKeys) }
+
+    // MARK: - Engine stack (experimental FEX slot; see docs/EXPERIMENTAL-FEX.md)
+
+    /// Which engine stack Apply targets and Play then launches: "rosetta"
+    /// (supported) or "fex" (experimental, side-by-side wrapper). Selecting
+    /// fex pins the renderer back to wined3d — the bundled alt-renderer DLL
+    /// sets are only proven against the Rosetta engine. Persisted.
+    static let stackKey = "stackChoice"
+    var stackChoice: String = UserDefaults.standard.string(forKey: stackKey) ?? "rosetta" {
+        didSet {
+            UserDefaults.standard.set(stackChoice, forKey: Self.stackKey)
+            if stackChoice == "fex" { rendererChoice = "wined3d" }
+        }
+    }
+
+    /// The FEX option is selectable only once its wrapper+engine exist;
+    /// setup is offered only while an engine tarball is pinned but not built.
+    var fexSelectable: Bool { status.fexInstalled }
+    var fexSetupPossible: Bool { status.fexEnginePinned && !status.fexInstalled }
+
+    /// One-time FEX stack setup: builds the side-by-side wrapper, links the
+    /// shared game folder in, records the stack, and smoke-tests the engine.
+    func setUpFex() {
+        startRun(.fexSetup, steps: Steps.fexSetup(), extraEnv: Steps.fexSetupEnv())
+    }
 
     // MARK: - Performance settings (opt-in, reversible; see docs/PERFORMANCE.md)
 
@@ -185,7 +211,8 @@ final class InstallerModel {
     func applyPerformance() {
         startRun(.performance,
                  steps: Steps.performance(),
-                 extraEnv: Steps.performanceEnv(renderer: rendererChoice,
+                 extraEnv: Steps.performanceEnv(stack: stackChoice,
+                                                renderer: rendererChoice,
                                                 smoother: smootherINI,
                                                 indirectMaps: indirectMaps,
                                                 fpsCap: fpsCap,
@@ -193,12 +220,13 @@ final class InstallerModel {
                                                 fpsOverlay: fpsOverlay))
     }
 
-    func uninstall(removeWrapper: Bool, removeGame: Bool) {
+    func uninstall(removeWrapper: Bool, removeGame: Bool, removeFex: Bool = false) {
         startRun(.uninstall,
                  steps: [StepRun(title: "Remove selected components", script: "90-uninstall.sh")],
                  extraEnv: ["P99_NONINTERACTIVE": "1",
                             "P99_REMOVE_WRAPPER": removeWrapper ? "1" : "0",
-                            "P99_REMOVE_GAMEDIR": removeGame ? "1" : "0"])
+                            "P99_REMOVE_GAMEDIR": removeGame ? "1" : "0",
+                            "P99_REMOVE_FEX_WRAPPER": removeFex ? "1" : "0"])
     }
 
     func cancelRun() {

@@ -43,6 +43,18 @@ public struct P99Status: Equatable {
     public var gameInstalled: Bool { isOK("game") }
     public var brewInstalled: Bool { isOK("brew") }
 
+    // MARK: Experimental FEX stack (informational — never gates readiness)
+
+    /// Which stack Play launches (scripts/70-stack.sh marker). Old status.sh
+    /// output has no "stack" key; default to rosetta so upgrades stay sane.
+    public var activeStack: String { values["stack"] ?? "rosetta" }
+    /// Whether a FEX engine tarball is pinned at all — the master gate.
+    public var fexEnginePinned: Bool { isOK("fex_pinned") }
+    /// Whether the FEX wrapper + engine are actually installed.
+    public var fexInstalled: Bool { isOK("fex_engine") }
+    /// Last 75-fex-smoke.sh result: pass | fail | never | n/a.
+    public var fexSmoke: String { values["fex_smoke"] ?? "n/a" }
+
     /// Everything a playable install needs (n/a counts: rosetta on Intel,
     /// game-dependent checks resolve once the game exists).
     public static let requiredKeys = ["clt", "rosetta", "brew", "tools", "wrapper", "engine",
@@ -81,13 +93,29 @@ public enum Steps {
         return steps
     }
 
-    /// Renderer swap + eqclient.ini perf keys. Both scripts read their mode from
-    /// the environment (P99_RENDERER / P99_APPLY_PERF), so this same list applies
-    /// or reverts the settings depending on the current toggles.
+    /// Stack switch + renderer swap + eqclient.ini perf keys. All three scripts
+    /// read their mode from the environment (P99_STACK / P99_RENDERER /
+    /// P99_APPLY_PERF), so this same list applies or reverts the settings
+    /// depending on the current toggles. The stack is recorded first so the
+    /// renderer applies inside the wrapper future launches will actually use.
     public static func performance() -> [StepRun] {
-        [StepRun(title: "Set the graphics renderer", script: "60-renderer.sh"),
+        [StepRun(title: "Set the engine stack", script: "70-stack.sh"),
+         StepRun(title: "Set the graphics renderer", script: "60-renderer.sh"),
          StepRun(title: "Apply EQ graphics settings", script: "35-perf-ini.sh")]
     }
+
+    /// One-time setup of the experimental FEX stack (side-by-side wrapper;
+    /// the supported P99.app is never touched). All steps run with the
+    /// fexSetupEnv() overlay so the scripts target the FEX wrapper. Assumes
+    /// the game itself is already installed (its folder is shared).
+    public static func fexSetup() -> [StepRun] {
+        [StepRun(title: "Build the FEX wrapper app", script: "10-build-wrapper.sh"),
+         StepRun(title: "Link game files into the FEX wrapper", script: "20-install-game.sh"),
+         StepRun(title: "Switch the active stack to FEX", script: "70-stack.sh"),
+         StepRun(title: "Run the FEX smoke tests", script: "75-fex-smoke.sh")]
+    }
+
+    public static func fexSetupEnv() -> [String: String] { ["P99_STACK": "fex"] }
 
     /// The environment the Performance panel's choices translate to — the single
     /// place the UI-to-script contract lives (docs/PERFORMANCE.md documents the
@@ -95,11 +123,12 @@ public enum Steps {
     /// script treats an empty variable as unset. The INI patcher runs in apply
     /// mode whenever any INI-backed choice is on, and in revert mode otherwise,
     /// so turning the last toggle off cleans the keys back out.
-    public static func performanceEnv(renderer: String, smoother: Bool,
+    public static func performanceEnv(stack: String, renderer: String, smoother: Bool,
                                       indirectMaps: Bool, fpsCap: String,
                                       rendererDebug: Bool, fpsOverlay: Bool) -> [String: String] {
         let applyINI = smoother || !fpsCap.isEmpty
-        return ["P99_RENDERER": renderer,
+        return ["P99_STACK": stack,
+                "P99_RENDERER": renderer,
                 "P99_APPLY_PERF": applyINI ? "1" : "0",
                 "P99_PERF_PROFILE": smoother ? "smoother" : "",
                 "EQ_FPS_CAP": fpsCap,
