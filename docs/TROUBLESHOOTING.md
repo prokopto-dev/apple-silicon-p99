@@ -211,7 +211,8 @@ ran unsynchronized (now fixed via the wrapper's `Info.plist` — see fix 2).
 **Fix (in order of impact):**
 1. Rebuild the wrapper once so msync reaches the game: `./10-build-wrapper.sh` (it
    skips the finished pieces and just refreshes the launch env). A routine
-   `./50-update.sh` does **not** do this.
+   `./50-update.sh` does **not** do this (the installer app's **Update Game
+   Files** button does — it re-runs the wrapper build first).
 2. *Optionally* try the D9VK renderer (Direct3D 9 → Vulkan → MoltenVK → Metal):
    `P99_RENDERER=d9vk ./60-renderer.sh` (or the installer app's Performance
    panel). On some machines it's a real win; on others it is much **slower**
@@ -276,7 +277,8 @@ macOS permission needed. This only applies **during** mouselook: with the
 right button up the cursor roams free, and Cmd-Tab mid-turn releases it
 (losing focus unacquires the mouse). On an existing wrapper, re-run the
 build script once (idempotent): `cd scripts && ./10-build-wrapper.sh`.
-A routine `./50-update.sh` does **not** do this.
+A routine `./50-update.sh` does **not** do this, but the installer app's
+**Update Game Files** button does — it re-runs the wrapper build first.
 If forced warping bothers you, revert with
 `P99_MOUSE_WARP=enable ./10-build-wrapper.sh` and instead grant the wrapper
 Accessibility permission (System Settings → Privacy & Security →

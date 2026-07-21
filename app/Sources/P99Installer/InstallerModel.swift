@@ -124,18 +124,39 @@ final class InstallerModel {
     enum AppUpdateState: Equatable {
         case idle, checking, upToDate
         case available([AppRelease])
+        case downloading([AppRelease], Double?)   // progress 0...1, nil = unknown
+        case staged([AppRelease], URL)            // verified new .app, ready to swap in
         case failed(String)
     }
     var appUpdateState: AppUpdateState = .idle
+    private var didAutoCheckUpdates = false
 
     /// Version stamped into the bundle by `make app` (from CHANGELOG.md).
     static var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.0"
     }
 
+    /// True when running as a real installed .app — the only shape the in-place
+    /// swap can replace. `swift run` dev builds fall back to the release page.
+    static var canSelfInstall: Bool { Bundle.main.bundleURL.pathExtension == "app" }
+
+    /// Whether the newest missed release can be installed in place: same major
+    /// version (AppUpdates.canAutoUpdate), a published zip asset, and a real
+    /// .app bundle to replace.
+    var latestIsAutoInstallable: Bool {
+        guard case .available(let releases) = appUpdateState,
+              let latest = releases.first else { return false }
+        return Self.canSelfInstall && latest.downloadURL != nil
+            && AppUpdates.canAutoUpdate(from: Self.appVersion, to: latest.version)
+    }
+
     /// Asks GitHub for newer installer releases; each release's notes are its
     /// CHANGELOG section, so the sheet can show everything the user missed.
     func checkAppUpdates() async {
+        switch appUpdateState {
+        case .downloading, .staged: return   // never clobber an in-flight update
+        default: break
+        }
         appUpdateState = .checking
         do {
             var request = URLRequest(url: AppUpdates.releasesAPI)
@@ -149,6 +170,117 @@ final class InstallerModel {
             appUpdateState = missed.isEmpty ? .upToDate : .available(missed)
         } catch {
             appUpdateState = .failed(error.localizedDescription)
+        }
+    }
+
+    /// Launch-time check behind the automatic "update available" popup. Runs
+    /// once per app launch; returns true when the sheet should present itself
+    /// (something newer exists that the user hasn't skipped).
+    func autoCheckAppUpdates() async -> Bool {
+        guard !didAutoCheckUpdates else { return false }
+        didAutoCheckUpdates = true
+        await checkAppUpdates()
+        return shouldAutoPromptForUpdate
+    }
+
+    /// "Skip This Version" — remembered per tag, so the launch popup stays
+    /// quiet for this release but returns for the next one. The manual
+    /// Installer Updates… button always shows everything regardless.
+    static let skippedUpdateKey = "skippedUpdateTag"
+    var shouldAutoPromptForUpdate: Bool {
+        guard case .available(let releases) = appUpdateState,
+              let latest = releases.first else { return false }
+        return latest.tag != UserDefaults.standard.string(forKey: Self.skippedUpdateKey)
+    }
+    func skipAvailableUpdate() {
+        guard case .available(let releases) = appUpdateState,
+              let latest = releases.first else { return }
+        UserDefaults.standard.set(latest.tag, forKey: Self.skippedUpdateKey)
+    }
+
+    /// Downloads the newest release's zip with progress, then extracts and
+    /// verifies it via 95-selfupdate.sh (stage mode): the staged bundle must
+    /// carry exactly the advertised version. Ends in .staged — the swap only
+    /// happens when the user confirms the restart.
+    func downloadAndStageUpdate() async {
+        guard case .available(let releases) = appUpdateState,
+              let latest = releases.first,
+              let asset = latest.downloadURL else { return }
+        appUpdateState = .downloading(releases, nil)
+        do {
+            let work = FileManager.default.temporaryDirectory
+                .appendingPathComponent("p99-selfupdate-\(latest.tag)")
+            try? FileManager.default.removeItem(at: work)
+            try FileManager.default.createDirectory(at: work, withIntermediateDirectories: true)
+
+            let (bytes, response) = try await URLSession.shared.bytes(from: asset)
+            if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+                throw ScriptFailure(script: "GitHub download", exitCode: Int32(http.statusCode))
+            }
+            let expected = response.expectedContentLength
+            var data = Data()
+            if expected > 0 { data.reserveCapacity(Int(expected)) }
+            var sinceReport = 0
+            for try await byte in bytes {
+                data.append(byte)
+                sinceReport += 1
+                if sinceReport >= 262_144 {   // update the bar every 256 KB
+                    sinceReport = 0
+                    appUpdateState = .downloading(
+                        releases, expected > 0 ? Double(data.count) / Double(expected) : nil)
+                }
+            }
+            let zip = work.appendingPathComponent(AppUpdates.zipAssetName)
+            try data.write(to: zip)
+
+            let out = try await ScriptRunner.capture(
+                script: ScriptLocator.script("95-selfupdate.sh"),
+                arguments: ["stage", zip.path, work.appendingPathComponent("staged").path])
+            var fields: [String: String] = [:]
+            for line in out.split(separator: "\n") {
+                let parts = line.split(separator: "\t", maxSplits: 1)
+                if parts.count == 2 { fields[String(parts[0])] = String(parts[1]) }
+            }
+            guard let appPath = fields["APP"], !appPath.isEmpty else {
+                appUpdateState = .failed("the downloaded zip contained no app bundle")
+                return
+            }
+            guard fields["VERSION"] == latest.versionString else {
+                appUpdateState = .failed("downloaded app reports version "
+                    + "\(fields["VERSION"] ?? "?") instead of \(latest.versionString)")
+                return
+            }
+            appUpdateState = .staged(releases, URL(fileURLWithPath: appPath))
+        } catch {
+            appUpdateState = .failed(error.localizedDescription)
+        }
+    }
+
+    /// Hands the staged bundle to a detached copy of 95-selfupdate.sh (swap
+    /// mode) and quits: the helper waits for this process to exit, replaces
+    /// the app in place, clears quarantine, and relaunches the new version.
+    /// The helper must run from OUTSIDE the bundle it is about to replace.
+    func installStagedUpdate() {
+        guard case .staged(_, let stagedApp) = appUpdateState else { return }
+        do {
+            let helper = FileManager.default.temporaryDirectory
+                .appendingPathComponent("p99-selfupdate.sh")
+            try? FileManager.default.removeItem(at: helper)
+            try FileManager.default.copyItem(at: ScriptLocator.script("95-selfupdate.sh"),
+                                             to: helper)
+            let p = Process()
+            p.executableURL = URL(fileURLWithPath: "/bin/bash")
+            p.arguments = [helper.path, "swap", stagedApp.path,
+                           Bundle.main.bundleURL.path,
+                           String(ProcessInfo.processInfo.processIdentifier)]
+            p.standardInput = FileHandle.nullDevice
+            p.standardOutput = FileHandle.nullDevice
+            p.standardError = FileHandle.nullDevice
+            try p.run()
+            NSApplication.shared.terminate(nil)
+        } catch {
+            appUpdateState = .failed("could not start the update helper: "
+                + error.localizedDescription)
         }
     }
 
@@ -197,7 +329,7 @@ final class InstallerModel {
     }
 
     func update() {
-        startRun(.update, steps: [StepRun(title: "Download + apply newest P99 files", script: "50-update.sh")])
+        startRun(.update, steps: Steps.update())
     }
 
     func play() {

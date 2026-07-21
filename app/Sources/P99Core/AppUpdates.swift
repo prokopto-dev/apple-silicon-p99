@@ -9,16 +9,19 @@ public struct AppRelease: Equatable, Identifiable, Sendable {
     public let title: String
     public let notes: String
     public let url: URL           // release page (where the zip lives)
+    public let downloadURL: URL?  // the P99-Installer.zip asset, when published
 
     public var id: String { tag }
     public var versionString: String { version.map(String.init).joined(separator: ".") }
 
-    public init(tag: String, version: [Int], title: String, notes: String, url: URL) {
+    public init(tag: String, version: [Int], title: String, notes: String, url: URL,
+                downloadURL: URL? = nil) {
         self.tag = tag
         self.version = version
         self.title = title
         self.notes = notes
         self.url = url
+        self.downloadURL = downloadURL
     }
 }
 
@@ -52,6 +55,14 @@ public enum AppUpdates {
         return false
     }
 
+    /// Release-asset filename the pipeline publishes (release.yml `make zip`).
+    public static let zipAssetName = "P99-Installer.zip"
+
+    private struct GitHubAsset: Decodable {
+        let name: String
+        let browser_download_url: URL
+    }
+
     private struct GitHubRelease: Decodable {
         let tag_name: String
         let name: String?
@@ -59,6 +70,7 @@ public enum AppUpdates {
         let html_url: URL
         let draft: Bool
         let prerelease: Bool
+        let assets: [GitHubAsset]?
     }
 
     /// Parses the GitHub releases API response, keeping only published
@@ -71,8 +83,20 @@ public enum AppUpdates {
                               version: v,
                               title: r.name?.isEmpty == false ? r.name! : r.tag_name,
                               notes: r.body ?? "",
-                              url: r.html_url)
+                              url: r.html_url,
+                              downloadURL: r.assets?
+                                  .first { $0.name == zipAssetName }?
+                                  .browser_download_url)
         }
+    }
+
+    /// Whether an update can be installed in place ("incrementally") rather
+    /// than routed to the release page: only within the same major version.
+    /// A major bump may change installation layout or requirements, so it
+    /// stays a deliberate, manual download.
+    public static func canAutoUpdate(from current: String, to target: [Int]) -> Bool {
+        guard let cur = parseVersion(current) else { return false }
+        return (cur.first ?? 0) == (target.first ?? 0) && isNewer(target, than: cur)
     }
 
     /// Releases strictly newer than `current` (a version string like "0.1.1"),

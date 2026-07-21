@@ -29,6 +29,13 @@ Three rules apply to everything below:
 No kernel extensions, no daemons, no login items, nothing in `/usr/local` beyond
 Homebrew's own management.
 
+The installer app can also update **itself**: when you accept an update in the
+Installer Updates window, it downloads the new release zip from this project's
+GitHub releases into a temp folder, verifies the staged bundle's version, then
+(via `scripts/95-selfupdate.sh`) swaps it in over the old app and relaunches.
+Nothing outside the app bundle and the temp folder is touched, and it only ever
+happens after you click **Download & Install** and **Restart & Update**.
+
 ## The wrapper app (`/Applications/P99.app`)
 
 Built by `10-build-wrapper.sh` from two pinned, checksum-verified downloads: the

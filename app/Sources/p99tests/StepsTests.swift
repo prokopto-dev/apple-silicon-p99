@@ -30,6 +30,14 @@ func runStepsTests() {
                 "fixes always last")
     }
 
+    // Update run: the idempotent wrapper build first — it's where wrapper-level
+    // fixes (registry keys, plist env) land, so installer updates shipping such
+    // fixes reach existing installs — then the P99 patch update.
+    let update = Steps.update()
+    T.equal(update.map(\.script), ["10-build-wrapper.sh", "50-update.sh"],
+            "update: wrapper fixes re-applied before the patch update")
+    T.expect(update.allSatisfy { $0.arguments.isEmpty }, "update: no arguments")
+
     // Performance run: stack recorded first (so the renderer applies inside the
     // wrapper future launches use), then renderer, then the eqclient.ini keys.
     // All take their apply/revert mode from the environment — no positional args.

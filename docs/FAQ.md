@@ -56,6 +56,18 @@ you click through it like it's 2005. Notes:
 - Temporarily needs ~8 GB free (staged discs + the install) on top of the
   usual requirements.
 
+## How does the installer keep itself up to date?
+
+The app checks GitHub's releases when it opens. If you're behind, a window
+pops up listing every release you've missed with its changelog. For updates
+within the same major version, **Download & Install** fetches the new
+version, verifies it, swaps it in place, and relaunches — your game install,
+settings, and keybinds are untouched. Major-version jumps go through the
+release page instead. **Skip This Version** quiets the popup for that release
+only (the **Installer Updates…** button always shows everything), and after
+updating, the **Update Game Files** button re-applies any wrapper-level fixes
+the new version shipped. No update ever runs without you clicking it.
+
 ## How do I uninstall?
 
 Run `scripts/90-uninstall.sh` — it asks before deleting the wrapper and
