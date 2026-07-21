@@ -1,0 +1,1608 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Run EverQuest Project 1999 natively-ish on a modern Mac with a free and open-source stack">
+      
+      
+      
+        <link rel="canonical" href="https://prokopto-dev.github.io/apple-silicon-p99/0.6/TROUBLESHOOTING/">
+      
+      
+        <link rel="prev" href="../EXPERIMENTAL-FEX/">
+      
+      
+        <link rel="next" href="../FAQ/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Troubleshooting - P99 on Apple Silicon</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#troubleshooting" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="P99 on Apple Silicon" class="md-header__button md-logo" aria-label="P99 on Apple Silicon" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            P99 on Apple Silicon
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Troubleshooting
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/prokopto-dev/apple-silicon-p99" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    prokopto-dev/apple-silicon-p99
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../HOW-IT-WORKS/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  How it works
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../WHAT-WE-CHANGE/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  What we change
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../PERFORMANCE/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Performance
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../EXPERIMENTAL-FEX/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  FEX stack (experimental)
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Troubleshooting
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../FAQ/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  FAQ
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../changelog/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="P99 on Apple Silicon" class="md-nav__button md-logo" aria-label="P99 on Apple Silicon" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    P99 on Apple Silicon
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/prokopto-dev/apple-silicon-p99" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    prokopto-dev/apple-silicon-p99
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../HOW-IT-WORKS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How it works
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../WHAT-WE-CHANGE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What we change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PERFORMANCE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../EXPERIMENTAL-FEX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FEX stack (experimental)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#first-the-thing-that-isnt-a-bug" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        First, the thing that isn't a bug
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#symptom-cause-fix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Symptom → cause → fix
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Symptom → cause → fix">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#macos-setupcommand-cannot-be-opened-because-it-is-from-an-unidentified-developer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        macOS: "'Setup.command' cannot be opened because it is from an unidentified developer"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#macos-dialog-a-program-on-your-system-has-crashed-immediately-ish-after-launch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        macOS dialog: "a program on your system has crashed…" immediately-ish after launch
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#trace-dsetupdll-failed-to-initialize-aborting-status-c0000142" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trace: DSETUP.dll failed to initialize, aborting / status c0000142
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dialog-an-internal-exception-occurred-address-0x" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dialog: "An internal exception occurred. (Address: 0x…)"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#silent-exit-no-dialog-no-dbgtxt-trace-shows-dpvsdll-then-unload" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Silent exit, no dialog, no dbg.txt; trace shows dpvs.dll then unload
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#instant-exit-1-s-empty-log-wine-exit-code-53" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Instant exit (~1 s), empty log, wine exit code 53
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wine-created-the-configuration-directory-but-winearch-set-to-win32-is-a-64-bit-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wine: created the configuration directory ... but WINEARCH set to win32 ... is a 64-bit installation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#launcher-error-wineappinitializationerror-error-1-winefoldernotfound" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Launcher error WineAppInitializationError error 1 / wineFolderNotFound
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dyld-library-not-loaded-freetype-or-libinotify-errors-on-cli-runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dyld: Library not loaded / FreeType or libinotify errors on CLI runs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dyld-library-not-loaded-rpathlibinotify0dylib-from-wineserver" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dyld: Library not loaded: @rpath/libinotify.0.dylib from wineserver
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#missing-lc_load_dylib-must-link-with-at-least-libsystemdylib-abort-trap-6-at-wineboot-or-launch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        missing LC_LOAD_DYLIB (must link with at least libSystem.dylib) + Abort trap: 6 at wineboot or launch
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-yesterday-today-it-crashes-at-launch-or-the-server-rejects-me" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked yesterday; today it crashes at launch or the server rejects me
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#game-boots-but-login-fails-hangs-at-server-select" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Game boots but login fails / hangs at server select
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#everything-looks-washed-out-too-bright" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Everything looks washed out / too bright
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#my-keybinds-camera-ui-settings-from-my-old-install-are-gone" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        My keybinds / camera / UI settings from my old install are gone
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#some-ui-text-is-fuzzysmeared-while-other-text-is-sharp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Some UI text is fuzzy/smeared while other text is sharp
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#red-and-green-chat-text-is-fuzzyhard-to-read-white-and-yellow-are-sharp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Red and green chat text is fuzzy/hard to read; white and yellow are sharp
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#in-game-but-textures-missing-graphics-glitches" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        In game, but textures missing / graphics glitches
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#game-stutters-or-feels-choppy-especially-on-newer-apple-silicon-eg-m5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Game stutters or feels choppy (especially on newer Apple Silicon, e.g. M5)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#after-switching-to-d9vk-the-game-is-much-slower-single-digit-fps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        After switching to D9VK the game is much SLOWER (single-digit FPS)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sound-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sound issues
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#window-is-tiny-1024768" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Window is tiny (1024×768)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#diagnostic-reference-reading-a-wine-trace" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diagnostic reference: reading a wine trace
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FAQ/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#first-the-thing-that-isnt-a-bug" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        First, the thing that isn't a bug
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#symptom-cause-fix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Symptom → cause → fix
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Symptom → cause → fix">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#macos-setupcommand-cannot-be-opened-because-it-is-from-an-unidentified-developer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        macOS: "'Setup.command' cannot be opened because it is from an unidentified developer"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#macos-dialog-a-program-on-your-system-has-crashed-immediately-ish-after-launch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        macOS dialog: "a program on your system has crashed…" immediately-ish after launch
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#trace-dsetupdll-failed-to-initialize-aborting-status-c0000142" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trace: DSETUP.dll failed to initialize, aborting / status c0000142
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dialog-an-internal-exception-occurred-address-0x" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dialog: "An internal exception occurred. (Address: 0x…)"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#silent-exit-no-dialog-no-dbgtxt-trace-shows-dpvsdll-then-unload" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Silent exit, no dialog, no dbg.txt; trace shows dpvs.dll then unload
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#instant-exit-1-s-empty-log-wine-exit-code-53" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Instant exit (~1 s), empty log, wine exit code 53
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wine-created-the-configuration-directory-but-winearch-set-to-win32-is-a-64-bit-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wine: created the configuration directory ... but WINEARCH set to win32 ... is a 64-bit installation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#launcher-error-wineappinitializationerror-error-1-winefoldernotfound" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Launcher error WineAppInitializationError error 1 / wineFolderNotFound
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dyld-library-not-loaded-freetype-or-libinotify-errors-on-cli-runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dyld: Library not loaded / FreeType or libinotify errors on CLI runs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dyld-library-not-loaded-rpathlibinotify0dylib-from-wineserver" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dyld: Library not loaded: @rpath/libinotify.0.dylib from wineserver
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#missing-lc_load_dylib-must-link-with-at-least-libsystemdylib-abort-trap-6-at-wineboot-or-launch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        missing LC_LOAD_DYLIB (must link with at least libSystem.dylib) + Abort trap: 6 at wineboot or launch
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-yesterday-today-it-crashes-at-launch-or-the-server-rejects-me" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked yesterday; today it crashes at launch or the server rejects me
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#game-boots-but-login-fails-hangs-at-server-select" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Game boots but login fails / hangs at server select
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#everything-looks-washed-out-too-bright" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Everything looks washed out / too bright
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#my-keybinds-camera-ui-settings-from-my-old-install-are-gone" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        My keybinds / camera / UI settings from my old install are gone
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#some-ui-text-is-fuzzysmeared-while-other-text-is-sharp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Some UI text is fuzzy/smeared while other text is sharp
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#red-and-green-chat-text-is-fuzzyhard-to-read-white-and-yellow-are-sharp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Red and green chat text is fuzzy/hard to read; white and yellow are sharp
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#in-game-but-textures-missing-graphics-glitches" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        In game, but textures missing / graphics glitches
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#game-stutters-or-feels-choppy-especially-on-newer-apple-silicon-eg-m5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Game stutters or feels choppy (especially on newer Apple Silicon, e.g. M5)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#after-switching-to-d9vk-the-game-is-much-slower-single-digit-fps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        After switching to D9VK the game is much SLOWER (single-digit FPS)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sound-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sound issues
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#window-is-tiny-1024768" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Window is tiny (1024×768)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#diagnostic-reference-reading-a-wine-trace" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diagnostic reference: reading a wine trace
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/prokopto-dev/apple-silicon-p99/edit/main/docs/TROUBLESHOOTING.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h1>
+<p>Every entry below is a failure mode we actually hit and diagnosed, with the
+log signature to match against. Get a trace with:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>scripts<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>./40-launch.sh<span class="w"> </span>--debug<span class="w">     </span><span class="c1"># writes ~/p99-debug-&lt;timestamp&gt;.log</span>
+</code></pre></div>
+<p>The game's own boot log is <code>~/Games/EverQuest/Logs/dbg.txt</code> (note: in <code>Logs/</code>,
+not the game root). If it exists and ends with <code>CRender::InitDevice completed
+successfully</code>, the hard parts worked and your problem is past the boot stage.</p>
+<h2 id="first-the-thing-that-isnt-a-bug">First, the thing that isn't a bug<a class="headerlink" href="#first-the-thing-that-isnt-a-bug" title="Permanent link">&para;</a></h2>
+<p><strong>Launch shows nothing for 1–2 minutes while a process burns 100% CPU.</strong>
+Normal. Themida (the anti-cheat packer) decrypts the P99 patch DLL in memory on
+<em>every</em> launch, and it's slow under Rosetta. Don't force-quit; the window
+appears when it finishes.</p>
+<h2 id="symptom-cause-fix">Symptom → cause → fix<a class="headerlink" href="#symptom-cause-fix" title="Permanent link">&para;</a></h2>
+<h3 id="macos-setupcommand-cannot-be-opened-because-it-is-from-an-unidentified-developer">macOS: "'Setup.command' cannot be opened because it is from an unidentified developer"<a class="headerlink" href="#macos-setupcommand-cannot-be-opened-because-it-is-from-an-unidentified-developer" title="Permanent link">&para;</a></h3>
+<p><strong>Cause:</strong> Gatekeeper flags anything downloaded from the internet; this repo's
+scripts aren't code-signed (they're plain shell scripts you can read).
+<strong>Fix:</strong> right-click (or Control-click) <code>Setup.command</code> → <strong>Open</strong> → <strong>Open</strong>.
+Only needed once. If your Mac is managed/locked down, run it from Terminal
+instead: <code>cd</code> into the folder and run <code>./setup.sh</code> (terminal execution isn't
+subject to the same prompt).</p>
+<h3 id="macos-dialog-a-program-on-your-system-has-crashed-immediately-ish-after-launch">macOS dialog: <em>"a program on your system has crashed…"</em> immediately-ish after launch<a class="headerlink" href="#macos-dialog-a-program-on-your-system-has-crashed-immediately-ish-after-launch" title="Permanent link">&para;</a></h3>
+<p>Trace shows:
+<div class="highlight"><pre><span></span><code>dispatch_exception code=c0000005 addr=00000000 ip=00000000
+</code></pre></div>
+<strong>Cause:</strong> the broken V61+/V62 <code>dsetup.dll</code> (Themida jumps to NULL during
+unpack on modern macOS). This is the #1 killer and looks deceptively like a
+wine bug — it isn't.
+<strong>Fix:</strong> <code>./30-apply-mac-fixes.sh</code> (installs P99's sanctioned V58 DLL).</p>
+<h3 id="trace-dsetupdll-failed-to-initialize-aborting-status-c0000142">Trace: <code>DSETUP.dll failed to initialize, aborting</code> / <code>status c0000142</code><a class="headerlink" href="#trace-dsetupdll-failed-to-initialize-aborting-status-c0000142" title="Permanent link">&para;</a></h3>
+<p><strong>Cause:</strong> same broken dsetup.dll, as seen on older wine engines.
+<strong>Fix:</strong> same — <code>./30-apply-mac-fixes.sh</code>.</p>
+<h3 id="dialog-an-internal-exception-occurred-address-0x">Dialog: <em>"An internal exception occurred. (Address: 0x…)"</em><a class="headerlink" href="#dialog-an-internal-exception-occurred-address-0x" title="Permanent link">&para;</a></h3>
+<p>Two known causes:
+1. <strong>On Linux / case-sensitive filesystems:</strong> Titanium's <code>DSETUP.dll</code> and
+   P99's <code>dsetup.dll</code> coexist as two different files and the wrong one loads.
+   (Mac default APFS is case-insensitive, so usually not this — but the fix
+   script normalizes the name anyway.)
+2. <strong>Wine engine too old.</strong> On wine 6.x-era engines Themida gets ~90 s in, then
+   dies writing to <code>0xfffffffc</code> right after these fixmes:
+   <div class="highlight"><pre><span></span><code>fixme:seh:get_thread_times not implemented on this platform
+fixme:toolhelp:CreateToolhelp32Snapshot Unimplemented: heap list snapshot
+</code></pre></div>
+   Themida needs APIs those old builds never implemented on macOS.
+   <strong>Fix:</strong> use the pinned engine (<code>WS12WineCX24.0.7_6</code>) — don't downgrade.</p>
+<h3 id="silent-exit-no-dialog-no-dbgtxt-trace-shows-dpvsdll-then-unload">Silent exit, no dialog, no dbg.txt; trace shows dpvs.dll then unload<a class="headerlink" href="#silent-exit-no-dialog-no-dbgtxt-trace-shows-dpvsdll-then-unload" title="Permanent link">&para;</a></h3>
+<p><div class="highlight"><pre><span></span><code>Loaded ...\dpvs.dll (native)
+Loaded ...\EQGraphicsDX9.DLL (native)
+dispatch_exception code=c0000005 addr=&lt;dpvs.dll+0x31A14&gt; reading 60c60400
+Unloaded module ...\EQGraphicsDX9.DLL
+</code></pre></div>
+<strong>Cause:</strong> UPX-packed <code>dpvs.dll</code> — its decompression stub crashes under
+wine-on-Rosetta during graphics init. The game eats the crash and exits
+without a word.
+<strong>Fix:</strong> <code>upx -d dpvs.dll</code> (done by <code>./30-apply-mac-fixes.sh</code>). Verify with
+<code>head -c 4096 dpvs.dll | grep -c UPX</code> → should print <code>0</code>.</p>
+<h3 id="instant-exit-1-s-empty-log-wine-exit-code-53">Instant exit (~1 s), empty log, wine exit code 53<a class="headerlink" href="#instant-exit-1-s-empty-log-wine-exit-code-53" title="Permanent link">&para;</a></h3>
+<p><div class="highlight"><pre><span></span><code>err:module:process_init L&quot;C:\\windows\\system32\\eqgame.exe&quot; not found
+</code></pre></div>
+<strong>Cause:</strong> launched with a unix <code>cd</code> into the (symlinked) game folder. Wine
+resolves the physical path, which is outside <code>drive_c</code>, falls back to
+<code>system32</code> as the working directory, and can't find <code>eqgame.exe</code>.
+<strong>Fix:</strong> set the <em>Windows</em> CWD:
+<code>wine cmd /c 'cd /d C:\Program Files\EverQuest &amp;&amp; eqgame.exe patchme'</code>
+(<code>40-launch.sh --debug</code> does this correctly.)</p>
+<h3 id="wine-created-the-configuration-directory-but-winearch-set-to-win32-is-a-64-bit-installation"><code>wine: created the configuration directory ... but WINEARCH set to win32 ... is a 64-bit installation</code><a class="headerlink" href="#wine-created-the-configuration-directory-but-winearch-set-to-win32-is-a-64-bit-installation" title="Permanent link">&para;</a></h3>
+<p><strong>Cause:</strong> trying to force a 32-bit prefix on a WoW64-only engine. All current
+Sikarugir/Kegworks <code>WS12*</code> engines are WoW64-only; that's fine — WoW64 is the
+supported path in this repo. (The only true 32-on-64 engines on the release
+page, <code>WS11WineCX32Bit*</code>, are wine 4–6 era and fail the Themida stage; don't
+bother.)
+<strong>Fix:</strong> don't set <code>WINEARCH</code>.</p>
+<h3 id="launcher-error-wineappinitializationerror-error-1-winefoldernotfound">Launcher error <code>WineAppInitializationError error 1</code> / <code>wineFolderNotFound</code><a class="headerlink" href="#launcher-error-wineappinitializationerror-error-1-winefoldernotfound" title="Permanent link">&para;</a></h3>
+<p><strong>Cause:</strong> engine extracted to the wrong place inside the wrapper.
+<strong>Fix:</strong> the engine's <code>wswine.bundle</code> contents must be at
+<code>P99.app/Contents/SharedSupport/wine</code> (so <code>.../wine/bin/wine</code> exists) — <em>not</em>
+<code>Contents/Frameworks/wswine.bundle</code>. <code>10-build-wrapper.sh</code> does this.</p>
+<h3 id="dyld-library-not-loaded-freetype-or-libinotify-errors-on-cli-runs"><code>dyld: Library not loaded</code> / FreeType or libinotify errors on CLI runs<a class="headerlink" href="#dyld-library-not-loaded-freetype-or-libinotify-errors-on-cli-runs" title="Permanent link">&para;</a></h3>
+<p><strong>Cause:</strong> missing <code>DYLD_FALLBACK_LIBRARY_PATH</code>.
+<strong>Fix:</strong> include <code>P99.app/Contents/Frameworks</code> in it (the scripts' <code>wine_env</code>
+helper and the app launcher both do).</p>
+<h3 id="dyld-library-not-loaded-rpathlibinotify0dylib-from-wineserver"><code>dyld: Library not loaded: @rpath/libinotify.0.dylib</code> from <strong>wineserver</strong><a class="headerlink" href="#dyld-library-not-loaded-rpathlibinotify0dylib-from-wineserver" title="Permanent link">&para;</a></h3>
+<p><strong>Cause:</strong> the engine's binaries look for their dylibs at
+<code>Contents/SharedSupport/</code> (their <code>@rpath</code> is <code>bin/../../</code>), but the template
+ships them in <code>Contents/Frameworks/</code> — and <code>DYLD_FALLBACK_LIBRARY_PATH</code> does
+not survive into wine's child processes like <code>wineserver</code>.
+<strong>Fix:</strong> <code>10-build-wrapper.sh</code> symlinks every <code>Frameworks/*.dylib</code> into
+<code>SharedSupport/</code>. Re-run it if you see this.</p>
+<h3 id="missing-lc_load_dylib-must-link-with-at-least-libsystemdylib-abort-trap-6-at-wineboot-or-launch"><code>missing LC_LOAD_DYLIB (must link with at least libSystem.dylib)</code> + <code>Abort trap: 6</code> at wineboot or launch<a class="headerlink" href="#missing-lc_load_dylib-must-link-with-at-least-libsystemdylib-abort-trap-6-at-wineboot-or-launch" title="Permanent link">&para;</a></h3>
+<p><strong>Cause:</strong> macOS 26 (Tahoe) dyld refuses executables built against SDK ≥ 26
+that link no dylibs — and some engine builds ship exactly such a
+<code>wine-preloader</code> (it's deliberately freestanding: its job is reserving the
+low 32-bit address range before wine starts). Upstream report:
+<a href="https://github.com/Sikarugir-App/Sikarugir/issues/130">Sikarugir#130</a>.
+Do <strong>not</strong> just delete the preloader: wine then boots, but <code>eqgame.exe</code>
+fails with <code>err:virtual:map_fixed_area out of memory for 0x400000</code> /
+<code>status c0000018</code> (nothing reserved its fixed load address).
+<strong>Fix:</strong> rewrite the preloader's SDK stamp to pre-26 so dyld treats it as a
+legacy binary — <code>10-build-wrapper.sh</code> now detects and patches this
+automatically (<code>vtool -set-version-min macos 10.7 15.0</code> + ad-hoc re-sign).
+Re-run it if you hit this on an existing wrapper.</p>
+<h3 id="worked-yesterday-today-it-crashes-at-launch-or-the-server-rejects-me">Worked yesterday; today it crashes at launch or the server rejects me<a class="headerlink" href="#worked-yesterday-today-it-crashes-at-launch-or-the-server-rejects-me" title="Permanent link">&para;</a></h3>
+<p><strong>Cause:</strong> P99 released a patch (check the
+<a href="https://www.project1999.com/forums/forumdisplay.php?f=10">Patch Notes forum</a>).
+Mandatory patches make the server reject old files — and the new zip re-ships
+the broken <code>dsetup.dll</code> and a re-packed <code>dpvs.dll</code>, silently undoing the Mac
+fixes.
+<strong>Fix:</strong> <code>./50-update.sh</code> (fetches newest files, re-applies fixes).
+<strong>Exception:</strong> if the patch notes announce a <em>new dsetup.dll/DLL update</em> that
+supersedes the V58 workaround, keep P99's new DLL instead:
+<code>SKIP_DSETUP_FIX=1 ./50-update.sh</code>. If that new DLL then crashes on macOS the
+old way, V58 will no longer be accepted by the server either — check the Mac
+thread on the forums, because the fix will have to come from P99 at that point.</p>
+<h3 id="game-boots-but-login-fails-hangs-at-server-select">Game boots but login fails / hangs at server select<a class="headerlink" href="#game-boots-but-login-fails-hangs-at-server-select" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Check <code>eqhost.txt</code> contains <code>Host=login.eqemulator.net:5998</code> (yes,
+  <code>eqemulator.net</code> — that IS P99's login server).</li>
+<li>You need a <strong>login-server account</strong> created on the P99 website; forum
+  credentials alone don't work.</li>
+<li>P99 allows one account per person; a shared IP (family) can trip this.</li>
+</ul>
+<h3 id="everything-looks-washed-out-too-bright">Everything looks washed out / too bright<a class="headerlink" href="#everything-looks-washed-out-too-bright" title="Permanent link">&para;</a></h3>
+<p><strong>Cause:</strong> the fresh <code>eqclient.ini</code> let EQ regenerate its default <code>Gamma=11</code>,
+which is brighter than most players' tuned setting (and wine may not apply
+hardware gamma ramps in windowed mode the way a real fullscreen PC install
+did).
+<strong>Fix:</strong> lower <code>Gamma=</code> in <code>~/Games/EverQuest/eqclient.ini</code> (<code>8</code> is a common
+player value; edit while the game is closed — EQ rewrites the file on exit),
+or use the in-game Options → Display gamma slider. If the slider visibly does
+nothing, that's the windowed-mode gamma-ramp limitation — set <code>Gamma=</code> in the
+file instead, which EQ applies at render time.</p>
+<h3 id="my-keybinds-camera-ui-settings-from-my-old-install-are-gone">My keybinds / camera / UI settings from my old install are gone<a class="headerlink" href="#my-keybinds-camera-ui-settings-from-my-old-install-are-gone" title="Permanent link">&para;</a></h3>
+<p><strong>Cause:</strong> keybindings (<code>[KeyMaps]</code>), camera and gameplay prefs (<code>[Options]</code>),
+and text colors all live in <code>eqclient.ini</code> — which fix 3 replaces to get a
+known-good graphics config.
+<strong>Fix:</strong> current versions of <code>30-apply-mac-fixes.sh</code> automatically restore
+those sections (plus your gamma) from <code>eqclient.ini.pre-mac.bak</code> after writing
+the fresh file. If you applied an older version of the script, your original
+is still at <code>~/Games/EverQuest/eqclient.ini.pre-mac.bak</code> — copy the
+<code>[KeyMaps]</code>/<code>[Options]</code>/<code>[TextColors]</code>/<code>[HitsMode]</code> sections back in (game
+closed), keeping the new <code>[Defaults]</code> and <code>[VideoMode]</code>.</p>
+<h3 id="some-ui-text-is-fuzzysmeared-while-other-text-is-sharp">Some UI text is fuzzy/smeared while other text is sharp<a class="headerlink" href="#some-ui-text-is-fuzzysmeared-while-other-text-is-sharp" title="Permanent link">&para;</a></h3>
+<p><strong>Cause:</strong> missing Microsoft core fonts. EQ rasterizes UI text via Windows
+font APIs; elements whose requested font (usually Arial) is missing get wine's
+substitute, which renders visibly softer — so the UI ends up a mix of crisp
+and fuzzy depending on which font each element asked for. Low-contrast chat
+colors show the blur worst.
+<strong>Fix:</strong> current <code>10-build-wrapper.sh</code> installs the core fonts. On an existing
+wrapper, re-run it (idempotent), or drop the corefonts <code>.TTF</code> files into
+<code>P99.app/Contents/SharedSupport/prefix/drive_c/windows/Fonts/</code> — wine loads
+that folder automatically. Restart the game afterward (fonts load at startup).
+Note: <code>winetricks corefonts</code> itself <strong>fails on macOS</strong> ("<code>%AppData%</code> returned
+empty string") because SIP strips <code>DYLD_*</code> variables through its <code>/bin/sh</code> —
+use the script instead.</p>
+<h3 id="red-and-green-chat-text-is-fuzzyhard-to-read-white-and-yellow-are-sharp">Red and green chat text is fuzzy/hard to read; white and yellow are sharp<a class="headerlink" href="#red-and-green-chat-text-is-fuzzyhard-to-read-white-and-yellow-are-sharp" title="Permanent link">&para;</a></h3>
+<p><strong>Cause:</strong> not a rendering bug — physics. Saturated single-channel colors
+(<code>255,0,0</code> red, <code>0,128,0</code> green) light only one LCD subpixel per pixel and
+carry little luminance, so antialiased small text in them looks soft; white
+and yellow light 2–3 subpixels at high luminance and look sharp. EQ's default
+message colors include several of these dark saturated values.
+<strong>Fix:</strong> brighten/desaturate the offenders in <code>[TextColors]</code> in
+<code>eqclient.ini</code> (game closed — EQ rewrites the file on exit), e.g.
+<code>0,128,0 → 90,220,90</code> and <code>255,0,0 → 255,90,90</code>; or adjust live in-game under
+Options → Colors.</p>
+<h3 id="in-game-but-textures-missing-graphics-glitches">In game, but textures missing / graphics glitches<a class="headerlink" href="#in-game-but-textures-missing-graphics-glitches" title="Permanent link">&para;</a></h3>
+<p>Known residual on this stack (forum posters suspect bad installs rather than
+wine). Dials to try, in order:
+1. Make sure the MS core fonts are installed (see fuzzy-text entry above).
+2. Renderer toggles in <code>P99.app/Contents/Info.plist</code> (<code>D9VK</code>, <code>DXMT</code>,
+   <code>D3DMETAL</code> — set one to <code>1</code>). The template bundles the DLLs under
+   <code>Contents/Frameworks/renderer/</code>. Note our testing found the launcher doesn't
+   always copy them automatically; d9vk can be installed manually by copying
+   <code>renderer/d9vk/wine/i386-windows/d3d9.dll</code> over
+   <code>prefix/drive_c/windows/syswow64/d3d9.dll</code> (back it up first).
+3. Verify game-file integrity against a known-good install.</p>
+<h3 id="game-stutters-or-feels-choppy-especially-on-newer-apple-silicon-eg-m5">Game stutters or feels choppy (especially on newer Apple Silicon, e.g. M5)<a class="headerlink" href="#game-stutters-or-feels-choppy-especially-on-newer-apple-silicon-eg-m5" title="Permanent link">&para;</a></h3>
+<p><strong>Cause:</strong> two things compound. (1) The stock renderer is wine's <code>wined3d</code>, which
+runs Direct3D 9 → OpenGL → Apple's <em>deprecated</em> GL-on-Metal shim — the slow path on
+modern GPUs. (2) The wine msync scheduling flag was not reaching the double-click /
+Play session: that launch is <code>open P99.app</code>, which LaunchServices runs detached and
+does not inherit the <code>WINEESYNC/WINEMSYNC</code> that <code>wine_env()</code> sets, so thread hand-offs
+ran unsynchronized (now fixed via the wrapper's <code>Info.plist</code> — see fix 2).
+<strong>Fix (in order of impact):</strong>
+1. Rebuild the wrapper once so msync reaches the game: <code>./10-build-wrapper.sh</code> (it
+   skips the finished pieces and just refreshes the launch env). A routine
+   <code>./50-update.sh</code> does <strong>not</strong> do this.
+2. <em>Optionally</em> try the D9VK renderer (Direct3D 9 → Vulkan → MoltenVK → Metal):
+   <code>P99_RENDERER=d9vk ./60-renderer.sh</code> (or the installer app's Performance
+   panel). On some machines it's a real win; on others it is much <strong>slower</strong>
+   (see the next entry). Fully reversible — <code>P99_RENDERER=wined3d
+   ./60-renderer.sh</code> restores the stock renderer and touches nothing else.
+3. Cap the frame rate and/or trim EQ's own load: <code>P99_APPLY_PERF=1
+   P99_PERF_PROFILE=smoother EQ_FPS_CAP=60 ./35-perf-ini.sh</code> (game closed).
+Full guide with tradeoffs and how to measure: <a href="../PERFORMANCE/">PERFORMANCE.md</a>.</p>
+<h3 id="after-switching-to-d9vk-the-game-is-much-slower-single-digit-fps">After switching to D9VK the game is much SLOWER (single-digit FPS)<a class="headerlink" href="#after-switching-to-d9vk-the-game-is-much-slower-single-digit-fps" title="Permanent link">&para;</a></h3>
+<p><strong>Cause:</strong> a known outcome on some machines (reported on an M4 MacBook Pro), not
+a broken install. Earlier versions of the switch compounded it by loading a
+MoltenVK build years newer than the bundled DXVK 1.10 (with a slow
+argument-buffer mode on by default) and by never enabling DXVK's async shader
+compilation — both fixed by re-running the switch with the current scripts. What
+remains is a stack limitation: a 32-bit game under wine's WoW64 pays a heavy
+penalty on every GPU-memory map unless the Vulkan driver supports
+<code>VK_EXT_map_memory_placed</code>, which the bundled MoltenVK builds do not — and a
+2005 engine maps buffers every frame. On machines where that cost dominates,
+D9VK will stay slow no matter what.
+<strong>Fix, in order:</strong>
+1. If you first installed d9vk before these fixes existed, re-apply it once
+   (<code>P99_RENDERER=d9vk ./60-renderer.sh</code>) to pick up the MoltenVK pairing +
+   tuning — worth a retry before giving up.
+2. Still slow? Try the indirect-buffer-maps experiment, which reroutes the
+   game's per-frame geometry traffic around the expensive map path:
+   <code>P99_RENDERER=d9vk P99_DXVK_INDIRECT_MAPS=1 ./60-renderer.sh</code> (or the
+   Performance panel's <em>Indirect buffer maps</em> toggle). Compare with the FPS
+   overlay (<code>P99_DXVK_HUD=fps,frametimes</code>).
+3. If neither helps, switch back — <code>P99_RENDERER=wined3d ./60-renderer.sh</code> (or
+   Performance panel → Stock → Apply). That machine's answer is wined3d.
+<strong>If reporting it:</strong> re-apply with diagnostics —
+<code>P99_RENDERER=d9vk P99_RENDERER_DEBUG=1 ./60-renderer.sh</code>, launch once, then
+attach <code>~/Games/EverQuest/eqgame_d3d9.log</code>, the <code>[mvk-info]</code> MoltenVK
+version/argument-buffer lines from a <code>./40-launch.sh --debug</code> trace, and the
+<code>renderer</code> + <code>moltenvk</code> lines from <code>./status.sh</code>.</p>
+<h3 id="sound-issues">Sound issues<a class="headerlink" href="#sound-issues" title="Permanent link">&para;</a></h3>
+<p>Sound runs through the game's own Miles Sound System (<code>mss32.dll</code>), not
+GStreamer — so ignore wine's GStreamer warnings; they're harmless here.</p>
+<h3 id="window-is-tiny-1024768">Window is tiny (1024×768)<a class="headerlink" href="#window-is-tiny-1024768" title="Permanent link">&para;</a></h3>
+<p>That's the known-good boot config. Once the game runs, edit
+<code>~/Games/EverQuest/eqclient.ini</code> → set all of <code>Width</code>/<code>Height</code>/
+<code>WidthWindowed</code>/<code>HeightWindowed</code>/<code>WindowedWidth</code>/<code>WindowedHeight</code> to your
+preferred size (e.g. 1440×900). Keep <code>WindowedMode=TRUE</code>; alt-tab behavior
+fullscreen under wine is rough. Bonus: if you migrated an old install, your
+per-character <code>UI_*.ini</code> files store window positions in pixels — matching
+your old resolution puts every chat/hotbar window back where you had it.</p>
+<h2 id="diagnostic-reference-reading-a-wine-trace">Diagnostic reference: reading a wine trace<a class="headerlink" href="#diagnostic-reference-reading-a-wine-trace" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>dispatch_exception code=c000008e</code> (float divide-by-zero) and
+  <code>code=c0000096</code> (privileged instruction) with <code>eax=564d5868</code> ("VMXh") during
+  the CPU-burn phase are <strong>normal</strong> — Themida raises exceptions on purpose as
+  anti-debug/anti-VM checks and handles them itself.</li>
+<li><code>code=c0000005</code> (access violation) that Themida/the game does <strong>not</strong> handle
+  (followed by module unload, <code>failed to initialize</code>, or the crash-reporter
+  dialog) is a real failure — match it against the table above.</li>
+<li><code>Loaded ...EQGraphicsDX9.DLL</code> + no exception after it + <code>Logs/dbg.txt</code>
+  updating = you've won; anything wrong after that point is game-config
+  territory, not the translation stack.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.indexes", "navigation.top", "search.suggest", "content.code.copy", "content.action.edit"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
