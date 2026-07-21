@@ -14,6 +14,13 @@ exactly as before.
 > edit that file (or run the INI scripts below) only while the game is **closed**,
 > or your changes are overwritten.
 
+<!-- performance-panel.png and performance-apply.png are faithful rendered mockups
+of the SwiftUI installer UI (generated without a Mac). To replace them with real
+captures, screenshot P99 Installer.app on macOS at the same size. -->
+![The installer app's Performance panel: a graphics-renderer picker (Stock wined3d or
+D9VK) and a "Smoother visuals" toggle, both opt-in and reversible, with an Apply
+button.](img/performance-panel.png)
+
 ## Why it stutters on this stack
 
 Three costs stack up, and only the first two are tunable:
@@ -126,6 +133,16 @@ Explicit `EQ_*` vars override the `smoother` bundle for that key. Resolution is
 **never** touched by any of this — change window size the usual way
 ([TROUBLESHOOTING.md → "Window is tiny"](TROUBLESHOOTING.md)); note that a smaller
 window is itself a fill-rate win if you're GPU-bound.
+
+## Applying from the installer app
+
+Prefer buttons to the terminal? The installer's **Performance** panel (shown above)
+sets the same things: pick a renderer, flip **Smoother visuals**, then press **Apply
+Performance Settings** with the game closed. It runs `60-renderer.sh` and
+`35-perf-ini.sh` for you and reports when it's done.
+
+![The installer's "Applying performance settings" screen: both steps — set the
+graphics renderer, apply EQ graphics settings — completed successfully.](img/performance-apply.png)
 
 ## Measuring
 

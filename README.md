@@ -174,6 +174,11 @@ Running but **stuttering** (common on newer Apple Silicon like M4/M5)?
 [docs/PERFORMANCE.md](docs/PERFORMANCE.md) covers the opt-in, fully reversible
 tuning knobs — switching the renderer off the deprecated OpenGL path to D9VK,
 making wine's msync actually reach the game, and trimming EQ's own graphics load.
+The installer app exposes the safe ones in a **Performance** panel:
+
+<img src="docs/img/performance-panel.png" width="560"
+     alt="The installer's Performance panel: a graphics-renderer picker (Stock wined3d or D9VK) and a Smoother visuals toggle, both reversible, with an Apply button">
+
 
 Beyond setup, [docs/FAQ.md](docs/FAQ.md) covers quality-of-life topics:
 setting up **nParse** (map overlay/timers — it runs natively on macOS, no
