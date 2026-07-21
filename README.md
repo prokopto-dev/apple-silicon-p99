@@ -1,7 +1,8 @@
 # Project 1999 on Apple Silicon Macs
 
-[![Build installer app](https://github.com/prokopto-dev/apple-silicon-p99/actions/workflows/release.yml/badge.svg)](https://github.com/prokopto-dev/apple-silicon-p99/actions/workflows/release.yml)
+[![CI](https://github.com/prokopto-dev/apple-silicon-p99/actions/workflows/ci.yml/badge.svg)](https://github.com/prokopto-dev/apple-silicon-p99/actions/workflows/ci.yml)
 ![Test coverage](https://raw.githubusercontent.com/prokopto-dev/apple-silicon-p99/badges/coverage.svg)
+[![Docs](https://img.shields.io/badge/docs-prokopto--dev.github.io-blue)](https://prokopto-dev.github.io/apple-silicon-p99/)
 
 Scripts and documentation to run **[Project 1999](https://www.project1999.com/)**
 (the classic EverQuest emulator) natively-ish on a modern Mac — Apple Silicon or
@@ -245,6 +246,10 @@ docs/
   FAQ.md                 nParse, custom UIs, file locations, rules questions
 ```
 
+The `docs/` pages are also published as a versioned site at
+**<https://prokopto-dev.github.io/apple-silicon-p99/>** (rebuilt automatically
+on every release, plus a `dev` version tracking `main`).
+
 ## Building the installer app
 
 Needs only Apple's Command Line Tools (which the setup installs anyway) — not
@@ -267,26 +272,34 @@ executable, since the Command Line Tools ship no test framework) plus
 offline script-layer tests (`scripts/tests.sh`) for the status probes and
 non-interactive uninstall.
 
-Releases are automated. First put the changes under `[Unreleased]` in
-[CHANGELOG.md](CHANGELOG.md). Then cut the release one of two ways:
+## Releases
 
-**On a Mac (one command):**
+Releases are fully automated by
+[semantic-release](https://python-semantic-release.readthedocs.io/) from
+[Conventional Commit](https://www.conventionalcommits.org/) messages — there
+is no manual release step (`make release` is retired):
 
-```bash
-make release V=0.4.0
-```
+- Write commits as `type(scope): summary`. `feat:` cuts a minor release,
+  `fix:`/`perf:` a patch, and `feat!:` (or a `BREAKING CHANGE:` footer) a
+  breaking bump. `docs:`, `chore:`, `ci:`, `refactor:`, `test:`, `build:`,
+  `style:` are allowed but release nothing. A PR check enforces the format
+  on every PR commit (`tools/check_conventional_commits.py` — run it locally
+  against any range).
+- On every merge to `main`, the **Semantic Release** workflow runs the tests
+  and, if any releasable commits landed, bumps the version in
+  `pyproject.toml`, regenerates [CHANGELOG.md](CHANGELOG.md), commits, tags
+  `vX.Y.Z`, and dispatches the **Release** workflow — which builds and
+  selftests the app on a macOS runner, attaches `P99-Installer.zip` to the
+  GitHub Release with that version's changelog section as notes, and deploys
+  the versioned docs site.
+- The version in `pyproject.toml` and the changelog are machine-owned — don't
+  edit them by hand. The Makefile stamps that version into the app bundle at
+  build time.
 
-That verifies tests pass and the changelog section isn't empty, stamps the
-version + date, commits, tags, and pushes — CI builds the app and publishes
-the GitHub Release with that changelog section as its notes.
-
-**Without pushing a tag (CI does it):** stamp the changelog and commit
-`Release vX.Y.Z` to `main`, then run the **Build installer app** workflow from
-the Actions tab via **Run workflow**, entering the version (e.g. `0.4.0`). CI
-builds and tests on a macOS runner, then creates the tag and publishes the
-Release itself. Useful when you can't push a tag directly. The version must
-match the top `## [X.Y.Z]` section in `CHANGELOG.md`, or the run stops before
-publishing.
+Manual escape hatches (Actions tab): run **Semantic Release** via *Run
+workflow* to force a release check outside a push, or run **Release** with an
+existing tag to re-package/re-publish it (the tag must match the
+`pyproject.toml` version at that tag, or the run stops).
 
 ## Roadmap
 

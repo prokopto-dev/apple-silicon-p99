@@ -1,0 +1,74 @@
+# Builds and tests "P99 Installer.app" on every push/PR, publishes the
+# coverage number to the step summary, and refreshes the README's coverage
+# badge on main pushes. Releases are handled separately: semantic-release.yml
+# cuts versions from Conventional Commits on main, and release.yml packages
+# and publishes the tagged version.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: write # badge push to the orphan `badges` branch (main only)
+
+jobs:
+  test:
+    # macos-15+: Xcode 16's SDK marks the whole View protocol @MainActor
+    # (like local CLT builds); Xcode 15 on macos-14 rejects the views.
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Unit + script tests
+        run: make test
+
+      - name: Coverage
+        run: |
+          make coverage
+          PCT=$(cat dist/coverage-percent.txt)
+          {
+            echo "### Test coverage: ${PCT}% (P99Core lines)"
+            echo '```'
+            cat dist/coverage.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # The README's coverage badge is an SVG on the orphan `badges` branch,
+      # regenerated on every main push — no external coverage service needed.
+      - name: Update coverage badge
+        if: github.ref == 'refs/heads/main'
+        run: |
+          PCT=$(cat dist/coverage-percent.txt)
+          COLOR=$(awk -v p="$PCT" 'BEGIN{print (p>=90?"brightgreen":p>=75?"green":p>=60?"yellow":"red")}')
+          curl -sf "https://img.shields.io/badge/coverage-${PCT}%25-${COLOR}" -o /tmp/coverage.svg
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Fetch into an explicit remote-tracking ref: FETCH_HEAD is
+          # per-worktree and unresolvable inside the new worktree.
+          if git fetch origin badges:refs/remotes/origin/badges 2>/dev/null; then
+            git worktree add -B badges /tmp/badges origin/badges
+            cd /tmp/badges
+          else
+            git worktree add --detach /tmp/badges
+            cd /tmp/badges && git checkout --orphan badges && git rm -rfq . 2>/dev/null || true
+          fi
+          cp /tmp/coverage.svg coverage.svg
+          git add coverage.svg
+          git commit -m "Coverage badge: ${PCT}%" || exit 0
+          git push origin badges
+
+      - name: Build app + zip
+        run: make zip
+
+      # The binary's hidden selftest verifies the bundled scripts resolve and
+      # the runner/parser work.
+      - name: Selftest
+        run: '"./dist/P99 Installer.app/Contents/MacOS/P99Installer" --selftest'
+
+      - name: Upload CI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: P99-Installer
+          path: dist/P99-Installer.zip

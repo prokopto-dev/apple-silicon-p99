@@ -1,0 +1,60 @@
+name: Semantic Release
+
+on:
+  # Auto-release on every merge to main: feat/fix/perf commits cut a release,
+  # docs/chore/ci merges no-op (no bump) but still run the test gate.
+  # Loop-safe: semantic-release pushes its version-bump commit/tag with
+  # GITHUB_TOKEN, which does not re-trigger workflows, and that commit is a
+  # non-bumping, changelog-excluded chore. Because the tag push therefore
+  # can't trigger release.yml on its own, this workflow dispatches it
+  # explicitly after a release.
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write # push the version-bump commit + tag
+  actions: write # dispatch release.yml
+
+concurrency:
+  group: semantic-release
+  cancel-in-progress: false
+
+jobs:
+  # Tests need macOS (swift + the script layer); semantic-release itself runs
+  # fine on Linux. Gating on this job means a red main is never released.
+  verify:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unit + script tests
+        run: make test
+
+  release:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history + tags: semantic-release needs both
+      - name: Calculate version, update changelog, commit, tag, and push
+        id: release
+        uses: python-semantic-release/python-semantic-release@v10
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          vcs_release: false
+          build: false
+          git_committer_name: github-actions[bot]
+          git_committer_email: 41898282+github-actions[bot]@users.noreply.github.com
+      - name: Summary
+        run: |
+          if [ "${{ steps.release.outputs.released }}" = "true" ]; then
+            echo "Released v${{ steps.release.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No releasable Conventional Commits were found." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Start app package build
+        if: steps.release.outputs.released == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run release.yml --ref "${GITHUB_REF_NAME}" -f tag="${{ steps.release.outputs.tag }}"

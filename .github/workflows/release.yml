@@ -1,140 +1,117 @@
-# Builds P99 Installer.app on every push/PR (CI smoke test), and publishes
-# P99-Installer.zip to a GitHub Release when a version is released. Two ways to
-# release:
+# Packages and publishes a released version: builds P99-Installer.zip from the
+# tagged commit, attaches it to the GitHub Release with that version's
+# CHANGELOG.md section as notes, then deploys the versioned docs.
 #
-#   1. Push a version tag (e.g. on a Mac via `make release`):
-#        git tag v0.1.0 && git push origin v0.1.0
-#   2. Run this workflow manually ("Run workflow" / workflow_dispatch) with a
-#      `version` input. CI builds + tests, then creates the tag and Release via
-#      the API — no tag push needed. The version must match the top released
-#      section in CHANGELOG.md (stamp it and commit "Release vX.Y.Z" to main first).
-#
-# The Release's zip is the user-facing download link ("Releases" in the repo
-# sidebar / releases/latest). The per-push workflow artifact is only for CI
-# inspection (requires a GitHub login and expires).
-name: Build installer app
+# Normally dispatched by semantic-release.yml right after it cuts a version
+# (its GITHUB_TOKEN tag push can't trigger this workflow directly). The tag
+# trigger covers hand-pushed tags, and workflow_dispatch is the manual escape
+# hatch to re-package an existing tag. Either way check-version refuses a tag
+# that doesn't match pyproject.toml's version.
+name: Release
 
 on:
   push:
-    branches: [main]
     tags: ["v*"]
-  pull_request:
   workflow_dispatch:
     inputs:
-      version:
-        description: "Version to release, e.g. 0.4.0 (must match the top CHANGELOG.md section). Blank = build only."
-        required: false
-        default: ""
+      tag:
+        description: Existing semantic-release tag to package (for example v0.5.0)
+        required: true
+        type: string
+
+env:
+  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
 
 jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+      - name: Tag must match pyproject version
+        run: |
+          TAG="${RELEASE_TAG#v}"
+          grep -q "^version = \"$TAG\"$" pyproject.toml \
+            || { echo "::error::tag $TAG != pyproject version"; exit 1; }
+
   build:
+    needs: check-version
     # macos-15+: Xcode 16's SDK marks the whole View protocol @MainActor
     # (like local CLT builds); Xcode 15 on macos-14 rejects the views.
     runs-on: macos-15
-    permissions:
-      contents: write # needed to create the tag/Release on release runs
     steps:
       - uses: actions/checkout@v4
-
-      # Decide whether this run publishes a Release, and for which version:
-      # a version-tag push uses the tag; a manual dispatch uses the `version`
-      # input (and the release step below creates the tag). Refuses to publish a
-      # version that has no matching CHANGELOG.md section (would give empty notes).
-      - name: Determine release
-        id: rel
-        env:
-          DISPATCH_VERSION: ${{ inputs.version }}
-        run: |
-          if [ "${GITHUB_REF}" != "${GITHUB_REF#refs/tags/v}" ]; then
-            VER="${GITHUB_REF#refs/tags/v}"; PUBLISH=true
-          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "$DISPATCH_VERSION" ]; then
-            VER="$DISPATCH_VERSION"; PUBLISH=true
-          else
-            VER=""; PUBLISH=false
-          fi
-          if [ "$PUBLISH" = "true" ]; then
-            awk -v ver="$VER" '$0 ~ "^## \\[" ver "\\]" {found=1} END{exit !found}' CHANGELOG.md \
-              || { echo "::error::CHANGELOG.md has no '## [$VER]' section — refusing to publish $VER"; exit 1; }
-          fi
-          echo "version=$VER" >> "$GITHUB_OUTPUT"
-          echo "publish=$PUBLISH" >> "$GITHUB_OUTPUT"
-          echo "Release decision: publish=$PUBLISH version=$VER"
-
-      - name: Unit + script tests
-        run: make test
-
-      - name: Coverage
-        run: |
-          make coverage
-          PCT=$(cat dist/coverage-percent.txt)
-          {
-            echo "### Test coverage: ${PCT}% (P99Core lines)"
-            echo '```'
-            cat dist/coverage.txt
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      # The README's coverage badge is an SVG on the orphan `badges` branch,
-      # regenerated on every main push — no external coverage service needed.
-      - name: Update coverage badge
-        if: github.ref == 'refs/heads/main'
-        run: |
-          PCT=$(cat dist/coverage-percent.txt)
-          COLOR=$(awk -v p="$PCT" 'BEGIN{print (p>=90?"brightgreen":p>=75?"green":p>=60?"yellow":"red")}')
-          curl -sf "https://img.shields.io/badge/coverage-${PCT}%25-${COLOR}" -o /tmp/coverage.svg
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # Fetch into an explicit remote-tracking ref: FETCH_HEAD is
-          # per-worktree and unresolvable inside the new worktree.
-          if git fetch origin badges:refs/remotes/origin/badges 2>/dev/null; then
-            git worktree add -B badges /tmp/badges origin/badges
-            cd /tmp/badges
-          else
-            git worktree add --detach /tmp/badges
-            cd /tmp/badges && git checkout --orphan badges && git rm -rfq . 2>/dev/null || true
-          fi
-          cp /tmp/coverage.svg coverage.svg
-          git add coverage.svg
-          git commit -m "Coverage badge: ${PCT}%" || exit 0
-          git push origin badges
-
+        with:
+          ref: ${{ env.RELEASE_TAG }}
       - name: Build app + zip
         run: make zip
-
       # The binary's hidden selftest verifies the bundled scripts resolve and
       # the runner/parser work — a release never ships a broken bundle.
       - name: Selftest
         run: '"./dist/P99 Installer.app/Contents/MacOS/P99Installer" --selftest'
-
-      - name: Upload CI artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: P99-Installer
+          name: app-zip
           path: dist/P99-Installer.zip
+          if-no-files-found: error
 
-      # Release notes come from this version's CHANGELOG.md section.
-      # Falls back to a stub if missing.
-      - name: Extract changelog section
-        if: steps.rel.outputs.publish == 'true'
-        run: |
-          VER="${{ steps.rel.outputs.version }}"
-          awk -v ver="$VER" '
-            $0 ~ "^## \\[" ver "\\]" {on=1; next}
-            on && /^## \[/ {exit}
-            on {print}
-          ' CHANGELOG.md | sed -e '/./,$!d' > /tmp/notes.md
-          if [ ! -s /tmp/notes.md ]; then
-            echo "_No CHANGELOG.md entry for ${VER} — see commit history._" > /tmp/notes.md
-          fi
-          cat /tmp/notes.md
-
-      # On a tag push this attaches to the pushed tag; on a manual dispatch it
-      # creates tag v<version> at this commit, then publishes the Release.
-      - name: Attach zip to Release
-        if: steps.rel.outputs.publish == 'true'
-        uses: softprops/action-gh-release@v2
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
         with:
-          tag_name: v${{ steps.rel.outputs.version }}
-          target_commitish: ${{ github.sha }}
-          files: dist/P99-Installer.zip
-          body_path: /tmp/notes.md
+          ref: ${{ env.RELEASE_TAG }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Extract this version's changelog
+        run: |
+          VERSION="${RELEASE_TAG#v}"
+          awk -v version="$VERSION" '
+            $0 ~ "^## .*v?" version "([ (]|$)" { found=1; next }
+            found && /^## / { exit }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "See the full changelog for v$VERSION." > release-notes.md
+          fi
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          files: artifacts/*
+          body_path: release-notes.md
+
+  # Versioned docs deploy (mike -> gh-pages). The concurrency group is shared
+  # with docs-dev.yml to serialize mike pushes.
+  docs:
+    needs: [release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: gh-pages-docs
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+      - name: Fetch gh-pages for mike
+        # `|| true`: before the first docs deploy the branch doesn't exist yet.
+        run: git fetch origin gh-pages --depth=1 || true
+      - name: Install docs tooling
+        run: pip install 'mkdocs-material~=9.6' 'mike~=2.1'
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Deploy versioned docs
+        run: |
+          VERSION="${RELEASE_TAG#v}"
+          DOCS_VERSION="${VERSION%.*}"   # 0.5.1 -> 0.5
+          mike deploy --push --update-aliases "$DOCS_VERSION" latest
+          mike set-default --push latest
