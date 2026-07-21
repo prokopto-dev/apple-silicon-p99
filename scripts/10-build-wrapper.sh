@@ -12,6 +12,12 @@ if [ "$P99_STACK" = fex ] && ! fex_engine_pinned; then
   die "FEX engine not yet available — no engine tarball has been published. Watch the project releases, or set FEX_ENGINE_URL + FEX_ENGINE_SHA256 to your own dev tarball to experiment (docs/EXPERIMENTAL-FEX.md)."
 fi
 
+# Validate before any network/filesystem work, so a typo dies immediately.
+case "$P99_MOUSE_WARP" in
+  force|enable|disable) ;;
+  *) die "P99_MOUSE_WARP must be force, enable, or disable (got '$P99_MOUSE_WARP')" ;;
+esac
+
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
@@ -104,6 +110,17 @@ fi
 
 say "Setting Windows version to XP (part of the working recipe)"
 wine_env "$WINE" reg add 'HKCU\Software\Wine' /v Version /d winxp /f >/dev/null
+
+# EQ turns the camera via DirectInput mouselook. Wine's default only warps the
+# cursor back when the app clips it — and winemac.drv implements ClipCursor via
+# an event tap that needs macOS Accessibility permission and fails silently
+# without it, so the pointer drifts out of the window and mouselook stalls.
+# "force" re-centers the cursor continuously while the game holds the mouse
+# (i.e. only during mouselook — the cursor stays free otherwise, and Cmd-Tab
+# unacquires it): no permission needed, capture just works. Escape hatch:
+# P99_MOUSE_WARP=enable|disable (docs/TROUBLESHOOTING.md).
+say "Setting DirectInput MouseWarpOverride=$P99_MOUSE_WARP (keeps mouselook captured in the window)"
+wine_env "$WINE" reg add 'HKCU\Software\Wine\DirectInput' /v MouseWarpOverride /d "$P99_MOUSE_WARP" /f >/dev/null
 
 # Microsoft core fonts (Arial etc.). EQ rasterizes its UI text through Windows
 # font APIs; without the real fonts wine substitutes lookalikes and chunks of

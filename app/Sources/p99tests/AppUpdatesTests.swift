@@ -4,7 +4,11 @@ import P99Core
 private let fixtureJSON = """
 [
   {"tag_name": "v0.2.0", "name": "v0.2.0", "body": "### Added\\n- toggle",
-   "html_url": "https://example.com/v0.2.0", "draft": false, "prerelease": false},
+   "html_url": "https://example.com/v0.2.0", "draft": false, "prerelease": false,
+   "assets": [
+     {"name": "coverage.txt", "browser_download_url": "https://example.com/coverage.txt"},
+     {"name": "P99-Installer.zip", "browser_download_url": "https://example.com/v0.2.0/P99-Installer.zip"}
+   ]},
   {"tag_name": "engine-mirror-1", "name": "Mirrored components", "body": "mirror",
    "html_url": "https://example.com/mirror", "draft": false, "prerelease": false},
   {"tag_name": "v0.3.0", "name": null, "body": "### Added\\n- updates window",
@@ -45,7 +49,22 @@ func runAppUpdatesTests() {
         T.equal(missed.map(\.tag), ["v0.3.0", "v0.2.0"], "newer-than filters and sorts")
         T.expect(AppUpdates.newer(than: "0.3.0", in: releases).isEmpty, "up to date -> empty")
         T.equal(AppUpdates.newer(than: "0.0.0", in: releases).count, 3, "fresh dev build sees all")
+
+        // Zip-asset selection: only the installer zip counts; absent assets -> nil.
+        T.equal(releases.first { $0.tag == "v0.2.0" }?.downloadURL?.absoluteString ?? "",
+                "https://example.com/v0.2.0/P99-Installer.zip",
+                "picks the P99-Installer.zip asset")
+        T.expect(releases.first { $0.tag == "v0.3.0" }?.downloadURL == nil,
+                 "no assets array -> no download URL")
     } catch {
         T.expect(false, "fixture JSON must parse: \(error)")
     }
+
+    // In-place ("incremental") update gate: same major only, and only upward.
+    T.expect(AppUpdates.canAutoUpdate(from: "0.6.0", to: [0, 7, 0]), "same-major update is in-app")
+    T.expect(AppUpdates.canAutoUpdate(from: "v0.6.0", to: [0, 6, 1]), "patch update is in-app")
+    T.expect(!AppUpdates.canAutoUpdate(from: "0.6.0", to: [1, 0, 0]), "major bump routes to browser")
+    T.expect(!AppUpdates.canAutoUpdate(from: "0.6.0", to: [0, 6, 0]), "same version isn't an update")
+    T.expect(!AppUpdates.canAutoUpdate(from: "0.6.0", to: [0, 5, 9]), "downgrade isn't an update")
+    T.expect(!AppUpdates.canAutoUpdate(from: "garbage", to: [0, 7, 0]), "unparseable current -> manual")
 }

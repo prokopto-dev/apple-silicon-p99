@@ -93,6 +93,16 @@ public enum Steps {
         return steps
     }
 
+    /// The Update Game Files pipeline. The wrapper build runs first: it is
+    /// idempotent (fast no-op when everything exists) and it is where
+    /// wrapper-level fixes land — registry keys, Info.plist environment — so
+    /// installer updates that ship such fixes reach existing installs without
+    /// a reinstall. Then the P99 patch-file update proper.
+    public static func update() -> [StepRun] {
+        [StepRun(title: "Re-apply wrapper fixes", script: "10-build-wrapper.sh"),
+         StepRun(title: "Download + apply newest P99 files", script: "50-update.sh")]
+    }
+
     /// Stack switch + renderer swap + eqclient.ini perf keys. All three scripts
     /// read their mode from the environment (P99_STACK / P99_RENDERER /
     /// P99_APPLY_PERF), so this same list applies or reverts the settings

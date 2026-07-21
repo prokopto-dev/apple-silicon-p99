@@ -164,7 +164,8 @@ cd scripts && ./10-build-wrapper.sh
 
 Note a routine `./50-update.sh` (P99 patch day) only re-stages game files; it does
 **not** rebuild the wrapper, so run `10-build-wrapper.sh` yourself if you installed
-before this change.
+before this change. (The installer app's **Update Game Files** button re-runs the
+wrapper build for you.)
 
 ## Lever 3 — EQ's own graphics load (view distance, particles, FPS cap)
 

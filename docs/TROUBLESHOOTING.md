@@ -211,7 +211,8 @@ ran unsynchronized (now fixed via the wrapper's `Info.plist` — see fix 2).
 **Fix (in order of impact):**
 1. Rebuild the wrapper once so msync reaches the game: `./10-build-wrapper.sh` (it
    skips the finished pieces and just refreshes the launch env). A routine
-   `./50-update.sh` does **not** do this.
+   `./50-update.sh` does **not** do this (the installer app's **Update Game
+   Files** button does — it re-runs the wrapper build first).
 2. *Optionally* try the D9VK renderer (Direct3D 9 → Vulkan → MoltenVK → Metal):
    `P99_RENDERER=d9vk ./60-renderer.sh` (or the installer app's Performance
    panel). On some machines it's a real win; on others it is much **slower**
@@ -261,6 +262,27 @@ preferred size (e.g. 1440×900). Keep `WindowedMode=TRUE`; alt-tab behavior
 fullscreen under wine is rough. Bonus: if you migrated an old install, your
 per-character `UI_*.ini` files store window positions in pixels — matching
 your old resolution puts every chat/hotbar window back where you had it.
+
+### Mouse escapes the window during right-click mouselook
+**Cause:** EQ's mouselook runs through DirectInput. Wine's default only warps
+the cursor back when the app clips it — and on macOS, wine's cursor clipping
+(winemac.drv's ClipCursor) runs through an event tap that requires
+Accessibility permission and **fails silently** without it. Net effect: the
+pointer drifts out of the window mid-turn and the camera stops until you
+mouse back in.
+**Fix:** current `10-build-wrapper.sh` sets the wine registry key
+`HKCU\Software\Wine\DirectInput` → `MouseWarpOverride=force`, which makes
+wine continuously re-center the cursor while the game holds the mouse — no
+macOS permission needed. This only applies **during** mouselook: with the
+right button up the cursor roams free, and Cmd-Tab mid-turn releases it
+(losing focus unacquires the mouse). On an existing wrapper, re-run the
+build script once (idempotent): `cd scripts && ./10-build-wrapper.sh`.
+A routine `./50-update.sh` does **not** do this, but the installer app's
+**Update Game Files** button does — it re-runs the wrapper build first.
+If forced warping bothers you, revert with
+`P99_MOUSE_WARP=enable ./10-build-wrapper.sh` and instead grant the wrapper
+Accessibility permission (System Settings → Privacy & Security →
+Accessibility → add `P99.app`) so wine's cursor clipping can work.
 
 ## Diagnostic reference: reading a wine trace
 

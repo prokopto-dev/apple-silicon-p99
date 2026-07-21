@@ -340,6 +340,66 @@ assert_eq "stack: uninstall removes fex wrapper" "no"  "$([ -d "$FX" ] && echo y
 assert_eq "stack: uninstall removes marker"      "no"  "$([ -f "$SM" ] && echo yes || echo no)"
 assert_eq "stack: uninstall keeps rosetta app"   "yes" "$([ -d "$KEEP" ] && echo yes || echo no)"
 
+# --- 95-selfupdate.sh: stage + swap (offline; python3 stands in for ditto) ----
+SU="$T/selfupdate"
+mkdir -p "$SU/src/Fake.app/Contents"
+cat > "$SU/src/Fake.app/Contents/Info.plist" <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleShortVersionString</key>
+  <string>9.9.9</string>
+</dict>
+</plist>
+PLIST
+(cd "$SU/src" && python3 -m zipfile -c "$SU/fake.zip" Fake.app)
+
+# stage: extracts, finds the app, reports its path + version as TSV.
+OUT=$(./95-selfupdate.sh stage "$SU/fake.zip" "$SU/work")
+assert_eq "selfupdate: staged version read" "9.9.9" "$(field "$OUT" VERSION)"
+STAGED=$(field "$OUT" APP)
+assert_eq "selfupdate: staged app on disk" "yes" "$([ -d "$STAGED" ] && echo yes || echo no)"
+
+# stage: a zip without an .app must fail, not report garbage.
+echo "not an app" > "$SU/junk.txt"
+(cd "$SU" && python3 -m zipfile -c junk.zip junk.txt)
+if ./95-selfupdate.sh stage "$SU/junk.zip" "$SU/work2" >/dev/null 2>&1; then
+  bad "selfupdate: appless zip must fail" "nonzero exit" "exit 0"
+else
+  ok
+fi
+
+# swap: waits for the (already dead) pid, replaces the target bundle, and
+# consumes the staged copy. `open`/`xattr` are absent on Linux — guarded.
+TARGET="$SU/Installed.app"
+mkdir -p "$TARGET/Contents"; echo old > "$TARGET/Contents/marker"
+mkdir -p "$SU/staged.app/Contents"; echo new > "$SU/staged.app/Contents/marker"
+bash -c 'exit 0' & DEAD_PID=$!
+wait "$DEAD_PID" 2>/dev/null || true
+./95-selfupdate.sh swap "$SU/staged.app" "$TARGET" "$DEAD_PID"
+assert_eq "selfupdate: new bundle swapped in" "new" "$(cat "$TARGET/Contents/marker" 2>/dev/null)"
+assert_eq "selfupdate: staged copy consumed" "no" "$([ -d "$SU/staged.app" ] && echo yes || echo no)"
+
+# --- mouse warp (MouseWarpOverride) ------------------------------------------
+# The knob defaults to force; an env override flows through config.sh.
+assert_eq "mouse: default force" "force" \
+  "$(bash -c 'source ./config.sh; echo "$P99_MOUSE_WARP"')"
+assert_eq "mouse: env override wins" "enable" \
+  "$(P99_MOUSE_WARP=enable bash -c 'source ./config.sh; echo "$P99_MOUSE_WARP"')"
+
+# 10-build-wrapper.sh rejects a bogus value — before any download or build.
+if ERR=$(P99_MOUSE_WARP=bogus WRAPPER="$T/mw.app" ./10-build-wrapper.sh 2>&1); then
+  bad "mouse: bogus value must fail" "nonzero exit" "exit 0"
+else
+  ok
+fi
+case "$ERR" in
+  *P99_MOUSE_WARP*) ok ;;
+  *) bad "mouse: error names the knob" "*P99_MOUSE_WARP*" "$ERR" ;;
+esac
+assert_eq "mouse: validation fired before any build" "no" "$([ -d "$T/mw.app" ] && echo yes || echo no)"
+
 echo
 if [ "$FAIL" -eq 0 ]; then
   echo "OK — $PASS script-layer assertions passed"

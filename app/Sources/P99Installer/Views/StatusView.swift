@@ -26,6 +26,13 @@ struct StatusView: View {
         }
         .sheet(isPresented: $showUninstall) { UninstallSheet() }
         .sheet(isPresented: $showAppUpdates) { AppUpdatesSheet() }
+        .task {
+            // Launch-time update check: pop the updates sheet (changelog and
+            // all) when a release the user hasn't skipped is available. Runs
+            // once per launch — the model guards re-entry when this view
+            // reappears after install/play runs.
+            if await model.autoCheckAppUpdates() { showAppUpdates = true }
+        }
     }
 
     private var header: some View {
