@@ -57,10 +57,12 @@ func runP99StatusTests() {
 
     // Informational performance keys must never gate readiness — they are not in
     // requiredKeys, so any value (including "missing") leaves fullyInstalled intact.
-    let withPerf = P99Status(tsv: tsv(["renderer": "d9vk", "moltenvk": "cx", "perf_ini": "ok"]))
-    T.expect(withPerf.fullyInstalled, "renderer/moltenvk/perf_ini don't affect fullyInstalled")
+    let withPerf = P99Status(tsv: tsv(["renderer": "d9vk", "moltenvk": "cx",
+                                       "dxvk_maps": "indirect", "perf_ini": "ok"]))
+    T.expect(withPerf.fullyInstalled, "renderer/moltenvk/dxvk_maps/perf_ini don't affect fullyInstalled")
     T.equal(withPerf.value("renderer"), "d9vk", "renderer value readable")
     T.equal(withPerf.value("moltenvk"), "cx", "moltenvk value readable")
+    T.equal(withPerf.value("dxvk_maps"), "indirect", "dxvk_maps value readable")
     let offPerf = P99Status(tsv: tsv(["renderer": "wined3d", "perf_ini": "missing"]))
     T.expect(offPerf.fullyInstalled, "perf_ini missing doesn't block readiness")
 }

@@ -59,9 +59,10 @@ EQ_ENV_PARTICLES="${EQ_ENV_PARTICLES:-}"      # EnvironmentParticleDensity
 EQ_FPS_CAP="${EQ_FPS_CAP:-}"           # MaxFPS/MaxBGFPS frame cap (steadier pacing)
 # Convenience bundle of conservative values; individual EQ_* vars override it.
 P99_PERF_PROFILE="${P99_PERF_PROFILE:-}"      # "smoother" or empty
-# d9vk diagnostics, read by 60-renderer.sh when applying the d9vk renderer.
+# d9vk diagnostics + experiments, read by 60-renderer.sh when applying d9vk.
 P99_RENDERER_DEBUG="${P99_RENDERER_DEBUG:-}"  # 1 = verbose DXVK/MoltenVK logs in-game
 P99_DXVK_HUD="${P99_DXVK_HUD:-}"              # DXVK_HUD value, e.g. "fps,frametimes"
+P99_DXVK_INDIRECT_MAPS="${P99_DXVK_INDIRECT_MAPS:-}"  # 1 = route buffer locks around the WoW64 map path
 
 # --- Derived paths (don't edit) ----------------------------------------------
 PREFIX="$WRAPPER/Contents/SharedSupport/prefix"
@@ -79,6 +80,12 @@ RENDERER_MARKER="$PREFIX/.p99-renderer"             # records the active rendere
 MOLTENVK_LINK="$WRAPPER/Contents/SharedSupport/libMoltenVK.dylib"
 MOLTENVK_STOCK_REL="../Frameworks/libMoltenVK.dylib"
 MOLTENVK_CX_REL="../Frameworks/moltenvkcx/libMoltenVK.dylib"
+# The indirect-buffer-maps experiment's DXVK config file. It lives in the
+# wrapper's drive_c (NOT the user's game dir) and is handed to the DLL via the
+# DXVK_CONFIG_FILE env var as a Windows path, so this project never has to put
+# state files next to the user's game.
+DXVK_CONF="$PREFIX/drive_c/dxvk-p99.conf"
+DXVK_CONF_WIN='C:\dxvk-p99.conf'
 
 # Env every direct wine invocation needs. DYLD_FALLBACK_LIBRARY_PATH lets the
 # engine find FreeType/libinotify/etc. shipped inside the wrapper's Frameworks.
@@ -230,6 +237,7 @@ DXVK_ASYNC
 DXVK_LOG_LEVEL
 MVK_CONFIG_LOG_LEVEL
 DXVK_HUD
+DXVK_CONFIG_FILE
 EOF
 }
 
@@ -258,6 +266,40 @@ apply_d9vk_env() {
 remove_d9vk_env() {
   local k
   for k in $(d9vk_env_keys); do remove_plist_env "$k"; done
+}
+
+# --- Indirect buffer maps (d9vk experiment) -----------------------------------
+# Why this knob exists: a 32-bit game under wine's WoW64 pays a heavy toll on
+# GPU-memory maps because the bundled MoltenVK lacks VK_EXT_map_memory_placed.
+# DXVK's `d3d9.allowDirectBufferMapping = False` reroutes the game's buffer
+# locks through DXVK-owned CPU memory instead of directly-mapped Vulkan memory —
+# trading some CPU copying for staying off that expensive map path. Opt-in
+# because on machines where the map path is cheap the copies are pure overhead.
+
+# The first line doubles as the ownership marker: the remove path only deletes a
+# file that carries it, so a hand-written conf at the same path is never clobbered.
+DXVK_CONF_MARKER='# Managed by p99-mac (60-renderer.sh) — safe to delete; re-applying recreates it.'
+
+apply_dxvk_conf() {
+  if [ -f "$DXVK_CONF" ] && [ "$(head -1 "$DXVK_CONF")" != "$DXVK_CONF_MARKER" ]; then
+    warn "$DXVK_CONF exists but isn't ours — leaving it alone (your settings win)"
+  else
+    cat > "$DXVK_CONF" <<EOF
+$DXVK_CONF_MARKER
+# Route D3D9 buffer locks through DXVK-owned memory instead of directly-mapped
+# Vulkan memory: costs some CPU copying, avoids the WoW64 32-bit map path.
+# See docs/PERFORMANCE.md ("Indirect buffer maps").
+d3d9.allowDirectBufferMapping = False
+EOF
+  fi
+  set_plist_env DXVK_CONFIG_FILE "$DXVK_CONF_WIN"
+}
+
+# Delete the conf only if we wrote it (marker check); the DXVK_CONFIG_FILE env
+# key is removed separately by remove_d9vk_env, which owns the whole key list.
+remove_dxvk_conf() {
+  [ -f "$DXVK_CONF" ] || return 0
+  if [ "$(head -1 "$DXVK_CONF")" = "$DXVK_CONF_MARKER" ]; then rm -f "$DXVK_CONF"; fi
 }
 
 # Whether the eqclient.ini performance keys are currently applied. Sentinel set by

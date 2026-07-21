@@ -88,4 +88,23 @@ public enum Steps {
         [StepRun(title: "Set the graphics renderer", script: "60-renderer.sh"),
          StepRun(title: "Apply EQ graphics settings", script: "35-perf-ini.sh")]
     }
+
+    /// The environment the Performance panel's choices translate to — the single
+    /// place the UI-to-script contract lives (docs/PERFORMANCE.md documents the
+    /// same variables for terminal users). Empty string = "leave off"; every
+    /// script treats an empty variable as unset. The INI patcher runs in apply
+    /// mode whenever any INI-backed choice is on, and in revert mode otherwise,
+    /// so turning the last toggle off cleans the keys back out.
+    public static func performanceEnv(renderer: String, smoother: Bool,
+                                      indirectMaps: Bool, fpsCap: String,
+                                      rendererDebug: Bool, fpsOverlay: Bool) -> [String: String] {
+        let applyINI = smoother || !fpsCap.isEmpty
+        return ["P99_RENDERER": renderer,
+                "P99_APPLY_PERF": applyINI ? "1" : "0",
+                "P99_PERF_PROFILE": smoother ? "smoother" : "",
+                "EQ_FPS_CAP": fpsCap,
+                "P99_DXVK_INDIRECT_MAPS": indirectMaps ? "1" : "",
+                "P99_RENDERER_DEBUG": rendererDebug ? "1" : "",
+                "P99_DXVK_HUD": fpsOverlay ? "fps,frametimes" : ""]
+    }
 }

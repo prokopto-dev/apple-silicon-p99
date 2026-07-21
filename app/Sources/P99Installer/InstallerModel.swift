@@ -65,6 +65,34 @@ final class InstallerModel {
         didSet { UserDefaults.standard.set(smootherINI, forKey: Self.smootherINIKey) }
     }
 
+    /// Frame-rate cap (eqclient.ini MaxFPS/MaxBGFPS via 35-perf-ini.sh): "" = off,
+    /// otherwise the cap as a string ("30"/"60"). Persisted.
+    static let fpsCapKey = "fpsCap"
+    var fpsCap: String = UserDefaults.standard.string(forKey: fpsCapKey) ?? "" {
+        didSet { UserDefaults.standard.set(fpsCap, forKey: Self.fpsCapKey) }
+    }
+
+    /// d9vk experiment: route D3D9 buffer locks through DXVK-owned memory instead
+    /// of directly-mapped Vulkan memory (dxvk-p99.conf in the wrapper's drive_c),
+    /// sidestepping the WoW64 32-bit map penalty at the cost of some CPU copying.
+    /// Only takes effect when the d9vk renderer is applied. Persisted.
+    static let indirectMapsKey = "indirectMaps"
+    var indirectMaps: Bool = UserDefaults.standard.bool(forKey: indirectMapsKey) {
+        didSet { UserDefaults.standard.set(indirectMaps, forKey: Self.indirectMapsKey) }
+    }
+
+    /// d9vk diagnostics: verbose DXVK/MoltenVK logs (P99_RENDERER_DEBUG) and the
+    /// in-game FPS overlay (P99_DXVK_HUD). Both only take effect under d9vk and
+    /// are removed whenever the renderer is re-applied without them. Persisted.
+    static let rendererDebugKey = "rendererDebug"
+    var rendererDebug: Bool = UserDefaults.standard.bool(forKey: rendererDebugKey) {
+        didSet { UserDefaults.standard.set(rendererDebug, forKey: Self.rendererDebugKey) }
+    }
+    static let fpsOverlayKey = "fpsOverlay"
+    var fpsOverlay: Bool = UserDefaults.standard.bool(forKey: fpsOverlayKey) {
+        didSet { UserDefaults.standard.set(fpsOverlay, forKey: Self.fpsOverlayKey) }
+    }
+
     // MARK: - Installer app updates
 
     enum AppUpdateState: Equatable {
@@ -150,15 +178,19 @@ final class InstallerModel {
         startRun(.launch, steps: [StepRun(title: "Launch Project 1999", script: "40-launch.sh")])
     }
 
-    /// Apply the current renderer + smoother-visuals choices. Both scripts read
-    /// their mode from the environment, so the same run either applies or reverts
-    /// depending on the toggles — no separate "revert" action needed.
+    /// Apply the current Performance panel choices. Both scripts read their mode
+    /// from the environment, so the same run either applies or reverts depending
+    /// on the toggles — no separate "revert" action needed. The choice→env
+    /// mapping lives in Steps.performanceEnv (P99Core) so tests can pin it.
     func applyPerformance() {
         startRun(.performance,
                  steps: Steps.performance(),
-                 extraEnv: ["P99_RENDERER": rendererChoice,
-                            "P99_APPLY_PERF": smootherINI ? "1" : "0",
-                            "P99_PERF_PROFILE": smootherINI ? "smoother" : ""])
+                 extraEnv: Steps.performanceEnv(renderer: rendererChoice,
+                                                smoother: smootherINI,
+                                                indirectMaps: indirectMaps,
+                                                fpsCap: fpsCap,
+                                                rendererDebug: rendererDebug,
+                                                fpsOverlay: fpsOverlay))
     }
 
     func uninstall(removeWrapper: Bool, removeGame: Bool) {

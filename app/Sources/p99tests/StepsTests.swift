@@ -36,4 +36,28 @@ func runStepsTests() {
     T.equal(perf.map(\.script), ["60-renderer.sh", "35-perf-ini.sh"],
             "performance: renderer then eqclient.ini")
     T.expect(perf.allSatisfy { $0.arguments.isEmpty }, "performance: no arguments (mode via env)")
+
+    // The panel-choice → script-env contract (docs/PERFORMANCE.md documents the
+    // same variables). Everything off must still run the INI patcher in revert
+    // mode so previously applied keys get cleaned out.
+    let off = Steps.performanceEnv(renderer: "wined3d", smoother: false, indirectMaps: false,
+                                   fpsCap: "", rendererDebug: false, fpsOverlay: false)
+    T.equal(off["P99_RENDERER"] ?? "", "wined3d", "perfEnv: renderer passthrough")
+    T.equal(off["P99_APPLY_PERF"] ?? "", "0", "perfEnv: all-off reverts the INI keys")
+    T.equal(off["P99_DXVK_INDIRECT_MAPS"] ?? "?", "", "perfEnv: indirect maps off is empty")
+
+    let allOn = Steps.performanceEnv(renderer: "d9vk", smoother: true, indirectMaps: true,
+                                     fpsCap: "60", rendererDebug: true, fpsOverlay: true)
+    T.equal(allOn["P99_APPLY_PERF"] ?? "", "1", "perfEnv: smoother applies INI")
+    T.equal(allOn["P99_PERF_PROFILE"] ?? "", "smoother", "perfEnv: smoother profile")
+    T.equal(allOn["EQ_FPS_CAP"] ?? "", "60", "perfEnv: fps cap passthrough")
+    T.equal(allOn["P99_DXVK_INDIRECT_MAPS"] ?? "", "1", "perfEnv: indirect maps on")
+    T.equal(allOn["P99_RENDERER_DEBUG"] ?? "", "1", "perfEnv: debug on")
+    T.equal(allOn["P99_DXVK_HUD"] ?? "", "fps,frametimes", "perfEnv: hud value")
+
+    // An FPS cap alone must run the INI patcher in apply mode (no smoother profile).
+    let capOnly = Steps.performanceEnv(renderer: "wined3d", smoother: false, indirectMaps: false,
+                                       fpsCap: "30", rendererDebug: false, fpsOverlay: false)
+    T.equal(capOnly["P99_APPLY_PERF"] ?? "", "1", "perfEnv: cap alone applies INI")
+    T.equal(capOnly["P99_PERF_PROFILE"] ?? "?", "", "perfEnv: cap alone has no profile")
 }

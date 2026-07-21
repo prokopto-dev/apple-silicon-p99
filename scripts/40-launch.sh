@@ -23,8 +23,15 @@ if [ "${1:-}" = "--debug" ]; then
   # load) and under d9vk makes the trace name WHICH MoltenVK build initialized
   # and whether Metal argument buffers are active — the two facts a slow-d9vk
   # report needs.
+  # The debug launch bypasses LSEnvironment (it's a direct wine run), so hand
+  # the indirect-maps conf over explicitly when it's applied — otherwise a
+  # debug session would silently behave differently from the Play session.
+  # Plain string, expanded unquoted: macOS bash 3.2 can't expand an empty array
+  # under `set -u`, and the value ($DXVK_CONF_WIN) never contains spaces.
+  DXVK_CONF_ENV=""
+  [ -f "$DXVK_CONF" ] && DXVK_CONF_ENV="DXVK_CONFIG_FILE=$DXVK_CONF_WIN"
   wine_env env WINEDEBUG=+seh,+loaddll \
-    DXVK_LOG_LEVEL=info MVK_CONFIG_LOG_LEVEL=2 \
+    DXVK_LOG_LEVEL=info MVK_CONFIG_LOG_LEVEL=2 $DXVK_CONF_ENV \
     "$WINE" cmd /c 'cd /d C:\Program Files\EverQuest && eqgame.exe patchme' \
     2>&1 | tee "$LOG" || true
   say "Game exited. Log: $LOG   (see docs/TROUBLESHOOTING.md for signatures)"
