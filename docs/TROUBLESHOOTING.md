@@ -232,10 +232,17 @@ penalty on every GPU-memory map unless the Vulkan driver supports
 `VK_EXT_map_memory_placed`, which the bundled MoltenVK builds do not — and a
 2005 engine maps buffers every frame. On machines where that cost dominates,
 D9VK will stay slow no matter what.
-**Fix:** switch back — `P99_RENDERER=wined3d ./60-renderer.sh` (or Performance
-panel → Stock → Apply). If you first installed d9vk before this fix existed,
-re-applying it once (`P99_RENDERER=d9vk ./60-renderer.sh`) picks up the MoltenVK
-pairing + tuning; it may be worth one retry before giving up on it.
+**Fix, in order:**
+1. If you first installed d9vk before these fixes existed, re-apply it once
+   (`P99_RENDERER=d9vk ./60-renderer.sh`) to pick up the MoltenVK pairing +
+   tuning — worth a retry before giving up.
+2. Still slow? Try the indirect-buffer-maps experiment, which reroutes the
+   game's per-frame geometry traffic around the expensive map path:
+   `P99_RENDERER=d9vk P99_DXVK_INDIRECT_MAPS=1 ./60-renderer.sh` (or the
+   Performance panel's *Indirect buffer maps* toggle). Compare with the FPS
+   overlay (`P99_DXVK_HUD=fps,frametimes`).
+3. If neither helps, switch back — `P99_RENDERER=wined3d ./60-renderer.sh` (or
+   Performance panel → Stock → Apply). That machine's answer is wined3d.
 **If reporting it:** re-apply with diagnostics —
 `P99_RENDERER=d9vk P99_RENDERER_DEBUG=1 ./60-renderer.sh`, launch once, then
 attach `~/Games/EverQuest/eqgame_d3d9.log`, the `[mvk-info]` MoltenVK

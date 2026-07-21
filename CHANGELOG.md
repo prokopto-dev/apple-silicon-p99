@@ -7,6 +7,26 @@ notes automatically (see "Cutting a release" in the README).
 
 ## [Unreleased]
 
+### Added
+- **Indirect buffer maps** — a new opt-in d9vk experiment
+  (`P99_DXVK_INDIRECT_MAPS=1`, or the Performance panel toggle) for machines
+  where d9vk stays slow after the MoltenVK pairing fix. It sets DXVK's
+  `d3d9.allowDirectBufferMapping = False` via a single-option conf owned by this
+  project (`drive_c/dxvk-p99.conf`, inside the wrapper — the game folder is
+  untouched), routing per-frame buffer locks around the expensive WoW64 32-bit
+  memory-map path at the cost of some CPU copying. Removed on re-apply without
+  the knob or revert to wined3d; `status.sh` reports it as `dxvk_maps`, and
+  `--debug` launches pick the conf up explicitly so they match the Play session.
+- **Full performance menu** in the installer app: renderer picker, d9vk-only
+  section (indirect buffer maps, FPS overlay, verbose renderer logs), smoother
+  visuals, and a frame-rate cap picker (Off/30/60) — all backed by the same
+  scripts and variables as the terminal path, with the choice→env mapping now a
+  tested `Steps.performanceEnv` contract.
+- **`docs/WHAT-WE-CHANGE.md`** — a complete, audit-friendly inventory of every
+  change the project makes (system, wrapper, prefix, game folder, every
+  `LSEnvironment` variable), with verification commands. Groundwork for the
+  planned GitHub Pages site.
+
 ### Fixed
 - **d9vk no longer runs on a mismatched MoltenVK** — the likely cause of the
   reported ~5 FPS on an M4 MacBook Pro. The wrapper template ships two MoltenVK
