@@ -307,6 +307,25 @@
   
   
     <li class="md-tabs__item">
+      <a href="../EXPERIMENTAL-FEX/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  FEX stack (experimental)
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
       <a href="../TROUBLESHOOTING/" class="md-tabs__link">
         
   
@@ -574,6 +593,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#the-experimental-fex-stack-opt-in-gated" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The experimental FEX stack (opt-in, gated)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#your-game-folder-gameseverquest" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -618,6 +648,33 @@
     
   
     Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../EXPERIMENTAL-FEX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FEX stack (experimental)
   
 
     
@@ -781,6 +838,17 @@
     <span class="md-ellipsis">
       
         The wine prefix (inside P99.app)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-experimental-fex-stack-opt-in-gated" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The experimental FEX stack (opt-in, gated)
       
     </span>
   </a>
@@ -1029,6 +1097,38 @@ LGPL CrossOver 24.0.7 wine. Deleting <code>P99.app</code> removes all of it.</p>
 </tr>
 </tbody>
 </table>
+<h2 id="the-experimental-fex-stack-opt-in-gated">The experimental FEX stack (opt-in, gated)<a class="headerlink" href="#the-experimental-fex-stack-opt-in-gated" title="Permanent link">&para;</a></h2>
+<p>Only exists if you opted into <a href="../EXPERIMENTAL-FEX/">the FEX experiment</a> —
+which additionally requires a pinned engine tarball that, as of this writing,
+has not been published. For everyone else, nothing in this section is on disk.</p>
+<table>
+<thead>
+<tr>
+<th>Change</th>
+<th>What / why</th>
+<th>Undo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/Applications/P99 FEX.app</code></td>
+<td>A second, independent wrapper (own engine + prefix) for the post-Rosetta ARM64-wine + FEX experiment. The supported <code>P99.app</code> is never touched by it.</td>
+<td>delete it, or the Uninstall screen's FEX toggle</td>
+</tr>
+<tr>
+<td><code>~/Library/Application Support/p99-mac/active-stack</code></td>
+<td>One-word marker recording which wrapper the Play button launches (<code>fex</code>; absent = rosetta). Written by <code>70-stack.sh</code>, removed on revert/uninstall; self-heals to rosetta if the FEX wrapper disappears.</td>
+<td><code>./70-stack.sh rosetta</code></td>
+</tr>
+<tr>
+<td><code>.p99-fex-smoke</code> (inside the FEX prefix)</td>
+<td>Last smoke-test result (<code>pass</code>/<code>fail</code>), shown by the installer and <code>status.sh</code>.</td>
+<td>deleted with the wrapper</td>
+</tr>
+</tbody>
+</table>
+<p>Verify: <code>./status.sh</code> → the <code>stack</code>, <code>fex_pinned</code>, <code>fex_wrapper</code>, <code>fex_engine</code>,
+<code>fex_prefix</code>, and <code>fex_smoke</code> lines.</p>
 <h2 id="your-game-folder-gameseverquest">Your game folder (<code>~/Games/EverQuest</code>)<a class="headerlink" href="#your-game-folder-gameseverquest" title="Permanent link">&para;</a></h2>
 <p>Your game files stay outside the app (they survive wrapper rebuilds). We change
 exactly three things, all during install, all backed up:</p>

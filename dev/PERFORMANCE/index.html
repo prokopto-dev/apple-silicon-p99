@@ -16,7 +16,7 @@
         <link rel="prev" href="../WHAT-WE-CHANGE/">
       
       
-        <link rel="next" href="../TROUBLESHOOTING/">
+        <link rel="next" href="../EXPERIMENTAL-FEX/">
       
       
         
@@ -295,6 +295,25 @@
     
   
   Performance
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../EXPERIMENTAL-FEX/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  FEX stack (experimental)
 
       </a>
     </li>
@@ -642,6 +661,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../EXPERIMENTAL-FEX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FEX stack (experimental)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../TROUBLESHOOTING/" class="md-nav__link">
         
   
@@ -895,6 +941,10 @@ verified default.</p>
 <span class="nv">P99_RENDERER</span><span class="o">=</span>wined3d<span class="w"> </span>./60-renderer.sh<span class="w">   </span><span class="c1"># switch back to the stock renderer</span>
 </code></pre></div>
 <p>Or use the installer app's <strong>Performance</strong> panel (renderer picker → Apply).</p>
+<p>The renderer choice is <strong>per engine stack</strong> (it lives inside each wrapper's
+prefix). Under the experimental <a href="../EXPERIMENTAL-FEX/">FEX stack</a> the installer
+locks the renderer to stock wined3d — the bundled D9VK/DXMT builds are only
+proven against the Rosetta engine.</p>
 <p><strong>Why D9VK can be slow, and what the script now does about it:</strong></p>
 <ol>
 <li><strong>It was running on the wrong MoltenVK.</strong> The wrapper template ships <em>two</em>

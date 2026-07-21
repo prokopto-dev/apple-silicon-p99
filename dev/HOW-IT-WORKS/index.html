@@ -307,6 +307,25 @@
   
   
     <li class="md-tabs__item">
+      <a href="../EXPERIMENTAL-FEX/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  FEX stack (experimental)
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
       <a href="../TROUBLESHOOTING/" class="md-tabs__link">
         
   
@@ -659,6 +678,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../EXPERIMENTAL-FEX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FEX stack (experimental)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../TROUBLESHOOTING/" class="md-nav__link">
         
   
@@ -961,6 +1007,13 @@ then exercise structured exceptions, memory-protection changes, and
 self-modifying code. Only after those pass should the runtime be tested
 against P99's Themida-packed <code>DSETUP.dll</code>. Until that proof exists, the
 Rosetta engine documented below remains the only supported backend.</p>
+<p>The <strong>scaffolding for that proof now ships in this repo</strong>: a second engine
+stack that installs side by side with the supported one (its own wrapper and
+prefix, shared game folder), a sha256-pinned slot for the future engine
+tarball, a stack switcher, offline smoke tests, and the installer UI to
+toggle between stacks. It is fully gated — until an engine tarball is
+published (or you pin your own), nothing changes for anyone. See
+<a href="../EXPERIMENTAL-FEX/">the FEX stack (experimental)</a>.</p>
 <h2 id="fix-1-dsetupdll-the-anti-cheat-that-couldnt">Fix 1: <code>DSETUP.dll</code> — the anti-cheat that couldn't<a class="headerlink" href="#fix-1-dsetupdll-the-anti-cheat-that-couldnt" title="Permanent link">&para;</a></h2>
 <p>P99 distributes a custom <code>dsetup.dll</code> (~5 MB — the real DirectX helper it
 impersonates is ~70 KB). It contains P99's client patches and anti-cheat, and
