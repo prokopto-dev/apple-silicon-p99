@@ -130,6 +130,7 @@ struct RunView: View {
         case .uninstall:   "Uninstall finished."
         case .launch:      "The game engine is up — have fun!"
         case .performance: "Performance settings applied."
+        case .fexSetup:    "FEX stack ready — pick it above and Apply to switch."
         }
     }
 
