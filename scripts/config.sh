@@ -42,6 +42,16 @@ P99FILES_MIN_VERSION="${P99FILES_MIN_VERSION:-62}"
 # md5 of the known-good "V58" dsetup.dll build (see 30-apply-mac-fixes.sh).
 GOOD_MD5="${GOOD_MD5:-b02ab111c9b95c2ddad4e3bdbe9c53cd}"
 
+# Wine DirectInput cursor-warp mode, written into the prefix by
+# 10-build-wrapper.sh. "force" keeps the pointer captured in the window during
+# EQ's hold-right-click mouselook (wine re-centers it continuously while the
+# game has the mouse acquired — cursor is free, and Cmd-Tab works, otherwise).
+# Wine's default "enable" only warps when the app clips the cursor — and
+# winemac.drv's cursor clipping silently fails without macOS Accessibility
+# permission, letting the pointer drift out mid-turn.
+# Values: force (default) | enable (wine default) | disable.
+P99_MOUSE_WARP="${P99_MOUSE_WARP:-force}"
+
 # --- Engine stack (Rosetta today, experimental FEX slot for the post-Rosetta
 # future) ----------------------------------------------------------------------
 # Two stacks can be installed side by side, each with its own wrapper app and

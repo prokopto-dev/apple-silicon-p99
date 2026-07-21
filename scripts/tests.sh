@@ -340,6 +340,25 @@ assert_eq "stack: uninstall removes fex wrapper" "no"  "$([ -d "$FX" ] && echo y
 assert_eq "stack: uninstall removes marker"      "no"  "$([ -f "$SM" ] && echo yes || echo no)"
 assert_eq "stack: uninstall keeps rosetta app"   "yes" "$([ -d "$KEEP" ] && echo yes || echo no)"
 
+# --- mouse warp (MouseWarpOverride) ------------------------------------------
+# The knob defaults to force; an env override flows through config.sh.
+assert_eq "mouse: default force" "force" \
+  "$(bash -c 'source ./config.sh; echo "$P99_MOUSE_WARP"')"
+assert_eq "mouse: env override wins" "enable" \
+  "$(P99_MOUSE_WARP=enable bash -c 'source ./config.sh; echo "$P99_MOUSE_WARP"')"
+
+# 10-build-wrapper.sh rejects a bogus value — before any download or build.
+if ERR=$(P99_MOUSE_WARP=bogus WRAPPER="$T/mw.app" ./10-build-wrapper.sh 2>&1); then
+  bad "mouse: bogus value must fail" "nonzero exit" "exit 0"
+else
+  ok
+fi
+case "$ERR" in
+  *P99_MOUSE_WARP*) ok ;;
+  *) bad "mouse: error names the knob" "*P99_MOUSE_WARP*" "$ERR" ;;
+esac
+assert_eq "mouse: validation fired before any build" "no" "$([ -d "$T/mw.app" ] && echo yes || echo no)"
+
 echo
 if [ "$FAIL" -eq 0 ]; then
   echo "OK — $PASS script-layer assertions passed"

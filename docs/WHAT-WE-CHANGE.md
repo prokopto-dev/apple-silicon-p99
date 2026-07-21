@@ -64,6 +64,7 @@ LGPL CrossOver 24.0.7 wine. Deleting `P99.app` removes all of it.
 | Change | What / why | Undo |
 |---|---|---|
 | Windows version = XP | Part of the proven recipe; EQ is a 2005 title. | `wine reg` (never needed) |
+| DirectInput `MouseWarpOverride=force` | Keeps the cursor captured in the window during right-click mouselook (wine re-centers it while the game holds the mouse; free otherwise). | `P99_MOUSE_WARP=enable ./10-build-wrapper.sh` |
 | MS core fonts installed | EQ renders UI text through Windows font APIs; without real Arial etc. the UI is fuzzy. | delete `drive_c/windows/Fonts` copies |
 | **`d3d9.dll` swap** (opt-in, d9vk) | The renderer switch. Stock file is backed up once (`d3d9.dll.wined3d.bak`) and a wine DLL override is added; switching back restores the exact stock state and deletes the override. | `P99_RENDERER=wined3d ./60-renderer.sh` |
 | `.p99-renderer` marker | One-word file recording the active renderer so `status.sh` and rebuilds stay truthful. | removed on revert |

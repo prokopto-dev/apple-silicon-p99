@@ -148,6 +148,10 @@ The last mile is conventional wine lore, from the P99 forums' Mac thread:
 - **Windows version = XP** in the wine prefix (registry
   `HKCU\Software\Wine\Version=winxp`) — EQ Titanium is a 2005 game; XP is what
   it expects to see.
+- **`MouseWarpOverride=force`** (registry `HKCU\Software\Wine\DirectInput`) —
+  keeps the cursor captured during DirectInput mouselook, and only then. The
+  alternative (wine clipping the cursor via macOS's event-tap API) silently
+  requires Accessibility permission; forced warping needs none.
 
 Rendering runs through wine's built-in `wined3d` (Direct3D → OpenGL → Metal via
 Apple's GL stack). It initializes with Shader Model 3.0 and is entirely

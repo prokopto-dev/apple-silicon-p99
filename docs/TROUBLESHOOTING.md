@@ -262,6 +262,26 @@ fullscreen under wine is rough. Bonus: if you migrated an old install, your
 per-character `UI_*.ini` files store window positions in pixels — matching
 your old resolution puts every chat/hotbar window back where you had it.
 
+### Mouse escapes the window during right-click mouselook
+**Cause:** EQ's mouselook runs through DirectInput. Wine's default only warps
+the cursor back when the app clips it — and on macOS, wine's cursor clipping
+(winemac.drv's ClipCursor) runs through an event tap that requires
+Accessibility permission and **fails silently** without it. Net effect: the
+pointer drifts out of the window mid-turn and the camera stops until you
+mouse back in.
+**Fix:** current `10-build-wrapper.sh` sets the wine registry key
+`HKCU\Software\Wine\DirectInput` → `MouseWarpOverride=force`, which makes
+wine continuously re-center the cursor while the game holds the mouse — no
+macOS permission needed. This only applies **during** mouselook: with the
+right button up the cursor roams free, and Cmd-Tab mid-turn releases it
+(losing focus unacquires the mouse). On an existing wrapper, re-run the
+build script once (idempotent): `cd scripts && ./10-build-wrapper.sh`.
+A routine `./50-update.sh` does **not** do this.
+If forced warping bothers you, revert with
+`P99_MOUSE_WARP=enable ./10-build-wrapper.sh` and instead grant the wrapper
+Accessibility permission (System Settings → Privacy & Security →
+Accessibility → add `P99.app`) so wine's cursor clipping can work.
+
 ## Diagnostic reference: reading a wine trace
 
 - `dispatch_exception code=c000008e` (float divide-by-zero) and
