@@ -111,11 +111,13 @@ struct StatusView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Picker("Graphics renderer", selection: $model.rendererChoice) {
                     Text("Stock (wined3d)").tag("wined3d")
-                    Text("D9VK — Vulkan/Metal (smoother)").tag("d9vk")
+                    Text("D9VK — Vulkan/Metal (experimental)").tag("d9vk")
                 }
-                Text("D9VK skips the deprecated OpenGL path — the biggest fix for "
-                     + "stutter on newer Apple Silicon (M4/M5). Switching back to Stock "
-                     + "restores the original renderer and changes nothing else.")
+                Text("D9VK skips the deprecated OpenGL path and can be much smoother "
+                     + "on newer chips — but on some machines it is much slower "
+                     + "(single-digit FPS has been reported). If that happens, switch "
+                     + "back to Stock and Apply; it restores the original renderer "
+                     + "and changes nothing else.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

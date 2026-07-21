@@ -28,8 +28,9 @@ Three costs stack up, and only the first two are tunable:
 1. **The renderer path.** By default rendering runs through wine's built-in
    `wined3d`: Direct3D 9 → OpenGL → Apple's **deprecated** GL-on-Metal shim (see
    [HOW-IT-WORKS.md](HOW-IT-WORKS.md)). Apple has not optimized that OpenGL layer
-   in years; on newer GPUs (M4/M5) it is the single biggest source of uneven frame
-   times. The template bundles a faster renderer that skips it entirely (lever 1).
+   in years; on newer GPUs (M4/M5) it is a major source of uneven frame times.
+   The template bundles an alternative renderer that skips it entirely (lever 1)
+   — a big win on some machines, and much slower on others, so it stays opt-in.
 2. **Thread scheduling.** Wine's `msync` (mach-semaphore) fast path smooths the
    hand-offs between the game's threads. It was *set* but not *reaching* the real
    game session (lever 2 explains and fixes that).
@@ -39,12 +40,15 @@ Three costs stack up, and only the first two are tunable:
    [TROUBLESHOOTING.md](TROUBLESHOOTING.md)). This is **not** tunable, and no
    CPU-affinity trick changes it (see "What doesn't help" below).
 
-## Lever 1 — Switch the renderer to D9VK (biggest win)
+## Lever 1 — Try the D9VK renderer (big win for some, much worse for others)
 
 **What it does:** replaces the Direct3D 9 → OpenGL → deprecated-shim path with
-**D9VK: Direct3D 9 → Vulkan → MoltenVK → Metal**, which the bundled MoltenVK
-maps straight onto Metal. For a Direct3D 9 game like EQ this is the most direct
-route to the GPU and usually the largest smoothness improvement on M-series Macs.
+**D9VK: Direct3D 9 → Vulkan → MoltenVK → Metal**. When it works, it is the most
+direct route to the GPU and a real smoothness improvement. **When it doesn't, it
+can be dramatically slower** — a single-digit-FPS slideshow has been reported on
+an M4 MacBook Pro. That outcome is a known property of this stack, not user
+error; the fix is simply to switch back (below). wined3d remains the safe,
+verified default.
 
 ```bash
 cd scripts
@@ -54,21 +58,62 @@ P99_RENDERER=wined3d ./60-renderer.sh   # switch back to the stock renderer
 
 Or use the installer app's **Performance** panel (renderer picker → Apply).
 
+**Why D9VK can be slow, and what the script now does about it:**
+
+1. **It was running on the wrong MoltenVK.** The wrapper template ships *two*
+   MoltenVK builds: a recent stock build, and CodeWeavers' patched build
+   (`moltenvkcx/`) — the one the bundled D9VK (DXVK 1.10) was actually built and
+   tested against. The wrapper's library links pointed the engine at the stock
+   build, which is years newer than that DXVK and turns on "Metal argument
+   buffers" by default — a documented DXVK performance cliff. Switching to d9vk
+   now re-points the engine at the CX build (and a wrapper rebuild preserves
+   that; `./status.sh` reports it as `moltenvk cx`).
+2. **Async shader compilation was never switched on.** The bundled DLL is the
+   dxvk-*async* build, but the `DXVK_ASYNC=1` switch that activates it never
+   reached the game, so every new shader compiled on the render thread.
+   Switching to d9vk now injects it (plus `MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS=0`
+   as a belt-and-suspenders, fast-math, and device-loss resume) through the same
+   `LSEnvironment` channel as lever 2. Switching back to wined3d removes all of it.
+3. **One cost we cannot fix:** this is a 32-bit game running through wine's
+   WoW64 mode, and without a Vulkan extension called `VK_EXT_map_memory_placed`
+   (which neither bundled MoltenVK supports) every GPU-memory map by a 32-bit
+   game takes an expensive fallback. A 2005 engine maps vertex buffers every
+   frame. On some machines this cost dominates everything else — if D9VK is
+   still slow for you after this update, that is why, and wined3d is the answer.
+
+**Diagnostics (optional, for reporting):**
+
+```bash
+P99_RENDERER=d9vk P99_RENDERER_DEBUG=1 ./60-renderer.sh   # verbose DXVK+MoltenVK logs
+P99_RENDERER=d9vk P99_DXVK_HUD=fps,frametimes ./60-renderer.sh  # in-game FPS overlay
+```
+
+`P99_RENDERER_DEBUG=1` makes the game write `~/Games/EverQuest/eqgame_d3d9.log`
+and makes a `./40-launch.sh --debug` trace include the MoltenVK version line —
+which tells us exactly which build loaded and whether argument buffers are off.
+Re-run the switch without the variable to turn either off. No `dxvk.conf` is
+shipped: everything D9VK needs rides the environment, and this project doesn't
+put extra state files in your game directory.
+
 **How it works / reversibility:** `60-renderer.sh` backs up the stock
 `d3d9.dll` once as `d3d9.dll.wined3d.bak`, drops in the bundled D9VK `d3d9.dll`,
-and adds a wine DLL override so wine loads it. Switching back restores the backup
-and removes the override — nothing else in your prefix or `eqclient.ini` is
-touched, so you can flip back and forth freely to compare. The active renderer
-shows up in `./status.sh` (and the app checklist) as `renderer`.
+adds a wine DLL override so wine loads it, re-points the engine's MoltenVK link
+at the CX build, and injects the `LSEnvironment` tuning above. Switching back
+restores the backup and removes every one of those changes — nothing else in
+your prefix or `eqclient.ini` is touched, so you can flip back and forth freely
+to compare. The active renderer shows up in `./status.sh` (and the app
+checklist) as `renderer`, the MoltenVK pairing as `moltenvk`.
 
 **Tradeoffs / caveats:**
-- D9VK is opt-in, not the default, precisely because the stock `wined3d` path is
-  the one this project has verified across M1–M4. If D9VK misbehaves for you
-  (missing textures, a crash on load), switch straight back with the `wined3d`
-  command above.
+- D9VK is opt-in, not the default: the stock `wined3d` path is the one this
+  project has verified on real hardware. If D9VK misbehaves for you (much lower
+  FPS, missing textures, a crash on load), switch straight back with the
+  `wined3d` command above — and see
+  [TROUBLESHOOTING.md](TROUBLESHOOTING.md#after-switching-to-d9vk-the-game-is-much-slower-single-digit-fps)
+  if you want to report it usefully.
 - `d3dmetal` and `dxmt` are also accepted (`P99_RENDERER=d3dmetal`) but are
   **experimental for EQ**: they target Direct3D 11/12, which EQ doesn't use, so
-  they may not change anything for this game. D9VK is the one to try first.
+  they may not change anything for this game.
 
 ## Lever 2 — Wine msync actually reaching the game
 
@@ -147,12 +192,14 @@ graphics renderer, apply EQ graphics settings — completed successfully.](img/p
 ## Measuring
 
 - **In-game FPS:** EVERQUEST's own frame counter, or just feel out a busy zone
-  (e.g. the East Commonlands tunnel, a raid) before and after a change.
+  (e.g. the East Commonlands tunnel, a raid) before and after a change. Under
+  d9vk, `P99_DXVK_HUD=fps,frametimes` (lever 1 diagnostics) draws an overlay.
 - **`~/Games/EverQuest/Logs/dbg.txt`** confirms the game reached the engine.
 - **Activity Monitor → Window → GPU History** shows whether you're GPU-bound; if
   the GPU is pinned, lever 1 (renderer) and lever 3 (particles/FPS cap) help most.
-- **`./status.sh`** reports the active `renderer` and whether the smoother INI
-  profile is applied (`perf_ini`).
+- **`./status.sh`** reports the active `renderer`, which MoltenVK build the
+  engine is paired with (`moltenvk`: `cx` under d9vk, `stock` otherwise), and
+  whether the smoother INI profile is applied (`perf_ini`).
 
 ## What doesn't help (or we can't expose)
 
