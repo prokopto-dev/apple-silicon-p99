@@ -10,6 +10,27 @@ release's section below becomes its GitHub Release notes automatically
 
 <!-- version list -->
 
+## v0.5.0 (2026-07-21)
+
+### Continuous Integration
+
+- Adopt semantic-release with Conventional Commits (nparse-plus style)
+  ([`ded9dd4`](https://github.com/prokopto-dev/apple-silicon-p99/commit/ded9dd473258427f35b74bece0abca18cb6aa43c))
+
+### Documentation
+
+- Publish the docs as a versioned MkDocs site on GitHub Pages
+  ([`19408ca`](https://github.com/prokopto-dev/apple-silicon-p99/commit/19408ca965d1aa04ede27e3cf54527561376a4e2))
+
+- WHAT-WE-CHANGE audit page + performance menu documentation
+  ([`04a6c67`](https://github.com/prokopto-dev/apple-silicon-p99/commit/04a6c67c24bf03b39eb418c8b9ac10f17a5f1f9b))
+
+### Features
+
+- Performance menu, indirect-buffer-maps experiment, d9vk MoltenVK pairing fix
+  ([`5e3c879`](https://github.com/prokopto-dev/apple-silicon-p99/commit/5e3c879cb8fc8d637226eede09e5bb14ec021743))
+
+
 ### Added
 - **Indirect buffer maps** — a new opt-in d9vk experiment
   (`P99_DXVK_INDIRECT_MAPS=1`, or the Performance panel toggle) for machines

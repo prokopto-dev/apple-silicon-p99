@@ -6,7 +6,7 @@
 
 [project]
 name = "apple-silicon-p99"
-version = "0.4.0"
+version = "0.5.0"
 description = "EverQuest Project 1999 on Apple Silicon — installer app and scripts"
 
 [tool.semantic_release]
