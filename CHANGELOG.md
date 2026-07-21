@@ -10,6 +10,27 @@ release's section below becomes its GitHub Release notes automatically
 
 <!-- version list -->
 
+## v0.6.0 (2026-07-21)
+
+### Bug Fixes
+
+- **app**: Handle the fexSetup run kind in RunView's success message
+  ([`ac6cb5a`](https://github.com/prokopto-dev/apple-silicon-p99/commit/ac6cb5a957bf28798103fff97e147add0ae4f8f1))
+
+### Documentation
+
+- Experimental FEX stack guide, stack-picker mockups, roadmap update
+  ([`bf0b80a`](https://github.com/prokopto-dev/apple-silicon-p99/commit/bf0b80aa03096fb222badbc62b23ffd5f971e760))
+
+### Features
+
+- **app**: Engine-stack picker with FEX availability gating and per-stack renderer rules
+  ([`44bb218`](https://github.com/prokopto-dev/apple-silicon-p99/commit/44bb218538576dfcd57363821dadd6599f90cc24))
+
+- **scripts**: Switchable engine stack with pinned FEX slot, stack switcher, and smoke tests
+  ([`e896dad`](https://github.com/prokopto-dev/apple-silicon-p99/commit/e896dad75e96f1bcf4a6b8ac5c4d47b6894e6878))
+
+
 ## v0.5.0 (2026-07-21)
 
 ### Continuous Integration
