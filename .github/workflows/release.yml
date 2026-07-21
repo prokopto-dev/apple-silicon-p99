@@ -1,7 +1,13 @@
-# Builds P99 Installer.app on every push/PR (CI smoke test), and attaches
-# P99-Installer.zip to a GitHub Release whenever a version tag is pushed:
+# Builds P99 Installer.app on every push/PR (CI smoke test), and publishes
+# P99-Installer.zip to a GitHub Release when a version is released. Two ways to
+# release:
 #
-#   git tag v0.1.0 && git push origin v0.1.0
+#   1. Push a version tag (e.g. on a Mac via `make release`):
+#        git tag v0.1.0 && git push origin v0.1.0
+#   2. Run this workflow manually ("Run workflow" / workflow_dispatch) with a
+#      `version` input. CI builds + tests, then creates the tag and Release via
+#      the API — no tag push needed. The version must match the top released
+#      section in CHANGELOG.md (stamp it and commit "Release vX.Y.Z" to main first).
 #
 # The Release's zip is the user-facing download link ("Releases" in the repo
 # sidebar / releases/latest). The per-push workflow artifact is only for CI
@@ -13,6 +19,12 @@ on:
     branches: [main]
     tags: ["v*"]
   pull_request:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, e.g. 0.4.0 (must match the top CHANGELOG.md section). Blank = build only."
+        required: false
+        default: ""
 
 jobs:
   build:
@@ -20,9 +32,33 @@ jobs:
     # (like local CLT builds); Xcode 15 on macos-14 rejects the views.
     runs-on: macos-15
     permissions:
-      contents: write # needed to create the Release on tag pushes
+      contents: write # needed to create the tag/Release on release runs
     steps:
       - uses: actions/checkout@v4
+
+      # Decide whether this run publishes a Release, and for which version:
+      # a version-tag push uses the tag; a manual dispatch uses the `version`
+      # input (and the release step below creates the tag). Refuses to publish a
+      # version that has no matching CHANGELOG.md section (would give empty notes).
+      - name: Determine release
+        id: rel
+        env:
+          DISPATCH_VERSION: ${{ inputs.version }}
+        run: |
+          if [ "${GITHUB_REF}" != "${GITHUB_REF#refs/tags/v}" ]; then
+            VER="${GITHUB_REF#refs/tags/v}"; PUBLISH=true
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "$DISPATCH_VERSION" ]; then
+            VER="$DISPATCH_VERSION"; PUBLISH=true
+          else
+            VER=""; PUBLISH=false
+          fi
+          if [ "$PUBLISH" = "true" ]; then
+            awk -v ver="$VER" '$0 ~ "^## \\[" ver "\\]" {found=1} END{exit !found}' CHANGELOG.md \
+              || { echo "::error::CHANGELOG.md has no '## [$VER]' section — refusing to publish $VER"; exit 1; }
+          fi
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          echo "publish=$PUBLISH" >> "$GITHUB_OUTPUT"
+          echo "Release decision: publish=$PUBLISH version=$VER"
 
       - name: Unit + script tests
         run: make test
@@ -76,12 +112,12 @@ jobs:
           name: P99-Installer
           path: dist/P99-Installer.zip
 
-      # Release notes come from this version's CHANGELOG.md section
-      # (make release keeps it populated). Falls back to a stub if missing.
+      # Release notes come from this version's CHANGELOG.md section.
+      # Falls back to a stub if missing.
       - name: Extract changelog section
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: steps.rel.outputs.publish == 'true'
         run: |
-          VER="${GITHUB_REF#refs/tags/v}"
+          VER="${{ steps.rel.outputs.version }}"
           awk -v ver="$VER" '
             $0 ~ "^## \\[" ver "\\]" {on=1; next}
             on && /^## \[/ {exit}
@@ -92,9 +128,13 @@ jobs:
           fi
           cat /tmp/notes.md
 
+      # On a tag push this attaches to the pushed tag; on a manual dispatch it
+      # creates tag v<version> at this commit, then publishes the Release.
       - name: Attach zip to Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: steps.rel.outputs.publish == 'true'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ steps.rel.outputs.version }}
+          target_commitish: ${{ github.sha }}
           files: dist/P99-Installer.zip
           body_path: /tmp/notes.md

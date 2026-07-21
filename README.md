@@ -263,16 +263,26 @@ executable, since the Command Line Tools ship no test framework) plus
 offline script-layer tests (`scripts/tests.sh`) for the status probes and
 non-interactive uninstall.
 
-Releases are automated. To cut one: put the changes under `[Unreleased]` in
-[CHANGELOG.md](CHANGELOG.md), then
+Releases are automated. First put the changes under `[Unreleased]` in
+[CHANGELOG.md](CHANGELOG.md). Then cut the release one of two ways:
+
+**On a Mac (one command):**
 
 ```bash
-make release V=0.2.0
+make release V=0.4.0
 ```
 
 That verifies tests pass and the changelog section isn't empty, stamps the
 version + date, commits, tags, and pushes — CI builds the app and publishes
 the GitHub Release with that changelog section as its notes.
+
+**Without pushing a tag (CI does it):** stamp the changelog and commit
+`Release vX.Y.Z` to `main`, then run the **Build installer app** workflow from
+the Actions tab via **Run workflow**, entering the version (e.g. `0.4.0`). CI
+builds and tests on a macOS runner, then creates the tag and publishes the
+Release itself. Useful when you can't push a tag directly. The version must
+match the top `## [X.Y.Z]` section in `CHANGELOG.md`, or the run stops before
+publishing.
 
 ## Roadmap
 
