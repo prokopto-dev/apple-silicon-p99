@@ -101,10 +101,18 @@ struct StatusView: View {
         }
     }
 
+    private func caption(_ text: String) -> some View {
+        Text(text)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
     // Opt-in, reversible tuning for stutter on newer Apple Silicon. Full guide:
-    // docs/PERFORMANCE.md. Apply runs the scripts; toggles alone change nothing
-    // until Apply is pressed (these edit the wine prefix / eqclient.ini, which
-    // must be done with the game closed).
+    // docs/PERFORMANCE.md (every control names the script + variable it maps to
+    // there, so terminal users get the identical behavior). Apply runs the
+    // scripts; toggles alone change nothing until Apply is pressed (these edit
+    // the wine prefix / eqclient.ini, which must be done with the game closed).
     private var performanceBox: some View {
         @Bindable var model = model
         return GroupBox("Performance") {
@@ -113,22 +121,40 @@ struct StatusView: View {
                     Text("Stock (wined3d)").tag("wined3d")
                     Text("D9VK — Vulkan/Metal (experimental)").tag("d9vk")
                 }
-                Text("D9VK skips the deprecated OpenGL path and can be much smoother "
-                     + "on newer chips — but on some machines it is much slower "
-                     + "(single-digit FPS has been reported). If that happens, switch "
-                     + "back to Stock and Apply; it restores the original renderer "
-                     + "and changes nothing else.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                caption("D9VK skips the deprecated OpenGL path and can be much smoother "
+                        + "on newer chips — but on some machines it is much slower "
+                        + "(single-digit FPS has been reported). If that happens, switch "
+                        + "back to Stock and Apply; it restores the original renderer "
+                        + "and changes nothing else.")
+                if model.rendererChoice == "d9vk" {
+                    Toggle(isOn: $model.indirectMaps) {
+                        Text("Indirect buffer maps (experiment)")
+                    }
+                    caption("If D9VK is still slow, try this: it keeps the game's "
+                            + "geometry updates out of the one code path this stack "
+                            + "makes expensive, at the cost of some extra CPU copying.")
+                    Toggle(isOn: $model.fpsOverlay) {
+                        Text("Show FPS overlay in-game")
+                    }
+                    Toggle(isOn: $model.rendererDebug) {
+                        Text("Verbose renderer logs (for bug reports)")
+                    }
+                    caption("Diagnostics for comparing D9VK against Stock. The logs "
+                            + "name exactly which components loaded — attach them if "
+                            + "you report a slow or broken D9VK run.")
+                    Divider()
+                }
                 Toggle(isOn: $model.smootherINI) {
                     Text("Smoother visuals (lower particle load)")
                 }
-                Text("Trims EverQuest's own graphics load. Never changes your "
-                     + "resolution or keybinds, and is fully reversible.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                Picker("Frame-rate cap", selection: $model.fpsCap) {
+                    Text("Off").tag("")
+                    Text("30 FPS").tag("30")
+                    Text("60 FPS").tag("60")
+                }
+                caption("EverQuest's own settings (eqclient.ini): fewer particles and "
+                        + "a steadier frame cap. Never changes your resolution or "
+                        + "keybinds, and is fully reversible.")
                 HStack {
                     Text("Close EverQuest before applying.")
                         .font(.caption)

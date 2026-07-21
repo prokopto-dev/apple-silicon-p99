@@ -78,8 +78,9 @@ Or use the installer app's **Performance** panel (renderer picker → Apply).
    WoW64 mode, and without a Vulkan extension called `VK_EXT_map_memory_placed`
    (which neither bundled MoltenVK supports) every GPU-memory map by a 32-bit
    game takes an expensive fallback. A 2005 engine maps vertex buffers every
-   frame. On some machines this cost dominates everything else — if D9VK is
-   still slow for you after this update, that is why, and wined3d is the answer.
+   frame. On some machines this cost dominates everything else. The *indirect
+   buffer maps* experiment below attacks it from the other side; if that doesn't
+   help either, wined3d is the answer.
 
 **Diagnostics (optional, for reporting):**
 
@@ -91,9 +92,27 @@ P99_RENDERER=d9vk P99_DXVK_HUD=fps,frametimes ./60-renderer.sh  # in-game FPS ov
 `P99_RENDERER_DEBUG=1` makes the game write `~/Games/EverQuest/eqgame_d3d9.log`
 and makes a `./40-launch.sh --debug` trace include the MoltenVK version line —
 which tells us exactly which build loaded and whether argument buffers are off.
-Re-run the switch without the variable to turn either off. No `dxvk.conf` is
-shipped: everything D9VK needs rides the environment, and this project doesn't
-put extra state files in your game directory.
+Re-run the switch without the variable to turn either off.
+
+**Experiment — indirect buffer maps (if D9VK is still slow):**
+
+```bash
+P99_RENDERER=d9vk P99_DXVK_INDIRECT_MAPS=1 ./60-renderer.sh   # on
+P99_RENDERER=d9vk ./60-renderer.sh                            # off (re-apply without it)
+```
+
+This targets cost 3 above — the expensive 32-bit memory-map path — from the
+other side: instead of making the maps cheap (we can't), it tells DXVK to stop
+handing the game direct pointers into Vulkan-mapped memory
+(`d3d9.allowDirectBufferMapping = False`). Buffer locks then land in DXVK-owned
+CPU memory and DXVK manages the upload itself, which keeps the game's per-frame
+geometry traffic off the one code path this stack makes expensive. The price is
+extra CPU copying, so this is a measured experiment, not a default: try it with
+the FPS overlay on and keep whichever is faster on *your* machine. The setting
+lives in a single one-option file **inside the wrapper** (`drive_c/dxvk-p99.conf`
+— your game folder is not touched), is handed to DXVK via `DXVK_CONFIG_FILE`,
+and both disappear when you re-apply without the knob or revert to wined3d.
+`./status.sh` reports it as `dxvk_maps` (`indirect` vs `default`).
 
 **How it works / reversibility:** `60-renderer.sh` backs up the stock
 `d3d9.dll` once as `d3d9.dll.wined3d.bak`, drops in the bundled D9VK `d3d9.dll`,
@@ -181,10 +200,25 @@ window is itself a fill-rate win if you're GPU-bound.
 
 ## Applying from the installer app
 
-Prefer buttons to the terminal? The installer's **Performance** panel (shown above)
-sets the same things: pick a renderer, flip **Smoother visuals**, then press **Apply
-Performance Settings** with the game closed. It runs `60-renderer.sh` and
-`35-perf-ini.sh` for you and reports when it's done.
+Prefer buttons to the terminal? The installer's **Performance** panel (shown
+above) is the same set of knobs with the same scripts behind them — every
+control maps to a variable documented on this page, so the terminal and the app
+always produce identical results:
+
+| Panel control | Equivalent |
+|---|---|
+| Graphics renderer | `P99_RENDERER` (lever 1) |
+| Indirect buffer maps *(shown for D9VK)* | `P99_DXVK_INDIRECT_MAPS=1` |
+| Show FPS overlay *(shown for D9VK)* | `P99_DXVK_HUD=fps,frametimes` |
+| Verbose renderer logs *(shown for D9VK)* | `P99_RENDERER_DEBUG=1` |
+| Smoother visuals | `P99_APPLY_PERF=1 P99_PERF_PROFILE=smoother` (lever 3) |
+| Frame-rate cap | `EQ_FPS_CAP=30`/`60` (lever 3) |
+
+Set your choices, then press **Apply Performance Settings** with the game
+closed. It runs `60-renderer.sh` and `35-perf-ini.sh` for you and reports when
+it's done; turning everything off and applying reverts cleanly. A full audit of
+what each switch touches on disk lives in
+[WHAT-WE-CHANGE.md](WHAT-WE-CHANGE.md).
 
 ![The installer's "Applying performance settings" screen: both steps — set the
 graphics renderer, apply EQ graphics settings — completed successfully.](img/performance-apply.png)

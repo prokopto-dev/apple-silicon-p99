@@ -172,9 +172,12 @@ several dead ends that *look* like wine problems but aren't.
 
 Running but **stuttering** (common on newer Apple Silicon like M4/M5)?
 [docs/PERFORMANCE.md](docs/PERFORMANCE.md) covers the opt-in, fully reversible
-tuning knobs — switching the renderer off the deprecated OpenGL path to D9VK,
-making wine's msync actually reach the game, and trimming EQ's own graphics load.
-The installer app exposes the safe ones in a **Performance** panel:
+tuning knobs — the D9VK renderer (with its diagnostics and the
+indirect-buffer-maps experiment), making wine's msync actually reach the game,
+and trimming EQ's own graphics load. The installer app exposes the same knobs in
+a **Performance** panel, and [docs/WHAT-WE-CHANGE.md](docs/WHAT-WE-CHANGE.md) is
+the full audit of everything any switch touches on disk — so you can see
+exactly what changed and verify it yourself:
 
 <img src="docs/img/performance-panel.png" width="560"
      alt="The installer's Performance panel: a graphics-renderer picker (Stock wined3d or D9VK) and a Smoother visuals toggle, both reversible, with an Apply button">
@@ -238,6 +241,7 @@ docs/
   HOW-IT-WORKS.md        what each layer does and why each fix is needed
   TROUBLESHOOTING.md     symptom → cause → fix, with real log signatures
   PERFORMANCE.md         opt-in, reversible stutter/frame-pacing tuning knobs
+  WHAT-WE-CHANGE.md      full audit of every change we make, and how to verify it
   FAQ.md                 nParse, custom UIs, file locations, rules questions
 ```
 

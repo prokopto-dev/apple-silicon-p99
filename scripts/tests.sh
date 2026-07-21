@@ -26,6 +26,7 @@ assert_eq "empty: p99files n/a"      "n/a"     "$(field "$OUT" p99files)"
 assert_eq "empty: fix_dsetup n/a"    "n/a"     "$(field "$OUT" fix_dsetup)"
 assert_eq "empty: fix_ini n/a"       "n/a"     "$(field "$OUT" fix_ini)"
 assert_eq "empty: moltenvk n/a"      "n/a"     "$(field "$OUT" moltenvk)"
+assert_eq "empty: dxvk_maps n/a"     "n/a"     "$(field "$OUT" dxvk_maps)"
 
 # --- status.sh: faked install ------------------------------------------------
 W="$T/w.app"; G="$T/game"
@@ -196,9 +197,33 @@ assert_eq "perf: missing cx keeps stock MoltenVK" "stock" "$(field "$(WRAPPER="$
 assert_eq "perf: missing cx still records d9vk"   "d9vk"  "$(field "$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)" renderer)"
 
 # Apply and revert consume the same key list — pin it so they can't drift apart.
-assert_eq "perf: d9vk env key count" "7" "$(d9vk_env_keys | wc -l | tr -d ' ')"
+assert_eq "perf: d9vk env key count" "8" "$(d9vk_env_keys | wc -l | tr -d ' ')"
 assert_eq "perf: env list has async switch"    "1" "$(d9vk_env_keys | grep -c '^DXVK_ASYNC$')"
 assert_eq "perf: env list has argbuf override" "1" "$(d9vk_env_keys | grep -c '^MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS$')"
+assert_eq "perf: env list has conf pointer"    "1" "$(d9vk_env_keys | grep -c '^DXVK_CONFIG_FILE$')"
+
+# Indirect buffer maps (dxvk-p99.conf lifecycle). Restore the cx dylib first so
+# these runs exercise the normal path.
+touch "$PW/Contents/Frameworks/moltenvkcx/libMoltenVK.dylib"
+PCONF="$PW/Contents/SharedSupport/prefix/drive_c/dxvk-p99.conf"
+WRAPPER="$PW" GAME_DIR="$PG" P99_RENDERER=d9vk P99_DXVK_INDIRECT_MAPS=1 ./60-renderer.sh >/dev/null 2>&1
+assert_eq "perf: indirect maps writes conf" "1" "$(grep -c 'allowDirectBufferMapping = False' "$PCONF" 2>/dev/null)"
+assert_eq "perf: dxvk_maps status indirect" "indirect" "$(field "$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)" dxvk_maps)"
+# Re-applying d9vk WITHOUT the knob removes the conf (the knob is the toggle).
+WRAPPER="$PW" GAME_DIR="$PG" P99_RENDERER=d9vk ./60-renderer.sh >/dev/null 2>&1
+assert_eq "perf: re-apply without knob removes conf" "no" "$([ -f "$PCONF" ] && echo yes || echo no)"
+assert_eq "perf: dxvk_maps status default" "default" "$(field "$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)" dxvk_maps)"
+# Revert to wined3d also removes it.
+WRAPPER="$PW" GAME_DIR="$PG" P99_RENDERER=d9vk P99_DXVK_INDIRECT_MAPS=1 ./60-renderer.sh >/dev/null 2>&1
+WRAPPER="$PW" GAME_DIR="$PG" P99_RENDERER=wined3d ./60-renderer.sh >/dev/null 2>&1
+assert_eq "perf: revert removes conf" "no" "$([ -f "$PCONF" ] && echo yes || echo no)"
+# A hand-written conf at the same path is never clobbered or deleted.
+echo "my own settings" > "$PCONF"
+WRAPPER="$PW" GAME_DIR="$PG" P99_RENDERER=d9vk P99_DXVK_INDIRECT_MAPS=1 ./60-renderer.sh >/dev/null 2>&1
+assert_eq "perf: foreign conf preserved on apply" "my own settings" "$(head -1 "$PCONF")"
+WRAPPER="$PW" GAME_DIR="$PG" P99_RENDERER=wined3d ./60-renderer.sh >/dev/null 2>&1
+assert_eq "perf: foreign conf preserved on revert" "my own settings" "$(head -1 "$PCONF")"
+rm -f "$PCONF"
 
 echo
 if [ "$FAIL" -eq 0 ]; then

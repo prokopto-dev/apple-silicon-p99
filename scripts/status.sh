@@ -37,6 +37,13 @@ if check_prefix; then printf 'renderer\t%s\n' "$(active_renderer)"; else printf 
 # the one d9vk is paired with; stock = the template's newer build). Informational.
 if check_wrapper; then printf 'moltenvk\t%s\n' "$(active_moltenvk)"; else printf 'moltenvk\tn/a\n'; fi
 
+# Whether the indirect-buffer-maps experiment conf is in place (d9vk knob).
+if check_prefix; then
+  printf 'dxvk_maps\t%s\n' "$([ -f "$DXVK_CONF" ] && echo indirect || echo default)"
+else
+  printf 'dxvk_maps\tn/a\n'
+fi
+
 if check_game; then
   V=$(p99files_version)
   if [ "$V" = "none" ]; then printf 'p99files\tnone\n'; else printf 'p99files\tV%s\n' "$V"; fi

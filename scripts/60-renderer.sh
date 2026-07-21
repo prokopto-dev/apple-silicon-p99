@@ -75,6 +75,7 @@ apply_native_d3d9() { # apply_native_d3d9 <renderer-name>
 revert_d3d9_to_stock
 reset_renderer_plist
 remove_d9vk_env
+remove_dxvk_conf
 
 case "$renderer" in
   wined3d)
@@ -85,6 +86,10 @@ case "$renderer" in
     apply_native_d3d9 d9vk
     set_plist_flag D9VK 1      # belt-and-suspenders; harmless if the launcher ignores it
     apply_d9vk_env
+    if [ "${P99_DXVK_INDIRECT_MAPS:-}" = 1 ]; then
+      apply_dxvk_conf
+      say "Indirect buffer maps ON (experiment: buffer locks bypass the WoW64 map path)"
+    fi
     echo d9vk > "$RENDERER_MARKER"
     say "Renderer set to d9vk (DXVK 1.10 + CrossOver MoltenVK; async shaders on). Revert: P99_RENDERER=wined3d ./60-renderer.sh"
     if [ "${P99_RENDERER_DEBUG:-}" = 1 ]; then
