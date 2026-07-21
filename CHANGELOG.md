@@ -10,6 +10,19 @@ release's section below becomes its GitHub Release notes automatically
 
 <!-- version list -->
 
+## v0.7.0 (2026-07-21)
+
+### Bug Fixes
+
+- Keep the cursor captured during mouselook (MouseWarpOverride=force)
+  ([`ff07e7b`](https://github.com/prokopto-dev/apple-silicon-p99/commit/ff07e7b2454ea4daada3e91dc854833e3adb2edd))
+
+### Features
+
+- Auto-updater with launch popup, changelog, and in-place updates
+  ([`3944b24`](https://github.com/prokopto-dev/apple-silicon-p99/commit/3944b24377422d0045acb667bd3ca14ab8f377bb))
+
+
 ## v0.6.0 (2026-07-21)
 
 ### Bug Fixes
