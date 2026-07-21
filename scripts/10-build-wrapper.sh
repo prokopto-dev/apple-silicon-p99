@@ -82,6 +82,12 @@ for lib in "$FRAMEWORKS"/*.dylib; do
   ln -sf "../Frameworks/$(basename "$lib")" "$WRAPPER/Contents/SharedSupport/$(basename "$lib")"
 done
 
+# The loop above just pointed libMoltenVK.dylib at the stock build. If this is a
+# rebuild of a wrapper whose prefix already has d9vk applied (the prefix — and
+# with it the renderer marker — survives rebuilds), re-pair it with the CX
+# MoltenVK; on a fresh wrapper the marker is absent and this is a no-op.
+sync_moltenvk_to_renderer
+
 if ! check_prefix; then
   say "Initializing wine prefix (first run; takes a minute)"
   wine_env "$WINE" wineboot -i

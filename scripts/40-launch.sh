@@ -19,10 +19,19 @@ if [ "${1:-}" = "--debug" ]; then
   # through the symlinked game dir does NOT work on all engines (wine maps the
   # resolved physical path, which lies outside drive_c, and then can't find
   # eqgame.exe — the symptom is an instant exit with an empty log).
+  # DXVK/MoltenVK info logging costs nothing under wined3d (those libraries never
+  # load) and under d9vk makes the trace name WHICH MoltenVK build initialized
+  # and whether Metal argument buffers are active — the two facts a slow-d9vk
+  # report needs.
   wine_env env WINEDEBUG=+seh,+loaddll \
+    DXVK_LOG_LEVEL=info MVK_CONFIG_LOG_LEVEL=2 \
     "$WINE" cmd /c 'cd /d C:\Program Files\EverQuest && eqgame.exe patchme' \
     2>&1 | tee "$LOG" || true
   say "Game exited. Log: $LOG   (see docs/TROUBLESHOOTING.md for signatures)"
+  if [ "$(active_renderer)" = d9vk ]; then
+    say "d9vk debug: grep -iE 'moltenvk|argument buffer|dxvk' $LOG"
+    say "           DXVK also writes its own log next to the game: $GAME_DIR/eqgame_d3d9.log"
+  fi
 else
   say "Launching P99 (window appears after the ~1-2 min anti-cheat unpack)"
   REF=$(stat -f %m "$GAME_DIR/Logs/dbg.txt" 2>/dev/null || echo 0)
