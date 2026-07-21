@@ -7,6 +7,8 @@ notes automatically (see "Cutting a release" in the README).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-07-21
+
 ### Added
 - **Performance tuning** for stutter on newer Apple Silicon (M4/M5), all opt-in
   and reversible (`docs/PERFORMANCE.md`):
