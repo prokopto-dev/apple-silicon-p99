@@ -888,6 +888,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#mouse-escapes-the-window-during-right-click-mouselook" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mouse escapes the window during right-click mouselook
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1257,6 +1268,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#mouse-escapes-the-window-during-right-click-mouselook" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mouse escapes the window during right-click mouselook
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1483,7 +1505,8 @@ ran unsynchronized (now fixed via the wrapper's <code>Info.plist</code> — see 
 <strong>Fix (in order of impact):</strong>
 1. Rebuild the wrapper once so msync reaches the game: <code>./10-build-wrapper.sh</code> (it
    skips the finished pieces and just refreshes the launch env). A routine
-   <code>./50-update.sh</code> does <strong>not</strong> do this.
+   <code>./50-update.sh</code> does <strong>not</strong> do this (the installer app's <strong>Update Game
+   Files</strong> button does — it re-runs the wrapper build first).
 2. <em>Optionally</em> try the D9VK renderer (Direct3D 9 → Vulkan → MoltenVK → Metal):
    <code>P99_RENDERER=d9vk ./60-renderer.sh</code> (or the installer app's Performance
    panel). On some machines it's a real win; on others it is much <strong>slower</strong>
@@ -1530,6 +1553,26 @@ preferred size (e.g. 1440×900). Keep <code>WindowedMode=TRUE</code>; alt-tab be
 fullscreen under wine is rough. Bonus: if you migrated an old install, your
 per-character <code>UI_*.ini</code> files store window positions in pixels — matching
 your old resolution puts every chat/hotbar window back where you had it.</p>
+<h3 id="mouse-escapes-the-window-during-right-click-mouselook">Mouse escapes the window during right-click mouselook<a class="headerlink" href="#mouse-escapes-the-window-during-right-click-mouselook" title="Permanent link">&para;</a></h3>
+<p><strong>Cause:</strong> EQ's mouselook runs through DirectInput. Wine's default only warps
+the cursor back when the app clips it — and on macOS, wine's cursor clipping
+(winemac.drv's ClipCursor) runs through an event tap that requires
+Accessibility permission and <strong>fails silently</strong> without it. Net effect: the
+pointer drifts out of the window mid-turn and the camera stops until you
+mouse back in.
+<strong>Fix:</strong> current <code>10-build-wrapper.sh</code> sets the wine registry key
+<code>HKCU\Software\Wine\DirectInput</code> → <code>MouseWarpOverride=force</code>, which makes
+wine continuously re-center the cursor while the game holds the mouse — no
+macOS permission needed. This only applies <strong>during</strong> mouselook: with the
+right button up the cursor roams free, and Cmd-Tab mid-turn releases it
+(losing focus unacquires the mouse). On an existing wrapper, re-run the
+build script once (idempotent): <code>cd scripts &amp;&amp; ./10-build-wrapper.sh</code>.
+A routine <code>./50-update.sh</code> does <strong>not</strong> do this, but the installer app's
+<strong>Update Game Files</strong> button does — it re-runs the wrapper build first.
+If forced warping bothers you, revert with
+<code>P99_MOUSE_WARP=enable ./10-build-wrapper.sh</code> and instead grant the wrapper
+Accessibility permission (System Settings → Privacy &amp; Security →
+Accessibility → add <code>P99.app</code>) so wine's cursor clipping can work.</p>
 <h2 id="diagnostic-reference-reading-a-wine-trace">Diagnostic reference: reading a wine trace<a class="headerlink" href="#diagnostic-reference-reading-a-wine-trace" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>dispatch_exception code=c000008e</code> (float divide-by-zero) and

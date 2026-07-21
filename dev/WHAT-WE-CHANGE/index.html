@@ -949,6 +949,12 @@ this is the map.</p>
 </table>
 <p>No kernel extensions, no daemons, no login items, nothing in <code>/usr/local</code> beyond
 Homebrew's own management.</p>
+<p>The installer app can also update <strong>itself</strong>: when you accept an update in the
+Installer Updates window, it downloads the new release zip from this project's
+GitHub releases into a temp folder, verifies the staged bundle's version, then
+(via <code>scripts/95-selfupdate.sh</code>) swaps it in over the old app and relaunches.
+Nothing outside the app bundle and the temp folder is touched, and it only ever
+happens after you click <strong>Download &amp; Install</strong> and <strong>Restart &amp; Update</strong>.</p>
 <h2 id="the-wrapper-app-applicationsp99app">The wrapper app (<code>/Applications/P99.app</code>)<a class="headerlink" href="#the-wrapper-app-applicationsp99app" title="Permanent link">&para;</a></h2>
 <p>Built by <code>10-build-wrapper.sh</code> from two pinned, checksum-verified downloads: the
 open-source Sikarugir wrapper template and a community build of CodeWeavers'
@@ -1079,6 +1085,11 @@ LGPL CrossOver 24.0.7 wine. Deleting <code>P99.app</code> removes all of it.</p>
 <td>Windows version = XP</td>
 <td>Part of the proven recipe; EQ is a 2005 title.</td>
 <td><code>wine reg</code> (never needed)</td>
+</tr>
+<tr>
+<td>DirectInput <code>MouseWarpOverride=force</code></td>
+<td>Keeps the cursor captured in the window during right-click mouselook (wine re-centers it while the game holds the mouse; free otherwise).</td>
+<td><code>P99_MOUSE_WARP=enable ./10-build-wrapper.sh</code></td>
 </tr>
 <tr>
 <td>MS core fonts installed</td>

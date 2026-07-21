@@ -706,6 +706,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#how-does-the-installer-keep-itself-up-to-date" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How does the installer keep itself up to date?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#how-do-i-uninstall" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -877,6 +888,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#how-does-the-installer-keep-itself-up-to-date" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How does the installer keep itself up to date?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#how-do-i-uninstall" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1001,6 +1023,16 @@ you click through it like it's 2005. Notes:</p>
 <li>Temporarily needs ~8 GB free (staged discs + the install) on top of the
   usual requirements.</li>
 </ul>
+<h2 id="how-does-the-installer-keep-itself-up-to-date">How does the installer keep itself up to date?<a class="headerlink" href="#how-does-the-installer-keep-itself-up-to-date" title="Permanent link">&para;</a></h2>
+<p>The app checks GitHub's releases when it opens. If you're behind, a window
+pops up listing every release you've missed with its changelog. For updates
+within the same major version, <strong>Download &amp; Install</strong> fetches the new
+version, verifies it, swaps it in place, and relaunches — your game install,
+settings, and keybinds are untouched. Major-version jumps go through the
+release page instead. <strong>Skip This Version</strong> quiets the popup for that release
+only (the <strong>Installer Updates…</strong> button always shows everything), and after
+updating, the <strong>Update Game Files</strong> button re-applies any wrapper-level fixes
+the new version shipped. No update ever runs without you clicking it.</p>
 <h2 id="how-do-i-uninstall">How do I uninstall?<a class="headerlink" href="#how-do-i-uninstall" title="Permanent link">&para;</a></h2>
 <p>Run <code>scripts/90-uninstall.sh</code> — it asks before deleting the wrapper and
 (separately) the game folder, and reminds you the game folder contains your
