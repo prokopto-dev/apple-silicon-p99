@@ -1,0 +1,43 @@
+# Not a Python project. This file exists solely as the version home and
+# configuration for python-semantic-release, which cuts releases from
+# Conventional Commits on main (see .github/workflows/semantic-release.yml).
+# The Makefile reads [project].version and stamps it into the app bundle's
+# Info.plist at build time.
+
+[project]
+name = "apple-silicon-p99"
+version = "0.4.0"
+description = "EverQuest Project 1999 on Apple Silicon — installer app and scripts"
+
+[tool.semantic_release]
+tag_format = "v{version}"
+commit_message = "chore(release): v{version}"
+version_toml = ["pyproject.toml:project.version"]
+# We are deliberately still 0.x: breaking changes bump the minor version, and
+# the version only goes 1.0.0 when we decide it does (flip major_on_zero then).
+allow_zero_version = true
+major_on_zero = false
+
+[tool.semantic_release.branches.main]
+match = "(main|master)"
+prerelease_token = "rc"
+prerelease = false
+
+[tool.semantic_release.commit_parser_options]
+minor_tags = ["feat"]
+patch_tags = ["fix", "perf"]
+other_allowed_tags = ["build", "chore", "ci", "docs", "style", "refactor", "test"]
+allowed_tags = ["feat", "fix", "perf", "build", "chore", "ci", "docs", "style", "refactor", "test"]
+default_bump_level = 0
+parse_squash_commits = true
+ignore_merge_commits = true
+
+[tool.semantic_release.changelog]
+mode = "update"
+insertion_flag = "<!-- version list -->"
+exclude_commit_patterns = ["^chore\\(release\\):"]
+
+[tool.semantic_release.changelog.default_templates]
+changelog_file = "CHANGELOG.md"
+output_format = "md"
+mask_initial_release = false

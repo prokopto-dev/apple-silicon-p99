@@ -1,0 +1,41 @@
+name: Docs (dev)
+
+# Redeploys the "dev" docs version on main pushes that touch the docs.
+# Release versions (0.5, latest, ...) are deployed by the docs job in
+# release.yml. Both share the gh-pages-docs concurrency group so mike
+# pushes to gh-pages never interleave.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "mkdocs.yml"
+      - ".github/workflows/docs-dev.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gh-pages-docs
+  cancel-in-progress: false
+
+jobs:
+  deploy-dev:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch gh-pages for mike
+        # `|| true`: before the first docs deploy the branch doesn't exist yet.
+        run: git fetch origin gh-pages --depth=1 || true
+      - name: Install docs tooling
+        run: pip install 'mkdocs-material~=9.6' 'mike~=2.1'
+      - name: Build (strict)
+        run: mkdocs build --strict
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Deploy dev docs
+        run: mike deploy --push dev

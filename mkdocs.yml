@@ -1,0 +1,62 @@
+site_name: P99 on Apple Silicon
+site_description: Run EverQuest Project 1999 natively-ish on a modern Mac with a free and open-source stack
+site_url: https://prokopto-dev.github.io/apple-silicon-p99/
+repo_url: https://github.com/prokopto-dev/apple-silicon-p99
+repo_name: prokopto-dev/apple-silicon-p99
+edit_uri: edit/main/docs/
+docs_dir: docs
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - search.suggest
+    - content.code.copy
+    - content.action.edit
+
+extra:
+  version:
+    provider: mike
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  # Lets docs/changelog.md embed the repo-root CHANGELOG.md so the site
+  # renders the real changelog without duplicating it.
+  - pymdownx.snippets:
+      base_path: ["."]
+      check_paths: true
+
+nav:
+  - Home: index.md
+  - How it works: HOW-IT-WORKS.md
+  - What we change: WHAT-WE-CHANGE.md
+  - Performance: PERFORMANCE.md
+  - Troubleshooting: TROUBLESHOOTING.md
+  - FAQ: FAQ.md
+  - Changelog: changelog.md
