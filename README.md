@@ -170,6 +170,11 @@ When something goes wrong, [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
 maps every crash signature we encountered to its cause and fix — including
 several dead ends that *look* like wine problems but aren't.
 
+Running but **stuttering** (common on newer Apple Silicon like M4/M5)?
+[docs/PERFORMANCE.md](docs/PERFORMANCE.md) covers the opt-in, fully reversible
+tuning knobs — switching the renderer off the deprecated OpenGL path to D9VK,
+making wine's msync actually reach the game, and trimming EQ's own graphics load.
+
 Beyond setup, [docs/FAQ.md](docs/FAQ.md) covers quality-of-life topics:
 setting up **nParse** (map overlay/timers — it runs natively on macOS, no
 wine needed), installing **custom UIs** (DuxaUI etc.), where logs and
@@ -219,12 +224,15 @@ scripts/
   15-install-from-media.sh  install Titanium from your ISOs/discs via the wrapper
   20-install-game.sh     stage Titanium files, overlay newest P99FilesV*.zip
   30-apply-mac-fixes.sh  the three required fixes (all reversible; .bak files)
+  35-perf-ini.sh         optional: surgically apply/revert eqclient.ini perf keys
   40-launch.sh           launch normally, or --debug for a full wine trace
   50-update.sh           after a P99 patch: fetch newest files + re-apply fixes
+  60-renderer.sh         optional: switch renderer (wined3d <-> d9vk), reversible
   90-uninstall.sh        guided removal (asks before deleting anything)
 docs/
   HOW-IT-WORKS.md        what each layer does and why each fix is needed
   TROUBLESHOOTING.md     symptom → cause → fix, with real log signatures
+  PERFORMANCE.md         opt-in, reversible stutter/frame-pacing tuning knobs
   FAQ.md                 nParse, custom UIs, file locations, rules questions
 ```
 

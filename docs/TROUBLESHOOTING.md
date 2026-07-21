@@ -201,6 +201,25 @@ wine). Dials to try, in order:
    `prefix/drive_c/windows/syswow64/d3d9.dll` (back it up first).
 3. Verify game-file integrity against a known-good install.
 
+### Game stutters or feels choppy (especially on newer Apple Silicon, e.g. M5)
+**Cause:** two things compound. (1) The stock renderer is wine's `wined3d`, which
+runs Direct3D 9 → OpenGL → Apple's *deprecated* GL-on-Metal shim — the slow path on
+modern GPUs. (2) The wine msync scheduling flag was not reaching the double-click /
+Play session: that launch is `open P99.app`, which LaunchServices runs detached and
+does not inherit the `WINEESYNC/WINEMSYNC` that `wine_env()` sets, so thread hand-offs
+ran unsynchronized (now fixed via the wrapper's `Info.plist` — see fix 2).
+**Fix (in order of impact):**
+1. Switch the renderer off the deprecated OpenGL path to D9VK (Direct3D 9 → Vulkan →
+   MoltenVK → Metal): `P99_RENDERER=d9vk ./60-renderer.sh` (or the installer app's
+   Performance panel). Fully reversible — `P99_RENDERER=wined3d ./60-renderer.sh`
+   restores the stock renderer and touches nothing else.
+2. Rebuild the wrapper once so msync reaches the game: `./10-build-wrapper.sh` (it
+   skips the finished pieces and just refreshes the launch env). A routine
+   `./50-update.sh` does **not** do this.
+3. Cap the frame rate and/or trim EQ's own load: `P99_APPLY_PERF=1
+   P99_PERF_PROFILE=smoother EQ_FPS_CAP=60 ./35-perf-ini.sh` (game closed).
+Full guide with tradeoffs and how to measure: [PERFORMANCE.md](PERFORMANCE.md).
+
 ### Sound issues
 Sound runs through the game's own Miles Sound System (`mss32.dll`), not
 GStreamer — so ignore wine's GStreamer warnings; they're harmless here.

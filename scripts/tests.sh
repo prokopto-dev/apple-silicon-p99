@@ -106,6 +106,64 @@ assert_eq "uninstall 1/0 keeps game"      "yes" "$([ -d "$G" ] && echo yes || ec
 run_uninstall 0 1
 assert_eq "uninstall 0/1 removes game" "no" "$([ -d "$G" ] && echo yes || echo no)"
 
+# --- Performance: status probes, eqclient.ini patcher, renderer swap ----------
+# Uses a self-contained fake wrapper + game dir; a stub `wine` makes reg add/delete
+# a no-op, and plutil-dependent effects are deliberately not asserted so this runs
+# the same on Linux and macOS.
+PW="$T/perf.app"; PG="$T/perfgame"
+PSW="$PW/Contents/SharedSupport/prefix/drive_c/windows/syswow64"
+mkdir -p "$PW/Contents/SharedSupport/wine/bin" "$PSW" "$PG" \
+         "$PW/Contents/Frameworks/renderer/d9vk/wine/i386-windows"
+printf '#!/bin/sh\nexit 0\n' > "$PW/Contents/SharedSupport/wine/bin/wine"
+chmod +x "$PW/Contents/SharedSupport/wine/bin/wine"
+touch "$PW/Contents/SharedSupport/prefix/system.reg" "$PG/eqgame.exe"
+
+# status.sh: fresh install -> stock renderer, perf not applied.
+OUT=$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)
+assert_eq "perf: renderer defaults wined3d" "wined3d" "$(field "$OUT" renderer)"
+assert_eq "perf: perf_ini missing"          "missing" "$(field "$OUT" perf_ini)"
+
+# 35-perf-ini.sh: surgical apply touches only the managed keys.
+cat > "$PG/eqclient.ini" <<'INI'
+[Defaults]
+Sound=TRUE
+TextureQuality=1
+Gamma=8
+[VideoMode]
+Width=1440
+WindowedWidth=1440
+[KeyMaps]
+Ke_Forward=W
+INI
+WRAPPER="$PW" GAME_DIR="$PG" P99_APPLY_PERF=1 P99_PERF_PROFILE=smoother EQ_FPS_CAP=60 ./35-perf-ini.sh >/dev/null 2>&1
+assert_eq "perf: MaxFPS applied"       "MaxFPS=60"    "$(grep '^MaxFPS=' "$PG/eqclient.ini")"
+assert_eq "perf: resolution untouched" "Width=1440"   "$(grep '^Width=' "$PG/eqclient.ini")"
+assert_eq "perf: gamma untouched"      "Gamma=8"      "$(grep '^Gamma=' "$PG/eqclient.ini")"
+assert_eq "perf: keybind untouched"    "Ke_Forward=W" "$(grep '^Ke_Forward=' "$PG/eqclient.ini")"
+assert_eq "perf: sentinel -> status ok" "ok" "$(field "$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)" perf_ini)"
+
+# Re-apply is idempotent (no duplicate keys).
+WRAPPER="$PW" GAME_DIR="$PG" P99_APPLY_PERF=1 P99_PERF_PROFILE=smoother EQ_FPS_CAP=60 ./35-perf-ini.sh >/dev/null 2>&1
+assert_eq "perf: idempotent single MaxFPS" "1" "$(grep -c '^MaxFPS=' "$PG/eqclient.ini")"
+
+# Revert removes only the managed keys; everything else survives.
+WRAPPER="$PW" GAME_DIR="$PG" P99_APPLY_PERF=0 ./35-perf-ini.sh >/dev/null 2>&1
+assert_eq "perf: revert clears MaxFPS" "0"       "$(grep -c '^MaxFPS=' "$PG/eqclient.ini")"
+assert_eq "perf: revert keeps gamma"   "Gamma=8" "$(grep '^Gamma=' "$PG/eqclient.ini")"
+assert_eq "perf: revert -> status missing" "missing" "$(field "$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)" perf_ini)"
+
+# 60-renderer.sh: lossless round-trip (stock d3d9.dll present).
+printf 'STOCK' > "$PSW/d3d9.dll"
+printf 'D9VK'  > "$PW/Contents/Frameworks/renderer/d9vk/wine/i386-windows/d3d9.dll"
+WRAPPER="$PW" GAME_DIR="$PG" P99_RENDERER=d9vk ./60-renderer.sh >/dev/null 2>&1
+assert_eq "perf: d9vk swapped in"    "D9VK"  "$(cat "$PSW/d3d9.dll")"
+assert_eq "perf: stock backed up"    "STOCK" "$(cat "$PSW/d3d9.dll.wined3d.bak" 2>/dev/null)"
+assert_eq "perf: renderer status d9vk" "d9vk" "$(field "$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)" renderer)"
+WRAPPER="$PW" GAME_DIR="$PG" P99_RENDERER=wined3d ./60-renderer.sh >/dev/null 2>&1
+assert_eq "perf: revert restores stock d3d9" "STOCK" "$(cat "$PSW/d3d9.dll")"
+assert_eq "perf: backup consumed on revert"  "no" "$([ -f "$PSW/d3d9.dll.wined3d.bak" ] && echo yes || echo no)"
+assert_eq "perf: renderer status back to wined3d" "wined3d" "$(field "$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)" renderer)"
+
 echo
 if [ "$FAIL" -eq 0 ]; then
   echo "OK — $PASS script-layer assertions passed"

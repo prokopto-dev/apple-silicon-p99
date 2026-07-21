@@ -8,11 +8,32 @@ notes automatically (see "Cutting a release" in the README).
 ## [Unreleased]
 
 ### Added
+- **Performance tuning** for stutter on newer Apple Silicon (M4/M5), all opt-in
+  and reversible (`docs/PERFORMANCE.md`):
+  - `60-renderer.sh` switches the Direct3D renderer between the stock `wined3d`
+    (D3D9 → OpenGL → deprecated GL-on-Metal shim) and `d9vk` (D3D9 → Vulkan →
+    MoltenVK → Metal). Switching back to `wined3d` restores the original
+    `d3d9.dll` and DLL override exactly, so it can be toggled freely.
+  - `35-perf-ini.sh` surgically applies or reverts EQ's own `eqclient.ini`
+    performance keys (view distance, particle density, FPS cap) — changing only
+    those keys and never touching resolution, keybinds, or other settings.
+  - A **Performance** panel in the installer app (renderer picker + "smoother
+    visuals" toggle + Apply) wired to the same scripts.
+- Installer status now reports the active `renderer` and whether the performance
+  profile is applied (`perf_ini`); neither gates play-readiness.
 - Documented Apple's announced general-purpose Rosetta 2 horizon and the
   investigation into a native ARM64 Wine + FEX successor.
 - Made the project's post-Rosetta constraint explicit: the intended solution
   remains a direct, free/open-source macOS runtime rather than a bundled Linux
   or Windows virtual machine.
+
+### Fixed
+- Wine's `msync` scheduling flag now actually reaches the running game. The
+  double-click / Play launch is `open P99.app`, which LaunchServices runs
+  detached (no inherited shell env), so the `WINEESYNC/WINEMSYNC` set in
+  `wine_env()` never applied to the game session; the wrapper now injects them via
+  the bundle's `Info.plist` (`LSEnvironment`). Re-run `10-build-wrapper.sh` to pick
+  this up on an existing install.
 
 ## [0.3.1] - 2026-07-14
 

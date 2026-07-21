@@ -94,4 +94,13 @@ func runScriptRunnerTests() async {
     T.expect(path.contains("/opt/homebrew/bin") && path.contains("/usr/local/bin"),
              "brew dirs prepended to PATH")
     T.equal(env["P99_TEST"] ?? "", "1", "extra env merged")
+
+    // The Performance panel routes its choices to the scripts through this same
+    // extraEnv channel (see InstallerModel.applyPerformance).
+    let perfEnv = ScriptRunner.environment(extra: ["P99_RENDERER": "d9vk",
+                                                   "P99_APPLY_PERF": "1",
+                                                   "P99_PERF_PROFILE": "smoother"])
+    T.equal(perfEnv["P99_RENDERER"] ?? "", "d9vk", "renderer env merged")
+    T.equal(perfEnv["P99_APPLY_PERF"] ?? "", "1", "apply-perf env merged")
+    T.equal(perfEnv["P99_PERF_PROFILE"] ?? "", "smoother", "perf-profile env merged")
 }

@@ -64,6 +64,14 @@ plutil -replace "Program Name and Path" -string "/Program Files/EverQuest/eqgame
 plutil -replace "Program Flags" -string "patchme" "$WRAPPER/Contents/Info.plist"
 plutil -replace CFBundleName -string "P99" "$WRAPPER/Contents/Info.plist" 2>/dev/null || true
 
+# Make wine's msync scheduling actually reach the double-click / Play session.
+# `open "$WRAPPER"` launches detached via LaunchServices and does NOT inherit the
+# shell env, so the WINEESYNC/WINEMSYNC in wine_env() never touched the real game;
+# LSEnvironment injects them into the bundle's launch environment instead. Cheap,
+# reversible, idempotent. Full rationale in docs/PERFORMANCE.md.
+say "Enabling wine msync for the game session (Info.plist LSEnvironment)"
+apply_wrapper_sync
+
 # The engine's binaries find their bundled dylibs via @rpath = bin/../../,
 # which is Contents/SharedSupport/ after the engine move above — but the
 # template ships the dylibs in Contents/Frameworks. Link them across, or

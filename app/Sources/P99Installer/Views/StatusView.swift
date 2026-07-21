@@ -76,6 +76,7 @@ struct StatusView: View {
                     ("eqclient.ini applied", model.status.value("fix_ini")),
                 ])
                 settingsBox
+                performanceBox
             }
             .padding(16)
         }
@@ -93,6 +94,48 @@ struct StatusView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.vertical, 4)
+            .padding(.horizontal, 6)
+        }
+    }
+
+    // Opt-in, reversible tuning for stutter on newer Apple Silicon. Full guide:
+    // docs/PERFORMANCE.md. Apply runs the scripts; toggles alone change nothing
+    // until Apply is pressed (these edit the wine prefix / eqclient.ini, which
+    // must be done with the game closed).
+    private var performanceBox: some View {
+        @Bindable var model = model
+        return GroupBox("Performance") {
+            VStack(alignment: .leading, spacing: 10) {
+                Picker("Graphics renderer", selection: $model.rendererChoice) {
+                    Text("Stock (wined3d)").tag("wined3d")
+                    Text("D9VK — Vulkan/Metal (smoother)").tag("d9vk")
+                }
+                Text("D9VK skips the deprecated OpenGL path — the biggest fix for "
+                     + "stutter on newer Apple Silicon (M4/M5). Switching back to Stock "
+                     + "restores the original renderer and changes nothing else.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Toggle(isOn: $model.smootherINI) {
+                    Text("Smoother visuals (lower particle load)")
+                }
+                Text("Trims EverQuest's own graphics load. Never changes your "
+                     + "resolution or keybinds, and is fully reversible.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack {
+                    Text("Close EverQuest before applying.")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                    Spacer()
+                    Button("Apply Performance Settings") { model.applyPerformance() }
+                        .disabled(!model.readyToPlay)
+                        .help(model.readyToPlay ? "Runs the renderer + graphics scripts"
+                                                : "Finish installing before tuning performance")
                 }
             }
             .padding(.vertical, 4)

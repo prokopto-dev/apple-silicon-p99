@@ -125,10 +125,11 @@ struct RunView: View {
 
     private var successMessage: String {
         switch model.runKind {
-        case .install:   "Install complete — ready to play!"
-        case .update:    "Up to date."
-        case .uninstall: "Uninstall finished."
-        case .launch:    "The game engine is up — have fun!"
+        case .install:     "Install complete — ready to play!"
+        case .update:      "Up to date."
+        case .uninstall:   "Uninstall finished."
+        case .launch:      "The game engine is up — have fun!"
+        case .performance: "Performance settings applied."
         }
     }
 

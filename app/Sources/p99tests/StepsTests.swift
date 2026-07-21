@@ -29,4 +29,11 @@ func runStepsTests() {
         T.equal(Steps.install(source: source).last?.script ?? "", "30-apply-mac-fixes.sh",
                 "fixes always last")
     }
+
+    // Performance run: renderer first, then the eqclient.ini keys. Both take their
+    // apply/revert mode from the environment, so they carry no positional args.
+    let perf = Steps.performance()
+    T.equal(perf.map(\.script), ["60-renderer.sh", "35-perf-ini.sh"],
+            "performance: renderer then eqclient.ini")
+    T.expect(perf.allSatisfy { $0.arguments.isEmpty }, "performance: no arguments (mode via env)")
 }
