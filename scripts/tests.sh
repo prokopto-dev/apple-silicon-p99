@@ -25,6 +25,7 @@ assert_eq "empty: game missing"      "missing" "$(field "$OUT" game)"
 assert_eq "empty: p99files n/a"      "n/a"     "$(field "$OUT" p99files)"
 assert_eq "empty: fix_dsetup n/a"    "n/a"     "$(field "$OUT" fix_dsetup)"
 assert_eq "empty: fix_ini n/a"       "n/a"     "$(field "$OUT" fix_ini)"
+assert_eq "empty: moltenvk n/a"      "n/a"     "$(field "$OUT" moltenvk)"
 
 # --- status.sh: faked install ------------------------------------------------
 W="$T/w.app"; G="$T/game"
@@ -113,10 +114,15 @@ assert_eq "uninstall 0/1 removes game" "no" "$([ -d "$G" ] && echo yes || echo n
 PW="$T/perf.app"; PG="$T/perfgame"
 PSW="$PW/Contents/SharedSupport/prefix/drive_c/windows/syswow64"
 mkdir -p "$PW/Contents/SharedSupport/wine/bin" "$PSW" "$PG" \
-         "$PW/Contents/Frameworks/renderer/d9vk/wine/i386-windows"
+         "$PW/Contents/Frameworks/renderer/d9vk/wine/i386-windows" \
+         "$PW/Contents/Frameworks/moltenvkcx"
 printf '#!/bin/sh\nexit 0\n' > "$PW/Contents/SharedSupport/wine/bin/wine"
 chmod +x "$PW/Contents/SharedSupport/wine/bin/wine"
-touch "$PW/Contents/SharedSupport/prefix/system.reg" "$PG/eqgame.exe"
+touch "$PW/Contents/SharedSupport/prefix/system.reg" "$PG/eqgame.exe" \
+      "$PW/Contents/Frameworks/libMoltenVK.dylib" \
+      "$PW/Contents/Frameworks/moltenvkcx/libMoltenVK.dylib"
+# The symlink 10-build-wrapper.sh's dylib link loop would create (stock build).
+ln -sf ../Frameworks/libMoltenVK.dylib "$PW/Contents/SharedSupport/libMoltenVK.dylib"
 
 # status.sh: fresh install -> stock renderer, perf not applied.
 OUT=$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)
@@ -159,10 +165,40 @@ WRAPPER="$PW" GAME_DIR="$PG" P99_RENDERER=d9vk ./60-renderer.sh >/dev/null 2>&1
 assert_eq "perf: d9vk swapped in"    "D9VK"  "$(cat "$PSW/d3d9.dll")"
 assert_eq "perf: stock backed up"    "STOCK" "$(cat "$PSW/d3d9.dll.wined3d.bak" 2>/dev/null)"
 assert_eq "perf: renderer status d9vk" "d9vk" "$(field "$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)" renderer)"
+# d9vk must be paired with the CrossOver-patched MoltenVK (the build the bundled
+# DXVK was made for), visible both on the symlink and in status.sh.
+case "$(readlink "$PW/Contents/SharedSupport/libMoltenVK.dylib")" in
+  *moltenvkcx*) ok ;;
+  *) bad "perf: d9vk pairs cx MoltenVK" "*moltenvkcx*" "$(readlink "$PW/Contents/SharedSupport/libMoltenVK.dylib")" ;;
+esac
+assert_eq "perf: moltenvk status cx" "cx" "$(field "$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)" moltenvk)"
 WRAPPER="$PW" GAME_DIR="$PG" P99_RENDERER=wined3d ./60-renderer.sh >/dev/null 2>&1
 assert_eq "perf: revert restores stock d3d9" "STOCK" "$(cat "$PSW/d3d9.dll")"
 assert_eq "perf: backup consumed on revert"  "no" "$([ -f "$PSW/d3d9.dll.wined3d.bak" ] && echo yes || echo no)"
 assert_eq "perf: renderer status back to wined3d" "wined3d" "$(field "$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)" renderer)"
+assert_eq "perf: revert restores stock MoltenVK" "stock" "$(field "$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)" moltenvk)"
+
+# A wrapper rebuild resets the symlink to stock (10-build-wrapper.sh's link loop);
+# sync_moltenvk_to_renderer must re-converge it while the marker says d9vk.
+WRAPPER="$PW" GAME_DIR="$PG" P99_RENDERER=d9vk ./60-renderer.sh >/dev/null 2>&1
+ln -sf ../Frameworks/libMoltenVK.dylib "$PW/Contents/SharedSupport/libMoltenVK.dylib"
+(WRAPPER="$PW" GAME_DIR="$PG" bash -c 'source ./config.sh; sync_moltenvk_to_renderer') >/dev/null 2>&1
+assert_eq "perf: rebuild re-pairs cx MoltenVK" "cx" "$(field "$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)" moltenvk)"
+
+# A template without the CX build must not fail the switch: keep stock MoltenVK
+# (the argument-buffer env still protects) and still record the d9vk renderer.
+WRAPPER="$PW" GAME_DIR="$PG" P99_RENDERER=wined3d ./60-renderer.sh >/dev/null 2>&1
+rm "$PW/Contents/Frameworks/moltenvkcx/libMoltenVK.dylib"
+if WRAPPER="$PW" GAME_DIR="$PG" P99_RENDERER=d9vk ./60-renderer.sh >/dev/null 2>&1; then ok; else
+  bad "perf: d9vk without cx build succeeds" "exit 0" "nonzero exit"
+fi
+assert_eq "perf: missing cx keeps stock MoltenVK" "stock" "$(field "$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)" moltenvk)"
+assert_eq "perf: missing cx still records d9vk"   "d9vk"  "$(field "$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)" renderer)"
+
+# Apply and revert consume the same key list — pin it so they can't drift apart.
+assert_eq "perf: d9vk env key count" "7" "$(d9vk_env_keys | wc -l | tr -d ' ')"
+assert_eq "perf: env list has async switch"    "1" "$(d9vk_env_keys | grep -c '^DXVK_ASYNC$')"
+assert_eq "perf: env list has argbuf override" "1" "$(d9vk_env_keys | grep -c '^MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS$')"
 
 echo
 if [ "$FAIL" -eq 0 ]; then

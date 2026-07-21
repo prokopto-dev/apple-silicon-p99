@@ -7,6 +7,34 @@ notes automatically (see "Cutting a release" in the README).
 
 ## [Unreleased]
 
+### Fixed
+- **d9vk no longer runs on a mismatched MoltenVK** — the likely cause of the
+  reported ~5 FPS on an M4 MacBook Pro. The wrapper template ships two MoltenVK
+  builds; the engine was loading the recent stock one (Metal argument buffers on
+  by default — a documented DXVK performance cliff) instead of the
+  CrossOver-patched build the bundled DXVK 1.10 was made for. Switching to d9vk
+  now pairs the engine with the CX build (visible as `moltenvk cx` in
+  `status.sh`), injects `MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS=0` plus
+  fast-math/device-loss-resume via `LSEnvironment`, and enables the previously
+  dormant async shader compilation (`DXVK_ASYNC=1`). Reverting to `wined3d`
+  removes all of it; a wrapper rebuild preserves the pairing. Existing d9vk
+  users: re-run `P99_RENDERER=d9vk ./60-renderer.sh` once to pick this up.
+- Renderer plist flags (`D9VK`/`DXMT`/`D3DMETAL`) are now written as the integer
+  type the Sikarugir launcher expects; the previous string value was silently
+  ignored by its typed decode.
+
+### Added
+- d9vk diagnostics: `P99_RENDERER_DEBUG=1` (verbose DXVK/MoltenVK logs in-game
+  and in `40-launch.sh --debug` traces, which now always include
+  DXVK/MoltenVK info logging) and `P99_DXVK_HUD=fps,frametimes` (in-game FPS
+  overlay). `status.sh` reports the MoltenVK pairing as `moltenvk`.
+
+### Changed
+- Docs and installer UI no longer present D9VK as the biggest win: it helps on
+  some machines and is much slower on others (a stack limitation —
+  `docs/PERFORMANCE.md` explains why, `docs/TROUBLESHOOTING.md` has the
+  slow-D9VK entry). `wined3d` is described as the verified default.
+
 ## [0.4.0] - 2026-07-21
 
 ### Added

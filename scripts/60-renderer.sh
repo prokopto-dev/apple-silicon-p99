@@ -9,8 +9,13 @@
 #   ./60-renderer.sh d9vk            # (renderer may also be given as an argument)
 #
 # Why: the stock wined3d path is D3D9 -> OpenGL -> Apple's deprecated GL-on-Metal
-# shim, the biggest source of stutter on newer Apple Silicon. D9VK skips OpenGL.
-# See docs/PERFORMANCE.md.
+# shim, a big source of stutter on newer Apple Silicon. D9VK skips OpenGL — but
+# on some machines it is much SLOWER (see docs/PERFORMANCE.md), so switching to
+# d9vk also (a) pairs it with the CrossOver-patched MoltenVK build the bundled
+# DXVK was made for, and (b) injects DXVK/MoltenVK tuning into the wrapper's
+# LSEnvironment (async shaders on, Metal argument buffers off). All of it is
+# undone by switching back to wined3d. Diagnostics: P99_RENDERER_DEBUG=1 adds
+# verbose DXVK/MoltenVK logs; P99_DXVK_HUD=fps,frametimes adds an in-game HUD.
 set -euo pipefail
 cd "$(dirname "$0")"; source ./config.sh
 
@@ -65,9 +70,11 @@ apply_native_d3d9() { # apply_native_d3d9 <renderer-name>
 }
 
 # Always start from clean stock, then apply exactly the requested renderer — makes
-# every transition (and re-runs) idempotent and lossless.
+# every transition (and re-runs) idempotent and lossless. The d9vk LSEnvironment
+# keys are inert under other renderers, so clearing them here is always safe.
 revert_d3d9_to_stock
 reset_renderer_plist
+remove_d9vk_env
 
 case "$renderer" in
   wined3d)
@@ -77,8 +84,12 @@ case "$renderer" in
   d9vk)
     apply_native_d3d9 d9vk
     set_plist_flag D9VK 1      # belt-and-suspenders; harmless if the launcher ignores it
+    apply_d9vk_env
     echo d9vk > "$RENDERER_MARKER"
-    say "Renderer set to d9vk (D3D9 -> Vulkan -> MoltenVK -> Metal). Revert: P99_RENDERER=wined3d ./60-renderer.sh"
+    say "Renderer set to d9vk (DXVK 1.10 + CrossOver MoltenVK; async shaders on). Revert: P99_RENDERER=wined3d ./60-renderer.sh"
+    if [ "${P99_RENDERER_DEBUG:-}" = 1 ]; then
+      say "Renderer debug on: after a launch, check ~/Games/EverQuest/eqgame_d3d9.log and ./40-launch.sh --debug for the MoltenVK version line"
+    fi
     ;;
   d3dmetal|dxmt)
     flag=$([ "$renderer" = d3dmetal ] && echo D3DMETAL || echo DXMT)
@@ -91,3 +102,8 @@ case "$renderer" in
     die "unknown renderer '$renderer' — use one of: wined3d d9vk d3dmetal dxmt"
     ;;
 esac
+
+# Marker is final now — point the MoltenVK symlink at the matching build (cx for
+# d9vk, stock otherwise). Doing this last means a failed apply above leaves the
+# previous, still-consistent pairing in place.
+sync_moltenvk_to_renderer

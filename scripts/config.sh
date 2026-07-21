@@ -59,6 +59,9 @@ EQ_ENV_PARTICLES="${EQ_ENV_PARTICLES:-}"      # EnvironmentParticleDensity
 EQ_FPS_CAP="${EQ_FPS_CAP:-}"           # MaxFPS/MaxBGFPS frame cap (steadier pacing)
 # Convenience bundle of conservative values; individual EQ_* vars override it.
 P99_PERF_PROFILE="${P99_PERF_PROFILE:-}"      # "smoother" or empty
+# d9vk diagnostics, read by 60-renderer.sh when applying the d9vk renderer.
+P99_RENDERER_DEBUG="${P99_RENDERER_DEBUG:-}"  # 1 = verbose DXVK/MoltenVK logs in-game
+P99_DXVK_HUD="${P99_DXVK_HUD:-}"              # DXVK_HUD value, e.g. "fps,frametimes"
 
 # --- Derived paths (don't edit) ----------------------------------------------
 PREFIX="$WRAPPER/Contents/SharedSupport/prefix"
@@ -68,6 +71,14 @@ GAME_LINK="$PREFIX/drive_c/Program Files/EverQuest"
 RENDERER_DIR="$FRAMEWORKS/renderer"                 # bundled alt-renderer DLL sets
 SYSWOW64="$PREFIX/drive_c/windows/syswow64"         # where the active d3d9.dll lives
 RENDERER_MARKER="$PREFIX/.p99-renderer"             # records the active renderer name
+# The engine's winevulkan resolves MoltenVK through the @rpath symlink that
+# 10-build-wrapper.sh creates in SharedSupport. The template ships TWO builds:
+# the stock one, and CodeWeavers' patched build (moltenvkcx/) — the only one the
+# bundled DXVK 1.10 was ever built/tested against. 60-renderer.sh points the
+# symlink at whichever matches the active renderer.
+MOLTENVK_LINK="$WRAPPER/Contents/SharedSupport/libMoltenVK.dylib"
+MOLTENVK_STOCK_REL="../Frameworks/libMoltenVK.dylib"
+MOLTENVK_CX_REL="../Frameworks/moltenvkcx/libMoltenVK.dylib"
 
 # Env every direct wine invocation needs. DYLD_FALLBACK_LIBRARY_PATH lets the
 # engine find FreeType/libinotify/etc. shipped inside the wrapper's Frameworks.
@@ -143,6 +154,13 @@ set_plist_env() {
   plutil -replace "LSEnvironment.$1" -string "$2" "$p" >/dev/null 2>&1 || true
 }
 
+# remove_plist_env KEY — remove one LSEnvironment var, leaving the rest (and the
+# dict itself) in place. Graceful no-op when the plist, dict, or key is absent.
+remove_plist_env() {
+  local p; p="$(plist_path)"
+  [ -f "$p" ] && plutil -remove "LSEnvironment.$1" "$p" >/dev/null 2>&1 || true
+}
+
 # apply_wrapper_sync — make WINEESYNC/WINEMSYNC actually reach the open-launched
 # game. WINEMSYNC (mach semaphores) is the macOS payload; WINEESYNC is Linux-native
 # and effectively ignored on macOS but set for parity. WINEFSYNC is Linux-only and
@@ -152,13 +170,96 @@ apply_wrapper_sync() {
   set_plist_env WINEMSYNC 1
 }
 
-# set_plist_flag / remove_plist_flag — top-level string flags such as the
-# Sikarugir renderer toggles (D9VK/DXMT/D3DMETAL). Graceful no-op if unsupported.
-set_plist_flag()    { local p; p="$(plist_path)"; [ -f "$p" ] && plutil -replace "$1" -string "$2" "$p" >/dev/null 2>&1 || true; }
+# set_plist_flag / remove_plist_flag — top-level flags such as the Sikarugir
+# renderer toggles (D9VK/DXMT/D3DMETAL). Written as -integer because that is the
+# type the template ships (`D9VK = 0`, `MOLTENVKCX = 1`, …) and the launcher's
+# typed Swift decode silently drops a string "1". Graceful no-op if unsupported.
+set_plist_flag()    { local p; p="$(plist_path)"; [ -f "$p" ] && plutil -replace "$1" -integer "$2" "$p" >/dev/null 2>&1 || true; }
 remove_plist_flag() { local p; p="$(plist_path)"; [ -f "$p" ] && plutil -remove  "$1"            "$p" >/dev/null 2>&1 || true; }
 
 # Which renderer is active (recorded by 60-renderer.sh; default is the stock path).
 active_renderer() { cat "$RENDERER_MARKER" 2>/dev/null || echo wined3d; }
+
+# set_moltenvk cx|stock — retarget the SharedSupport @rpath symlink so the engine
+# loads the chosen MoltenVK build. The CX build (moltenvkcx/) is the one the
+# bundled DXVK 1.10 was built for; the stock build is years newer and defaults
+# Metal argument buffers ON — a documented DXVK performance cliff. Keeps stock
+# (with a warning) if the template has no CX build; the argument-buffer env in
+# apply_d9vk_env still protects that case.
+set_moltenvk() {
+  [ -d "$WRAPPER/Contents/SharedSupport" ] || return 0
+  local target="$MOLTENVK_STOCK_REL"
+  if [ "$1" = cx ]; then
+    if [ -f "$FRAMEWORKS/moltenvkcx/libMoltenVK.dylib" ]; then
+      target="$MOLTENVK_CX_REL"
+    else
+      warn "CX-patched MoltenVK not found in this template — keeping stock (argument buffers still disabled via env)"
+    fi
+  fi
+  ln -sf "$target" "$MOLTENVK_LINK"
+}
+
+# Which MoltenVK build the engine will load: cx | stock | n/a (status.sh, tests).
+active_moltenvk() {
+  [ -L "$MOLTENVK_LINK" ] || { echo n/a; return 0; }
+  case "$(readlink "$MOLTENVK_LINK")" in *moltenvkcx*) echo cx ;; *) echo stock ;; esac
+}
+
+# sync_moltenvk_to_renderer — converge the symlink with the recorded renderer.
+# Called by 60-renderer.sh on every switch AND by 10-build-wrapper.sh after its
+# dylib-link loop, which would otherwise silently reset a d9vk install back to
+# the stock MoltenVK on any rebuild.
+sync_moltenvk_to_renderer() {
+  if [ "$(active_renderer)" = d9vk ]; then set_moltenvk cx; else set_moltenvk stock; fi
+}
+
+# --- d9vk LSEnvironment bundle ------------------------------------------------
+# Everything here rides the same LSEnvironment channel as apply_wrapper_sync so
+# it reaches the real double-click session. WINEESYNC/WINEMSYNC are deliberately
+# NOT in this list — they are renderer-independent and owned by apply_wrapper_sync.
+
+# d9vk_env_keys — every LSEnvironment key this project may set for the d9vk
+# renderer (tuning + diagnostics), one per line. Reverting removes exactly these,
+# so apply and remove can never drift apart.
+d9vk_env_keys() {
+  cat <<'EOF'
+MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS
+MVK_CONFIG_FAST_MATH_ENABLED
+MVK_CONFIG_RESUME_LOST_DEVICE
+DXVK_ASYNC
+DXVK_LOG_LEVEL
+MVK_CONFIG_LOG_LEVEL
+DXVK_HUD
+EOF
+}
+
+# apply_d9vk_env — tuning always; diagnostics only when opted in. The diagnostic
+# keys are cleared on every renderer switch (60-renderer.sh starts from
+# remove_d9vk_env), so re-running with/without P99_RENDERER_DEBUG / P99_DXVK_HUD
+# is the toggle in both directions.
+apply_d9vk_env() {
+  # Newer stock MoltenVK (>= 1.2.11) turns Metal argument buffers on by default;
+  # with DXVK that is a large, documented slowdown. Force off.
+  set_plist_env MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS 0
+  set_plist_env MVK_CONFIG_FAST_MATH_ENABLED 1
+  set_plist_env MVK_CONFIG_RESUME_LOST_DEVICE 1
+  # The bundled DLL is the dxvk-*async* build; without this switch the async
+  # patch is dormant and every shader compiles on the render thread.
+  set_plist_env DXVK_ASYNC 1
+  if [ "${P99_RENDERER_DEBUG:-}" = 1 ]; then
+    set_plist_env DXVK_LOG_LEVEL info
+    set_plist_env MVK_CONFIG_LOG_LEVEL 2
+  fi
+  if [ -n "${P99_DXVK_HUD:-}" ] && [ "$P99_DXVK_HUD" != 0 ]; then
+    set_plist_env DXVK_HUD "$P99_DXVK_HUD"
+  fi
+}
+
+remove_d9vk_env() {
+  local k
+  for k in $(d9vk_env_keys); do remove_plist_env "$k"; done
+}
+
 # Whether the eqclient.ini performance keys are currently applied. Sentinel set by
 # 35-perf-ini.sh on apply and removed on revert; separate from eqclient.ini.perf.bak
 # (a permanent one-time safety copy) so status reflects the live state.

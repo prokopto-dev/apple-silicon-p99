@@ -209,16 +209,38 @@ Play session: that launch is `open P99.app`, which LaunchServices runs detached 
 does not inherit the `WINEESYNC/WINEMSYNC` that `wine_env()` sets, so thread hand-offs
 ran unsynchronized (now fixed via the wrapper's `Info.plist` — see fix 2).
 **Fix (in order of impact):**
-1. Switch the renderer off the deprecated OpenGL path to D9VK (Direct3D 9 → Vulkan →
-   MoltenVK → Metal): `P99_RENDERER=d9vk ./60-renderer.sh` (or the installer app's
-   Performance panel). Fully reversible — `P99_RENDERER=wined3d ./60-renderer.sh`
-   restores the stock renderer and touches nothing else.
-2. Rebuild the wrapper once so msync reaches the game: `./10-build-wrapper.sh` (it
+1. Rebuild the wrapper once so msync reaches the game: `./10-build-wrapper.sh` (it
    skips the finished pieces and just refreshes the launch env). A routine
    `./50-update.sh` does **not** do this.
+2. *Optionally* try the D9VK renderer (Direct3D 9 → Vulkan → MoltenVK → Metal):
+   `P99_RENDERER=d9vk ./60-renderer.sh` (or the installer app's Performance
+   panel). On some machines it's a real win; on others it is much **slower**
+   (see the next entry). Fully reversible — `P99_RENDERER=wined3d
+   ./60-renderer.sh` restores the stock renderer and touches nothing else.
 3. Cap the frame rate and/or trim EQ's own load: `P99_APPLY_PERF=1
    P99_PERF_PROFILE=smoother EQ_FPS_CAP=60 ./35-perf-ini.sh` (game closed).
 Full guide with tradeoffs and how to measure: [PERFORMANCE.md](PERFORMANCE.md).
+
+### After switching to D9VK the game is much SLOWER (single-digit FPS)
+**Cause:** a known outcome on some machines (reported on an M4 MacBook Pro), not
+a broken install. Earlier versions of the switch compounded it by loading a
+MoltenVK build years newer than the bundled DXVK 1.10 (with a slow
+argument-buffer mode on by default) and by never enabling DXVK's async shader
+compilation — both fixed by re-running the switch with the current scripts. What
+remains is a stack limitation: a 32-bit game under wine's WoW64 pays a heavy
+penalty on every GPU-memory map unless the Vulkan driver supports
+`VK_EXT_map_memory_placed`, which the bundled MoltenVK builds do not — and a
+2005 engine maps buffers every frame. On machines where that cost dominates,
+D9VK will stay slow no matter what.
+**Fix:** switch back — `P99_RENDERER=wined3d ./60-renderer.sh` (or Performance
+panel → Stock → Apply). If you first installed d9vk before this fix existed,
+re-applying it once (`P99_RENDERER=d9vk ./60-renderer.sh`) picks up the MoltenVK
+pairing + tuning; it may be worth one retry before giving up on it.
+**If reporting it:** re-apply with diagnostics —
+`P99_RENDERER=d9vk P99_RENDERER_DEBUG=1 ./60-renderer.sh`, launch once, then
+attach `~/Games/EverQuest/eqgame_d3d9.log`, the `[mvk-info]` MoltenVK
+version/argument-buffer lines from a `./40-launch.sh --debug` trace, and the
+`renderer` + `moltenvk` lines from `./status.sh`.
 
 ### Sound issues
 Sound runs through the game's own Miles Sound System (`mss32.dll`), not
