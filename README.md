@@ -25,16 +25,25 @@ EverQuest (32-bit Windows, 2005)
   └─ Wine WoW64  (community build of CodeWeavers' open-source CrossOver 24 wine)
       └─ Rosetta 2  (Apple's x86_64 → ARM translation; Intel Macs skip this)
           └─ macOS
+
+  (experimental, engine pending — installs side by side, toggle any time:
+  └─ Wine WoW64 + FEX x86 emulation
+      └─ native ARM64 wine
+          └─ macOS on Apple Silicon, no Rosetta)
 ```
 
 > **Rosetta 2 has a known horizon.** [Apple says](https://developer.apple.com/documentation/Apple-Silicon/about-the-rosetta-translation-environment)
 > general-purpose Rosetta will remain available through macOS 27, then only a
 > subset intended for certain older games will remain. The current P99 engine
 > depends on general-purpose Rosetta, and this project does **not** assume it
-> will qualify for that exception. We are investigating a native Apple Silicon Wine +
-> [FEX](https://github.com/FEX-Emu/FEX) runtime that would translate the
-> game's x86 code without Rosetta. This is research, not a working secondary
-> engine yet; see [the post-Rosetta direction](docs/HOW-IT-WORKS.md#post-rosetta-direction).
+> will qualify for that exception. The escape route is a native Apple Silicon
+> Wine + [FEX](https://github.com/FEX-Emu/FEX) runtime that translates the
+> game's x86 code without Rosetta. The **switchable second stack for it now
+> ships in this repo** — its own wrapper beside `P99.app`, a pinned engine
+> slot, smoke tests, and an installer picker — but the engine itself is still
+> research, so the option stays locked until a real engine tarball is
+> published. See [the FEX stack (experimental)](docs/EXPERIMENTAL-FEX.md) and
+> [the post-Rosetta direction](docs/HOW-IT-WORKS.md#post-rosetta-direction).
 >
 > Keeping this a direct macOS application is a project goal. We are focusing
 > on a **non-VM** replacement rather than hiding a Linux or Windows virtual
@@ -237,11 +246,14 @@ scripts/
   40-launch.sh           launch normally, or --debug for a full wine trace
   50-update.sh           after a P99 patch: fetch newest files + re-apply fixes
   60-renderer.sh         optional: switch renderer (wined3d <-> d9vk), reversible
+  70-stack.sh            optional: switch engine stack (rosetta <-> fex), reversible
+  75-fex-smoke.sh        smoke-test a FEX engine (experimental stack only)
   90-uninstall.sh        guided removal (asks before deleting anything)
 docs/
   HOW-IT-WORKS.md        what each layer does and why each fix is needed
   TROUBLESHOOTING.md     symptom → cause → fix, with real log signatures
   PERFORMANCE.md         opt-in, reversible stutter/frame-pacing tuning knobs
+  EXPERIMENTAL-FEX.md    the post-Rosetta engine stack: status, gating, how to try it
   WHAT-WE-CHANGE.md      full audit of every change we make, and how to verify it
   FAQ.md                 nParse, custom UIs, file locations, rules questions
 ```
@@ -313,11 +325,15 @@ Ideas we'd like help with (PRs welcome):
   `make notarize` target is already wired up for when one exists.
 - **Intel Mac verification.** The stack should work unchanged (it's x86_64
   end-to-end); needs someone with the hardware to confirm.
-- **Post-Rosetta Apple Silicon runtime.** Prototype native ARM64 Wine with
-  FEX's Wine-facing x86/WoW64 emulation module, starting with small 32-bit
-  exception and self-modifying-code tests before attempting P99's anti-cheat.
-  The intended result remains a direct macOS app using free/open-source
-  components, not a bundled Linux or Windows VM.
+- **Post-Rosetta Apple Silicon runtime.** **In progress** — the switchable
+  second stack now ships: a side-by-side FEX wrapper with its own prefix, a
+  sha256-pinned engine slot, a stack switcher + smoke-test harness
+  (`70-stack.sh`, `75-fex-smoke.sh`), and an installer picker that unlocks
+  when an engine exists ([docs](docs/EXPERIMENTAL-FEX.md)). Still needed: the
+  actual native ARM64 Wine + FEX engine tarball (and 32-bit SEH /
+  self-modifying-code test binaries for the smoke suite) before attempting
+  P99's anti-cheat. The intended result remains a direct macOS app using
+  free/open-source components, not a bundled Linux or Windows VM.
 - **`.bin`/`.cue` handling** in the media installer, so ripped discs don't
   need a manual conversion step.
 
