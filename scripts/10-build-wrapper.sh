@@ -5,6 +5,13 @@
 set -euo pipefail
 cd "$(dirname "$0")"; source ./config.sh
 
+# The FEX stack gates on a pinned engine: until a tarball is published (or the
+# experimenter pins their own), there is nothing this script could build. Must
+# stay ahead of ALL network/filesystem work so the gate is testable offline.
+if [ "$P99_STACK" = fex ] && ! fex_engine_pinned; then
+  die "FEX engine not yet available — no engine tarball has been published. Watch the project releases, or set FEX_ENGINE_URL + FEX_ENGINE_SHA256 to your own dev tarball to experiment (docs/EXPERIMENTAL-FEX.md)."
+fi
+
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
@@ -62,7 +69,7 @@ fi
 say "Configuring Info.plist (what to run when the app is double-clicked)"
 plutil -replace "Program Name and Path" -string "/Program Files/EverQuest/eqgame.exe" "$WRAPPER/Contents/Info.plist"
 plutil -replace "Program Flags" -string "patchme" "$WRAPPER/Contents/Info.plist"
-plutil -replace CFBundleName -string "P99" "$WRAPPER/Contents/Info.plist" 2>/dev/null || true
+plutil -replace CFBundleName -string "$P99_BUNDLE_NAME" "$WRAPPER/Contents/Info.plist" 2>/dev/null || true
 
 # Make wine's msync scheduling actually reach the double-click / Play session.
 # `open "$WRAPPER"` launches detached via LaunchServices and does NOT inherit the
