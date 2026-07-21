@@ -72,7 +72,12 @@ else
   else
     touch eqclient.ini.pre-mac.bak
   fi
-  cat > eqclient.ini <<'EOF'
+  # Optional performance keys (empty unless EQ_*/P99_PERF_PROFILE is set), appended
+  # to the end of [Defaults]. With nothing opted in this file is byte-identical to
+  # the proven config. Resolution keys below are never affected. See config.sh.
+  PERF_LINES="$(perf_ini_lines)"
+  {
+    cat <<'EOF'
 [Defaults]
 Sound=TRUE
 ShowForCard9.16.13.4052=0
@@ -86,6 +91,9 @@ UseLitBatches=TRUE
 WindowedModeXOffset=1
 WindowedModeYOffset=1
 WindowedMode=TRUE
+EOF
+    [ -n "$PERF_LINES" ] && printf '%s\n' "$PERF_LINES"
+    cat <<'EOF'
 [VideoMode]
 Width=1024
 Height=768
@@ -96,6 +104,8 @@ WindowedHeight=768
 FullscreenBitsPerPixel=32
 FullscreenRefreshRate=0
 EOF
+  } > eqclient.ini
+  [ -n "$PERF_LINES" ] && touch "$GAME_DIR/.p99-perf-applied"
   say "  wrote eqclient.ini"
 
   # Carry the user's personal settings over from their original INI. The fresh

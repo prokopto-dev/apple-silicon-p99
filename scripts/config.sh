@@ -43,11 +43,31 @@ P99FILES_MIN_VERSION="${P99FILES_MIN_VERSION:-62}"
 # md5 of the known-good "V58" dsetup.dll build (see 30-apply-mac-fixes.sh).
 GOOD_MD5="${GOOD_MD5:-b02ab111c9b95c2ddad4e3bdbe9c53cd}"
 
+# --- Performance tuning (all opt-in) -----------------------------------------
+# Every knob below defaults to "unset", so the proven config is byte-identical
+# for anyone who does not opt in. Nothing here ever changes resolution. Full
+# explanation of what each does — and what actually helps M-series stutter —
+# lives in docs/PERFORMANCE.md.
+#
+# Renderer applied by 60-renderer.sh: wined3d (default) | d9vk | d3dmetal | dxmt.
+P99_RENDERER="${P99_RENDERER:-}"
+# EQ eqclient.ini graphics knobs, applied by 30-apply-mac-fixes.sh (fresh
+# installs) and 35-perf-ini.sh (existing installs). Empty = leave EQ's default.
+EQ_FARCLIP="${EQ_FARCLIP:-}"            # FarClipPlane: view distance (lower = smoother)
+EQ_SPELL_PARTICLES="${EQ_SPELL_PARTICLES:-}"  # SpellParticleDensity (lower = fewer)
+EQ_ENV_PARTICLES="${EQ_ENV_PARTICLES:-}"      # EnvironmentParticleDensity
+EQ_FPS_CAP="${EQ_FPS_CAP:-}"           # MaxFPS/MaxBGFPS frame cap (steadier pacing)
+# Convenience bundle of conservative values; individual EQ_* vars override it.
+P99_PERF_PROFILE="${P99_PERF_PROFILE:-}"      # "smoother" or empty
+
 # --- Derived paths (don't edit) ----------------------------------------------
 PREFIX="$WRAPPER/Contents/SharedSupport/prefix"
 WINE="$WRAPPER/Contents/SharedSupport/wine/bin/wine"
 FRAMEWORKS="$WRAPPER/Contents/Frameworks"
 GAME_LINK="$PREFIX/drive_c/Program Files/EverQuest"
+RENDERER_DIR="$FRAMEWORKS/renderer"                 # bundled alt-renderer DLL sets
+SYSWOW64="$PREFIX/drive_c/windows/syswow64"         # where the active d3d9.dll lives
+RENDERER_MARKER="$PREFIX/.p99-renderer"             # records the active renderer name
 
 # Env every direct wine invocation needs. DYLD_FALLBACK_LIBRARY_PATH lets the
 # engine find FreeType/libinotify/etc. shipped inside the wrapper's Frameworks.
@@ -101,6 +121,94 @@ p99files_version(){ cat "$GAME_DIR/.p99files-version" 2>/dev/null || echo "none"
 check_fix_dsetup(){ [ "$(md5 -q "$GAME_DIR/DSETUP.dll" 2>/dev/null)" = "$GOOD_MD5" ]; }
 check_fix_dpvs()  { [ -f "$GAME_DIR/dpvs.dll" ] && ! head -c 4096 "$GAME_DIR/dpvs.dll" | grep -q UPX; }
 check_fix_ini()   { [ -f "$GAME_DIR/eqclient.ini.pre-mac.bak" ]; }
+
+# --- Performance helpers ------------------------------------------------------
+# The double-click / Play launch is `open "$WRAPPER"` (40-launch.sh), which
+# LaunchServices runs DETACHED — it does not inherit the shell environment, so
+# the WINEESYNC/WINEMSYNC that wine_env() sets never reach that gameplay session.
+# `LSEnvironment` is Apple's documented Launch Services Info.plist key for exactly
+# this: the vars it lists are placed in the bundle's environment when it is opened,
+# and wine inherits them. That is how sync (and any must-reach-the-game env) is
+# delivered to the real play path. See docs/PERFORMANCE.md.
+plist_path() { echo "$WRAPPER/Contents/Info.plist"; }
+
+# set_plist_env KEY VALUE — set one LSEnvironment var, preserving any others.
+set_plist_env() {
+  local p; p="$(plist_path)"
+  [ -f "$p" ] || return 0
+  # Create LSEnvironment only if absent — `json` output works for a dict (unlike
+  # `raw`), so an existing dict is detected and never clobbered.
+  plutil -extract LSEnvironment json -o - "$p" >/dev/null 2>&1 \
+    || plutil -replace LSEnvironment -json '{}' "$p" >/dev/null 2>&1 || return 0
+  plutil -replace "LSEnvironment.$1" -string "$2" "$p" >/dev/null 2>&1 || true
+}
+
+# apply_wrapper_sync — make WINEESYNC/WINEMSYNC actually reach the open-launched
+# game. WINEMSYNC (mach semaphores) is the macOS payload; WINEESYNC is Linux-native
+# and effectively ignored on macOS but set for parity. WINEFSYNC is Linux-only and
+# is deliberately NOT set. Idempotent.
+apply_wrapper_sync() {
+  set_plist_env WINEESYNC 1
+  set_plist_env WINEMSYNC 1
+}
+
+# set_plist_flag / remove_plist_flag — top-level string flags such as the
+# Sikarugir renderer toggles (D9VK/DXMT/D3DMETAL). Graceful no-op if unsupported.
+set_plist_flag()    { local p; p="$(plist_path)"; [ -f "$p" ] && plutil -replace "$1" -string "$2" "$p" >/dev/null 2>&1 || true; }
+remove_plist_flag() { local p; p="$(plist_path)"; [ -f "$p" ] && plutil -remove  "$1"            "$p" >/dev/null 2>&1 || true; }
+
+# Which renderer is active (recorded by 60-renderer.sh; default is the stock path).
+active_renderer() { cat "$RENDERER_MARKER" 2>/dev/null || echo wined3d; }
+# Whether the eqclient.ini performance keys are currently applied. Sentinel set by
+# 35-perf-ini.sh on apply and removed on revert; separate from eqclient.ini.perf.bak
+# (a permanent one-time safety copy) so status reflects the live state.
+check_perf_ini()  { [ -f "$GAME_DIR/.p99-perf-applied" ]; }
+
+# --- EQ eqclient.ini performance keys (shared by 30-apply-mac-fixes.sh and
+# 35-perf-ini.sh) ------------------------------------------------------------
+# All are [Defaults] keys. EQ silently ignores any key it doesn't recognize and
+# regenerates unset keys at its own default, so applying and reverting these is
+# safe and non-destructive. Resolution/window keys are intentionally absent —
+# they are never touched. EQ's in-game Options window is the authoritative place
+# to tune these; the keys give a repeatable scripted default.
+
+# perf_ini_managed_keys — the exact keys this project may set, one per line.
+# Reverting means deleting exactly these, leaving every other key untouched.
+perf_ini_managed_keys() {
+  cat <<'EOF'
+FarClipPlane
+SpellParticleDensity
+EnvironmentParticleDensity
+WaterSpecular
+HeatShimmer
+MaxFPS
+MaxBGFPS
+EOF
+}
+
+# perf_ini_lines — the KEY=VALUE lines to apply for the current env. No output
+# means "apply nothing". The `smoother` profile supplies conservative defaults;
+# any explicit EQ_* var overrides the profile value for that key.
+perf_ini_lines() {
+  local smoother="" spell="$EQ_SPELL_PARTICLES" env_p="$EQ_ENV_PARTICLES"
+  [ "$P99_PERF_PROFILE" = "smoother" ] && smoother=1
+  if [ -n "$smoother" ]; then
+    [ -n "$spell" ] || spell=64
+    [ -n "$env_p" ] || env_p=64
+  fi
+  [ -n "$EQ_FARCLIP" ] && printf 'FarClipPlane=%s\n' "$EQ_FARCLIP"
+  [ -n "$spell" ]      && printf 'SpellParticleDensity=%s\n' "$spell"
+  [ -n "$env_p" ]      && printf 'EnvironmentParticleDensity=%s\n' "$env_p"
+  if [ -n "$smoother" ]; then
+    printf 'WaterSpecular=FALSE\n'
+    printf 'HeatShimmer=FALSE\n'
+  fi
+  if [ -n "$EQ_FPS_CAP" ]; then
+    printf 'MaxFPS=%s\n'   "$EQ_FPS_CAP"
+    printf 'MaxBGFPS=%s\n' "$EQ_FPS_CAP"
+  fi
+  return 0
+}
 
 # Apple's Command Line Tools (~500 MB — NOT the full Xcode app). Needed by
 # Homebrew and by the python3/git stubs macOS ships. Triggers Apple's own

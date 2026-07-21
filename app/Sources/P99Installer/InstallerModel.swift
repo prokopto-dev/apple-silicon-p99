@@ -10,14 +10,15 @@ enum Phase: Equatable {
 }
 
 enum RunKind: Equatable {
-    case install, update, uninstall, launch
+    case install, update, uninstall, launch, performance
 
     var title: String {
         switch self {
-        case .install:   "Installing Project 1999"
-        case .update:    "Updating P99 files"
-        case .uninstall: "Uninstalling"
-        case .launch:    "Launching Project 1999"
+        case .install:     "Installing Project 1999"
+        case .update:      "Updating P99 files"
+        case .uninstall:   "Uninstalling"
+        case .launch:      "Launching Project 1999"
+        case .performance: "Applying performance settings"
         }
     }
 }
@@ -45,6 +46,24 @@ final class InstallerModel {
     private var waivedKeys: Set<String> { applyDsetupFix ? [] : ["fix_dsetup"] }
     /// fullyInstalled, but honoring user-disabled optional fixes.
     var readyToPlay: Bool { status.fullyInstalled(waiving: waivedKeys) }
+
+    // MARK: - Performance settings (opt-in, reversible; see docs/PERFORMANCE.md)
+
+    /// Graphics renderer: "wined3d" (stock) or "d9vk" (D3D9 → Vulkan → Metal,
+    /// smoother on newer Apple Silicon). Applied by 60-renderer.sh, which restores
+    /// the stock renderer cleanly when set back to wined3d. Persisted.
+    static let rendererKey = "rendererChoice"
+    var rendererChoice: String = UserDefaults.standard.string(forKey: rendererKey) ?? "wined3d" {
+        didSet { UserDefaults.standard.set(rendererChoice, forKey: Self.rendererKey) }
+    }
+
+    /// Apply the "smoother" eqclient.ini profile (lower particle load, capped
+    /// effects). Applied/reverted surgically by 35-perf-ini.sh — never touches
+    /// resolution or keybinds. Persisted.
+    static let smootherINIKey = "smootherINI"
+    var smootherINI: Bool = UserDefaults.standard.bool(forKey: smootherINIKey) {
+        didSet { UserDefaults.standard.set(smootherINI, forKey: Self.smootherINIKey) }
+    }
 
     // MARK: - Installer app updates
 
@@ -129,6 +148,17 @@ final class InstallerModel {
 
     func play() {
         startRun(.launch, steps: [StepRun(title: "Launch Project 1999", script: "40-launch.sh")])
+    }
+
+    /// Apply the current renderer + smoother-visuals choices. Both scripts read
+    /// their mode from the environment, so the same run either applies or reverts
+    /// depending on the toggles — no separate "revert" action needed.
+    func applyPerformance() {
+        startRun(.performance,
+                 steps: Steps.performance(),
+                 extraEnv: ["P99_RENDERER": rendererChoice,
+                            "P99_APPLY_PERF": smootherINI ? "1" : "0",
+                            "P99_PERF_PROFILE": smootherINI ? "smoother" : ""])
     }
 
     func uninstall(removeWrapper: Bool, removeGame: Bool) {

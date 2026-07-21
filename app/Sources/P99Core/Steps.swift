@@ -80,4 +80,12 @@ public enum Steps {
         steps.append(StepRun(title: "Apply the Mac fixes", script: "30-apply-mac-fixes.sh"))
         return steps
     }
+
+    /// Renderer swap + eqclient.ini perf keys. Both scripts read their mode from
+    /// the environment (P99_RENDERER / P99_APPLY_PERF), so this same list applies
+    /// or reverts the settings depending on the current toggles.
+    public static func performance() -> [StepRun] {
+        [StepRun(title: "Set the graphics renderer", script: "60-renderer.sh"),
+         StepRun(title: "Apply EQ graphics settings", script: "35-perf-ini.sh")]
+    }
 }
