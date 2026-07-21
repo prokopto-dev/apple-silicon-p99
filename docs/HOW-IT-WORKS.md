@@ -75,6 +75,14 @@ self-modifying code. Only after those pass should the runtime be tested
 against P99's Themida-packed `DSETUP.dll`. Until that proof exists, the
 Rosetta engine documented below remains the only supported backend.
 
+The **scaffolding for that proof now ships in this repo**: a second engine
+stack that installs side by side with the supported one (its own wrapper and
+prefix, shared game folder), a sha256-pinned slot for the future engine
+tarball, a stack switcher, offline smoke tests, and the installer UI to
+toggle between stacks. It is fully gated — until an engine tarball is
+published (or you pin your own), nothing changes for anyone. See
+[the FEX stack (experimental)](EXPERIMENTAL-FEX.md).
+
 ## Fix 1: `DSETUP.dll` — the anti-cheat that couldn't
 
 P99 distributes a custom `dsetup.dll` (~5 MB — the real DirectX helper it

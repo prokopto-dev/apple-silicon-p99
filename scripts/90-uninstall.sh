@@ -1,7 +1,11 @@
 #!/bin/bash
 # 90-uninstall.sh — guided removal. Asks before deleting anything.
 set -euo pipefail
-cd "$(dirname "$0")"; source ./config.sh
+cd "$(dirname "$0")"
+# Anchor to the rosetta stack so $WRAPPER below always means the supported
+# P99.app; the experimental FEX wrapper is handled by its own block.
+P99_STACK=rosetta
+source ./config.sh
 
 confirm() { # confirm <question> <ENVVAR>
   # Non-interactive mode (used by the GUI installer): P99_NONINTERACTIVE=1
@@ -24,6 +28,14 @@ if [ -d "$WRAPPER" ]; then
   fi
 else
   say "no wrapper at $WRAPPER"
+fi
+
+if [ -d "$FEX_WRAPPER" ]; then
+  if confirm "Delete the experimental FEX wrapper $FEX_WRAPPER?" P99_REMOVE_FEX_WRAPPER; then
+    rm -rf "$FEX_WRAPPER"
+    rm -f "$STACK_MARKER"
+    say "removed $FEX_WRAPPER (active stack reverts to rosetta)"
+  fi
 fi
 
 if [ -d "$GAME_DIR" ]; then

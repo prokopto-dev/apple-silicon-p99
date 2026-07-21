@@ -76,6 +76,7 @@ struct StatusView: View {
                     ("eqclient.ini applied", model.status.value("fix_ini")),
                 ])
                 settingsBox
+                stackBox
                 performanceBox
             }
             .padding(16)
@@ -108,6 +109,80 @@ struct StatusView: View {
             .fixedSize(horizontal: false, vertical: true)
     }
 
+    // The experimental post-Rosetta engine stack (docs/EXPERIMENTAL-FEX.md).
+    // Hard-gated: the FEX option is selectable only once its engine is actually
+    // installed, and setup is offered only while an engine tarball is pinned —
+    // so on today's builds this box just explains what's coming. Both stacks
+    // live side by side; the supported P99.app is never touched.
+    private var stackBox: some View {
+        @Bindable var model = model
+        return GroupBox("Engine stack (experimental)") {
+            VStack(alignment: .leading, spacing: 10) {
+                Picker("Engine stack", selection: $model.stackChoice) {
+                    Text("Rosetta 2 + WineCX (supported)").tag("rosetta")
+                    Text("FEX native ARM64 (experimental)").tag("fex")
+                        .selectionDisabled(!model.fexSelectable)
+                }
+                if !model.status.fexEnginePinned {
+                    caption("Engine not yet available: no FEX engine build has been "
+                            + "published, so this option is locked. It unlocks when the "
+                            + "project releases one — or when you point FEX_ENGINE_URL and "
+                            + "FEX_ENGINE_SHA256 at your own development build. Apple "
+                            + "retires general-purpose Rosetta 2 after macOS 27; this "
+                            + "stack is the escape route being built in the open.")
+                } else if model.fexSetupPossible {
+                    caption("A FEX engine is available but not installed. Setup builds a "
+                            + "second wrapper (P99 FEX.app) beside your working install and "
+                            + "smoke-tests the engine — the supported stack is not changed.")
+                    HStack {
+                        Spacer()
+                        Button("Set Up FEX Stack…") { model.setUpFex() }
+                            .disabled(!model.readyToPlay)
+                            .help(model.readyToPlay
+                                  ? "Builds the side-by-side FEX wrapper and runs the smoke tests"
+                                  : "Finish installing the game first — the FEX wrapper links to it")
+                    }
+                } else {
+                    HStack {
+                        Text("FEX wrapper + engine")
+                        Spacer()
+                        Label("Installed", systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                    }
+                    HStack {
+                        Text("Engine smoke tests")
+                        Spacer()
+                        smokeBadge(model.status.fexSmoke)
+                    }
+                    HStack {
+                        Text("Stack Play launches now")
+                        Spacer()
+                        Text(model.status.activeStack == "fex"
+                             ? "FEX (experimental)" : "Rosetta (supported)")
+                            .foregroundStyle(.secondary)
+                    }
+                    caption("Pick a stack and press Apply in the Performance panel — Play "
+                            + "then launches that wrapper. Both stacks stay installed, so "
+                            + "you can switch back and forth freely to compare.")
+                }
+            }
+            .padding(.vertical, 4)
+            .padding(.horizontal, 6)
+        }
+    }
+
+    @ViewBuilder
+    private func smokeBadge(_ value: String) -> some View {
+        switch value {
+        case "pass":
+            Label("Passed", systemImage: "checkmark.seal.fill").foregroundStyle(.green)
+        case "fail":
+            Label("Failed", systemImage: "xmark.seal").foregroundStyle(.orange)
+        default: // "never" (not run yet) or "n/a"
+            Label("Not run yet", systemImage: "circle.dotted").foregroundStyle(.secondary)
+        }
+    }
+
     // Opt-in, reversible tuning for stutter on newer Apple Silicon. Full guide:
     // docs/PERFORMANCE.md (every control names the script + variable it maps to
     // there, so terminal users get the identical behavior). Apply runs the
@@ -121,11 +196,19 @@ struct StatusView: View {
                     Text("Stock (wined3d)").tag("wined3d")
                     Text("D9VK — Vulkan/Metal (experimental)").tag("d9vk")
                 }
-                caption("D9VK skips the deprecated OpenGL path and can be much smoother "
-                        + "on newer chips — but on some machines it is much slower "
-                        + "(single-digit FPS has been reported). If that happens, switch "
-                        + "back to Stock and Apply; it restores the original renderer "
-                        + "and changes nothing else.")
+                .disabled(model.stackChoice == "fex")
+                if model.stackChoice == "fex" {
+                    caption("Renderer choices are Rosetta-stack only for now: the bundled "
+                            + "D9VK/DXMT libraries and their MoltenVK pairing are x86_64 "
+                            + "builds, unverified under the FEX engine. The FEX stack runs "
+                            + "the stock wined3d renderer.")
+                } else {
+                    caption("D9VK skips the deprecated OpenGL path and can be much smoother "
+                            + "on newer chips — but on some machines it is much slower "
+                            + "(single-digit FPS has been reported). If that happens, switch "
+                            + "back to Stock and Apply; it restores the original renderer "
+                            + "and changes nothing else.")
+                }
                 if model.rendererChoice == "d9vk" {
                     Toggle(isOn: $model.indirectMaps) {
                         Text("Indirect buffer maps (experiment)")

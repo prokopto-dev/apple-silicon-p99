@@ -58,6 +58,11 @@ P99_RENDERER=wined3d ./60-renderer.sh   # switch back to the stock renderer
 
 Or use the installer app's **Performance** panel (renderer picker → Apply).
 
+The renderer choice is **per engine stack** (it lives inside each wrapper's
+prefix). Under the experimental [FEX stack](EXPERIMENTAL-FEX.md) the installer
+locks the renderer to stock wined3d — the bundled D9VK/DXMT builds are only
+proven against the Rosetta engine.
+
 **Why D9VK can be slow, and what the script now does about it:**
 
 1. **It was running on the wrong MoltenVK.** The wrapper template ships *two*

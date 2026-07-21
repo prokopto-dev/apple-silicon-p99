@@ -68,6 +68,21 @@ LGPL CrossOver 24.0.7 wine. Deleting `P99.app` removes all of it.
 | **`d3d9.dll` swap** (opt-in, d9vk) | The renderer switch. Stock file is backed up once (`d3d9.dll.wined3d.bak`) and a wine DLL override is added; switching back restores the exact stock state and deletes the override. | `P99_RENDERER=wined3d ./60-renderer.sh` |
 | `.p99-renderer` marker | One-word file recording the active renderer so `status.sh` and rebuilds stay truthful. | removed on revert |
 
+## The experimental FEX stack (opt-in, gated)
+
+Only exists if you opted into [the FEX experiment](EXPERIMENTAL-FEX.md) —
+which additionally requires a pinned engine tarball that, as of this writing,
+has not been published. For everyone else, nothing in this section is on disk.
+
+| Change | What / why | Undo |
+|---|---|---|
+| `/Applications/P99 FEX.app` | A second, independent wrapper (own engine + prefix) for the post-Rosetta ARM64-wine + FEX experiment. The supported `P99.app` is never touched by it. | delete it, or the Uninstall screen's FEX toggle |
+| `~/Library/Application Support/p99-mac/active-stack` | One-word marker recording which wrapper the Play button launches (`fex`; absent = rosetta). Written by `70-stack.sh`, removed on revert/uninstall; self-heals to rosetta if the FEX wrapper disappears. | `./70-stack.sh rosetta` |
+| `.p99-fex-smoke` (inside the FEX prefix) | Last smoke-test result (`pass`/`fail`), shown by the installer and `status.sh`. | deleted with the wrapper |
+
+Verify: `./status.sh` → the `stack`, `fex_pinned`, `fex_wrapper`, `fex_engine`,
+`fex_prefix`, and `fex_smoke` lines.
+
 ## Your game folder (`~/Games/EverQuest`)
 
 Your game files stay outside the app (they survive wrapper rebuilds). We change

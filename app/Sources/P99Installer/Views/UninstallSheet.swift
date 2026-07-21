@@ -7,6 +7,7 @@ struct UninstallSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var removeWrapper = true
     @State private var removeGame = false
+    @State private var removeFex = false
     @State private var confirming = false
 
     var body: some View {
@@ -23,6 +24,19 @@ struct UninstallSheet: View {
                 }
             }
             .disabled(!model.status.isOK("wrapper"))
+
+            if model.status.isOK("fex_wrapper") {
+                Toggle(isOn: $removeFex) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Delete the experimental FEX wrapper")
+                        Text("/Applications/P99 FEX.app — the side-by-side post-Rosetta "
+                             + "experiment. Play reverts to the supported stack.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
 
             Toggle(isOn: $removeGame) {
                 VStack(alignment: .leading, spacing: 2) {
@@ -48,7 +62,7 @@ struct UninstallSheet: View {
                 Button("Cancel") { dismiss() }
                 Spacer()
                 Button("Uninstall…", role: .destructive) { confirming = true }
-                    .disabled(!removeWrapper && !removeGame)
+                    .disabled(!removeWrapper && !removeGame && !removeFex)
             }
         }
         .padding(24)
@@ -56,7 +70,8 @@ struct UninstallSheet: View {
         .confirmationDialog(confirmTitle, isPresented: $confirming, titleVisibility: .visible) {
             Button("Delete", role: .destructive) {
                 dismiss()
-                model.uninstall(removeWrapper: removeWrapper, removeGame: removeGame)
+                model.uninstall(removeWrapper: removeWrapper, removeGame: removeGame,
+                                removeFex: removeFex)
             }
             Button("Cancel", role: .cancel) {}
         } message: {
@@ -71,7 +86,8 @@ struct UninstallSheet: View {
         switch (removeWrapper, removeGame) {
         case (true, true):  "Delete the wrapper app AND the game folder?"
         case (true, false): "Delete the wrapper app?"
-        default:            "Delete the game folder?"
+        case (false, true): "Delete the game folder?"
+        default:            "Delete the experimental FEX wrapper?"
         }
     }
 }

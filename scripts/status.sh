@@ -9,7 +9,13 @@
 # same idempotency probes (check_* in config.sh) the install scripts use to
 # skip finished work. Always exits 0.
 set -euo pipefail
-cd "$(dirname "$0")"; source ./config.sh
+cd "$(dirname "$0")"
+# Anchor to the rosetta stack: the primary keys below must always describe the
+# supported install (the GUI's readiness checklist gates on them), regardless
+# of which stack the marker currently points at. The FEX side is reported
+# separately through the always-defined FEX_* paths.
+P99_STACK=rosetta
+source ./config.sh
 
 stat_line() { # stat_line <key> <check-function>
   if "$2"; then printf '%s\tok\n' "$1"; else printf '%s\tmissing\n' "$1"; fi
@@ -42,6 +48,21 @@ if check_prefix; then
   printf 'dxvk_maps\t%s\n' "$([ -f "$DXVK_CONF" ] && echo indirect || echo default)"
 else
   printf 'dxvk_maps\tn/a\n'
+fi
+
+# --- Experimental FEX stack (informational — never gates readiness) ----------
+# stack: which wrapper Play launches (rosetta|fex, from 70-stack.sh's marker).
+# fex_pinned: whether an engine tarball is pinned at all — the master gate.
+# fex_smoke: last 75-fex-smoke.sh result (pass|fail), "never" if not yet run.
+printf 'stack\t%s\n' "$(active_stack)"
+stat_line fex_pinned  fex_engine_pinned
+stat_line fex_wrapper check_fex_wrapper
+stat_line fex_engine  check_fex_engine
+stat_line fex_prefix  check_fex_prefix
+if check_fex_prefix; then
+  printf 'fex_smoke\t%s\n' "$(cat "$FEX_SMOKE_MARKER" 2>/dev/null || echo never)"
+else
+  printf 'fex_smoke\tn/a\n'
 fi
 
 if check_game; then

@@ -225,6 +225,121 @@ WRAPPER="$PW" GAME_DIR="$PG" P99_RENDERER=wined3d ./60-renderer.sh >/dev/null 2>
 assert_eq "perf: foreign conf preserved on revert" "my own settings" "$(head -1 "$PCONF")"
 rm -f "$PCONF"
 
+# --- Engine stack: overlay, switcher, gating, smoke tests ---------------------
+# Fake FEX wrapper mirroring the earlier fakes, plus a wine stub smart enough
+# for 75-fex-smoke.sh (echoes the cmd token, answers reg query).
+FX="$T/fex.app"; SM="$T/active-stack"
+FXP="$FX/Contents/SharedSupport/prefix"
+mkdir -p "$FX/Contents/SharedSupport/wine/bin" "$FXP/drive_c/windows/syswow64" \
+         "$FX/Contents/Frameworks/renderer/d9vk/wine/i386-windows" \
+         "$FX/Contents/Frameworks/moltenvkcx"
+cat > "$FX/Contents/SharedSupport/wine/bin/wine" <<'STUB'
+#!/bin/sh
+case "$1 ${2:-}" in
+  "cmd /c")    echo p99-fex-smoke-ok ;;
+  "reg query") echo "    ping    REG_SZ    pong" ;;
+esac
+exit 0
+STUB
+chmod +x "$FX/Contents/SharedSupport/wine/bin/wine"
+touch "$FXP/system.reg" \
+      "$FX/Contents/Frameworks/libMoltenVK.dylib" \
+      "$FX/Contents/Frameworks/moltenvkcx/libMoltenVK.dylib"
+printf 'D9VK' > "$FX/Contents/Frameworks/renderer/d9vk/wine/i386-windows/d3d9.dll"
+ln -sf ../Frameworks/libMoltenVK.dylib "$FX/Contents/SharedSupport/libMoltenVK.dylib"
+
+# Every stack invocation pins STACK_MARKER + FEX_WRAPPER into the temp dir.
+stack_env() { env STACK_MARKER="$SM" FEX_WRAPPER="$FX" "$@"; }
+
+# status.sh: FEX side absent -> everything missing/n-a, stack rosetta, unpinned.
+OUT=$(WRAPPER="$T/none.app" GAME_DIR="$T/nogame" STACK_MARKER="$SM" \
+      FEX_WRAPPER="$T/nofex.app" FEX_ENGINE_SHA256= ./status.sh)
+assert_eq "stack: default rosetta"      "rosetta" "$(field "$OUT" stack)"
+assert_eq "stack: unpinned by default"  "missing" "$(field "$OUT" fex_pinned)"
+assert_eq "stack: fex wrapper missing"  "missing" "$(field "$OUT" fex_wrapper)"
+assert_eq "stack: fex engine missing"   "missing" "$(field "$OUT" fex_engine)"
+assert_eq "stack: fex smoke n/a"        "n/a"     "$(field "$OUT" fex_smoke)"
+
+# Pinning a sha flips fex_pinned (the master gate for every FEX code path).
+OUT=$(stack_env WRAPPER="$T/none.app" GAME_DIR="$T/nogame" FEX_ENGINE_SHA256=deadbeef ./status.sh)
+assert_eq "stack: sha pins the slot" "ok" "$(field "$OUT" fex_pinned)"
+
+# 10-build-wrapper.sh refuses a FEX build while unpinned — before any download.
+if ERR=$(stack_env P99_STACK=fex FEX_ENGINE_SHA256= WRAPPER="$T/fx-build.app" ./10-build-wrapper.sh 2>&1); then
+  bad "stack: unpinned fex build must fail" "nonzero exit" "exit 0"
+else
+  ok
+fi
+case "$ERR" in
+  *"not yet available"*) ok ;;
+  *) bad "stack: gate names the reason" "*not yet available*" "$ERR" ;;
+esac
+assert_eq "stack: gate fired before any build" "no" "$([ -d "$T/fx-build.app" ] && echo yes || echo no)"
+
+# config overlay: P99_STACK=fex retargets WRAPPER (and the engine slot);
+# an explicit WRAPPER in the environment still wins.
+assert_eq "stack: overlay retargets WRAPPER" "$FX" \
+  "$(stack_env P99_STACK=fex bash -c 'source ./config.sh; echo "$WRAPPER"')"
+assert_eq "stack: explicit WRAPPER wins" "$T/custom.app" \
+  "$(stack_env P99_STACK=fex WRAPPER="$T/custom.app" bash -c 'source ./config.sh; echo "$WRAPPER"')"
+assert_eq "stack: overlay retargets engine sha" "deadbeef" \
+  "$(stack_env P99_STACK=fex FEX_ENGINE_SHA256=deadbeef bash -c 'source ./config.sh; echo "$ENGINE_SHA256"')"
+
+# 70-stack.sh: refuses while unpinned; switches once pinned + engine present;
+# reverting removes the marker.
+if stack_env FEX_ENGINE_SHA256= ./70-stack.sh fex >/dev/null 2>&1; then
+  bad "stack: switch while unpinned must fail" "nonzero exit" "exit 0"
+else
+  ok
+fi
+stack_env FEX_ENGINE_SHA256=deadbeef ./70-stack.sh fex >/dev/null 2>&1
+assert_eq "stack: marker written" "fex" "$(cat "$SM" 2>/dev/null)"
+OUT=$(stack_env WRAPPER="$T/none.app" GAME_DIR="$T/nogame" ./status.sh)
+assert_eq "stack: status reports fex" "fex" "$(field "$OUT" stack)"
+stack_env ./70-stack.sh rosetta >/dev/null 2>&1
+assert_eq "stack: revert removes marker" "no" "$([ -f "$SM" ] && echo yes || echo no)"
+
+# Self-heal: marker says fex but the FEX engine is gone -> rosetta.
+echo fex > "$SM"
+OUT=$(WRAPPER="$T/none.app" GAME_DIR="$T/nogame" STACK_MARKER="$SM" \
+      FEX_WRAPPER="$T/vanished.app" ./status.sh)
+assert_eq "stack: self-heals to rosetta" "rosetta" "$(field "$OUT" stack)"
+rm -f "$SM"
+
+# Renderer state is per-stack: applying d9vk through the fex overlay touches
+# only the FEX wrapper's prefix; the rosetta fake stays on wined3d.
+stack_env P99_STACK=fex GAME_DIR="$PG" P99_RENDERER=d9vk ./60-renderer.sh >/dev/null 2>&1
+assert_eq "stack: fex renderer d9vk" "d9vk" "$(cat "$FXP/.p99-renderer" 2>/dev/null)"
+assert_eq "stack: rosetta renderer untouched" "wined3d" \
+  "$(field "$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)" renderer)"
+
+# 75-fex-smoke.sh: the stub engine passes all tier-1 checks -> marker pass.
+if stack_env GAME_DIR="$PG" ./75-fex-smoke.sh >/dev/null 2>&1; then ok; else
+  bad "stack: smoke passes on healthy stub" "exit 0" "nonzero exit"
+fi
+assert_eq "stack: smoke marker pass" "pass" "$(cat "$FXP/.p99-fex-smoke" 2>/dev/null)"
+OUT=$(stack_env WRAPPER="$T/none.app" GAME_DIR="$T/nogame" ./status.sh)
+assert_eq "stack: status smoke pass" "pass" "$(field "$OUT" fex_smoke)"
+
+# A mute engine (no cmd output, no reg answers) must fail and record it.
+printf '#!/bin/sh\nexit 0\n' > "$FX/Contents/SharedSupport/wine/bin/wine"
+if stack_env GAME_DIR="$PG" ./75-fex-smoke.sh >/dev/null 2>&1; then
+  bad "stack: smoke fails on mute stub" "nonzero exit" "exit 0"
+else
+  ok
+fi
+assert_eq "stack: smoke marker fail" "fail" "$(cat "$FXP/.p99-fex-smoke" 2>/dev/null)"
+
+# 90-uninstall.sh: the FEX flag removes only the FEX wrapper + stack marker.
+KEEP="$T/keepme.app"; mkdir -p "$KEEP"
+echo fex > "$SM"
+stack_env WRAPPER="$KEEP" GAME_DIR="$T/nogame" P99_NONINTERACTIVE=1 \
+  P99_REMOVE_WRAPPER=0 P99_REMOVE_GAMEDIR=0 P99_REMOVE_FEX_WRAPPER=1 \
+  ./90-uninstall.sh >/dev/null
+assert_eq "stack: uninstall removes fex wrapper" "no"  "$([ -d "$FX" ] && echo yes || echo no)"
+assert_eq "stack: uninstall removes marker"      "no"  "$([ -f "$SM" ] && echo yes || echo no)"
+assert_eq "stack: uninstall keeps rosetta app"   "yes" "$([ -d "$KEEP" ] && echo yes || echo no)"
+
 echo
 if [ "$FAIL" -eq 0 ]; then
   echo "OK — $PASS script-layer assertions passed"

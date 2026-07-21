@@ -3,11 +3,10 @@
 #
 # Everything here was verified working 2026-07-13 on an Apple M3, macOS 26.5.
 
-# Where the finished wrapper app goes.
-WRAPPER="${WRAPPER:-/Applications/P99.app}"
-
 # Where your EverQuest game files live (the wrapper symlinks to this, so the
-# game stays outside the .app and survives wrapper rebuilds).
+# game stays outside the .app and survives wrapper rebuilds). Shared by every
+# engine stack — the game files, P99 patches, and Mac fixes are all
+# engine-independent, so your characters' settings follow you across stacks.
 GAME_DIR="${GAME_DIR:-$HOME/Games/EverQuest}"
 
 # --- Pinned component versions (known-good together) -------------------------
@@ -42,6 +41,81 @@ P99FILES_MIN_VERSION="${P99FILES_MIN_VERSION:-62}"
 
 # md5 of the known-good "V58" dsetup.dll build (see 30-apply-mac-fixes.sh).
 GOOD_MD5="${GOOD_MD5:-b02ab111c9b95c2ddad4e3bdbe9c53cd}"
+
+# --- Engine stack (Rosetta today, experimental FEX slot for the post-Rosetta
+# future) ----------------------------------------------------------------------
+# Two stacks can be installed side by side, each with its own wrapper app and
+# wine prefix; the game directory ($GAME_DIR) is shared between them:
+#   rosetta  x86_64 WineCX engine under Rosetta 2 — the proven, supported stack.
+#   fex      native ARM64 wine + FEX x86 emulation — experimental; exists so the
+#            switchable plumbing can ship before the engine itself does. See
+#            docs/EXPERIMENTAL-FEX.md and the Post-Rosetta section of
+#            docs/HOW-IT-WORKS.md.
+#
+# Which stack a script invocation targets resolves in this order:
+#   1. explicit P99_STACK in the environment (what the GUI always sets)
+#   2. the recorded marker below (what 70-stack.sh writes — the "applied" stack)
+#   3. rosetta
+# status.sh and 90-uninstall.sh deliberately force P99_STACK=rosetta before
+# sourcing this file so their primary keys/paths always describe the supported
+# stack, then report/handle the FEX side through the always-defined FEX_* paths.
+
+# Marker recording the active (= launch-time) stack. It cannot live inside
+# either wrapper — it's the pointer that says which wrapper to use.
+STACK_MARKER="${STACK_MARKER:-$HOME/Library/Application Support/p99-mac/active-stack}"
+
+# The FEX-side wrapper and its derived paths, always defined (even under the
+# rosetta stack) so status.sh can report both stacks in one pass.
+FEX_WRAPPER="${FEX_WRAPPER:-/Applications/P99 FEX.app}"
+FEX_PREFIX="$FEX_WRAPPER/Contents/SharedSupport/prefix"
+FEX_WINE="$FEX_WRAPPER/Contents/SharedSupport/wine/bin/wine"
+# 75-fex-smoke.sh records its last result here (pass|fail); absent = never ran.
+FEX_SMOKE_MARKER="$FEX_PREFIX/.p99-fex-smoke"
+
+# Pinned FEX engine slot — same fetch_component contract as ENGINE_* above,
+# with one release-process rule: the tarball must ship a `wswine.bundle/`
+# directory exactly like the WineCX engines (10-build-wrapper.sh expects it).
+# The URL points at the future project-hosted release; the sha256 stays EMPTY
+# until that release exists — fex_engine_pinned() gates every FEX code path on
+# it, so nothing here changes behavior for anyone until an engine is published.
+# Experimenters: point both vars at your own dev tarball (file:// URLs work).
+FEX_ENGINE_URL="${FEX_ENGINE_URL:-https://github.com/prokopto-dev/apple-silicon-p99/releases/download/fex-engine-1/FEXWine-arm64-1.tar.xz}"
+FEX_ENGINE_MIRROR_URL="${FEX_ENGINE_MIRROR_URL:-$FEX_ENGINE_URL}"
+FEX_ENGINE_SHA256="${FEX_ENGINE_SHA256:-}"
+
+fex_engine_pinned() { [ -n "$FEX_ENGINE_SHA256" ]; }
+check_fex_wrapper() { [ -d "$FEX_WRAPPER" ]; }
+check_fex_engine()  { [ -x "$FEX_WINE" ]; }
+check_fex_prefix()  { [ -f "$FEX_PREFIX/system.reg" ]; }
+
+# The active stack: the marker, with a self-heal — if the marker says fex but
+# the FEX engine is gone (user deleted the wrapper by hand), fall back to
+# rosetta instead of pointing launches at nothing.
+active_stack() {
+  if [ "$(cat "$STACK_MARKER" 2>/dev/null)" = fex ] && check_fex_engine; then
+    echo fex
+  else
+    echo rosetta
+  fi
+}
+
+P99_STACK="${P99_STACK:-$(active_stack)}"
+
+# The stack overlay: under fex, retarget the wrapper (and with it every derived
+# path below — prefix, wine binary, renderer state, plist helpers) plus the
+# engine slot and bundle name. An explicit WRAPPER in the environment still
+# wins. Under fex the engine knobs are FEX_ENGINE_*; the rosetta ENGINE_* env
+# overrides deliberately do not apply.
+if [ "$P99_STACK" = fex ]; then
+  WRAPPER="${WRAPPER:-$FEX_WRAPPER}"
+  P99_BUNDLE_NAME="${P99_BUNDLE_NAME:-P99 FEX}"
+  ENGINE_URL="$FEX_ENGINE_URL"
+  ENGINE_MIRROR_URL="$FEX_ENGINE_MIRROR_URL"
+  ENGINE_SHA256="$FEX_ENGINE_SHA256"
+else
+  WRAPPER="${WRAPPER:-/Applications/P99.app}"
+  P99_BUNDLE_NAME="${P99_BUNDLE_NAME:-P99}"
+fi
 
 # --- Performance tuning (all opt-in) -----------------------------------------
 # Every knob below defaults to "unset", so the proven config is byte-identical

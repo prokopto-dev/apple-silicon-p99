@@ -65,4 +65,23 @@ func runP99StatusTests() {
     T.equal(withPerf.value("dxvk_maps"), "indirect", "dxvk_maps value readable")
     let offPerf = P99Status(tsv: tsv(["renderer": "wined3d", "perf_ini": "missing"]))
     T.expect(offPerf.fullyInstalled, "perf_ini missing doesn't block readiness")
+
+    // Experimental FEX stack keys are informational too — no state of the FEX
+    // side may ever gate the supported install's readiness.
+    let fexMissing = P99Status(tsv: tsv(["stack": "rosetta", "fex_pinned": "missing",
+                                         "fex_wrapper": "missing", "fex_engine": "missing",
+                                         "fex_prefix": "missing", "fex_smoke": "n/a"]))
+    T.expect(fexMissing.fullyInstalled, "absent FEX stack doesn't affect fullyInstalled")
+    T.expect(!fexMissing.fexEnginePinned && !fexMissing.fexInstalled, "fex gates read missing")
+    let fexLive = P99Status(tsv: tsv(["stack": "fex", "fex_pinned": "ok",
+                                      "fex_wrapper": "ok", "fex_engine": "ok",
+                                      "fex_prefix": "ok", "fex_smoke": "fail"]))
+    T.expect(fexLive.fullyInstalled, "even a failing FEX stack doesn't affect fullyInstalled")
+    T.expect(fexLive.fexEnginePinned && fexLive.fexInstalled, "fex gates read ok")
+    T.equal(fexLive.activeStack, "fex", "activeStack readable")
+    T.equal(fexLive.fexSmoke, "fail", "fexSmoke readable")
+
+    // Old status.sh output (pre-stack) must read as the supported stack.
+    T.equal(full.activeStack, "rosetta", "no stack key defaults to rosetta")
+    T.equal(full.fexSmoke, "n/a", "no smoke key defaults to n/a")
 }
