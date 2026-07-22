@@ -1,0 +1,1120 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Run EverQuest Project 1999 natively-ish on a modern Mac with a free and open-source stack">
+      
+      
+      
+        <link rel="canonical" href="https://prokopto-dev.github.io/apple-silicon-p99/0.8/EXPERIMENTAL-FEX/">
+      
+      
+        <link rel="prev" href="../PERFORMANCE/">
+      
+      
+        <link rel="next" href="../TROUBLESHOOTING/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>FEX stack (experimental) - P99 on Apple Silicon</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#the-fex-stack-experimental" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="P99 on Apple Silicon" class="md-header__button md-logo" aria-label="P99 on Apple Silicon" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            P99 on Apple Silicon
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              FEX stack (experimental)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/prokopto-dev/apple-silicon-p99" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    prokopto-dev/apple-silicon-p99
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../HOW-IT-WORKS/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  How it works
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../WHAT-WE-CHANGE/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  What we change
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../PERFORMANCE/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Performance
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  FEX stack (experimental)
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../TROUBLESHOOTING/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Troubleshooting
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../FAQ/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  FAQ
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../changelog/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="P99 on Apple Silicon" class="md-nav__button md-logo" aria-label="P99 on Apple Silicon" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    P99 on Apple Silicon
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/prokopto-dev/apple-silicon-p99" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    prokopto-dev/apple-silicon-p99
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../HOW-IT-WORKS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How it works
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../WHAT-WE-CHANGE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What we change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PERFORMANCE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FEX stack (experimental)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FEX stack (experimental)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#how-the-two-stacks-coexist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How the two stacks coexist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-the-option-is-greyed-out" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why the option is greyed out
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#trying-it-with-your-own-engine-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trying it with your own engine build
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Trying it with your own engine build">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-the-smoke-tests-actually-prove" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the smoke tests actually prove
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#renderer-support-under-fex" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Renderer support under FEX
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#switching-back-removing-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Switching back / removing it
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#known-limits-deliberate-for-now" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Known limits (deliberate, for now)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TROUBLESHOOTING/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FAQ/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#how-the-two-stacks-coexist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How the two stacks coexist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-the-option-is-greyed-out" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why the option is greyed out
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#trying-it-with-your-own-engine-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trying it with your own engine build
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Trying it with your own engine build">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-the-smoke-tests-actually-prove" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the smoke tests actually prove
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#renderer-support-under-fex" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Renderer support under FEX
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#switching-back-removing-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Switching back / removing it
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#known-limits-deliberate-for-now" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Known limits (deliberate, for now)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/prokopto-dev/apple-silicon-p99/edit/main/docs/EXPERIMENTAL-FEX.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="the-fex-stack-experimental">The FEX stack (experimental)<a class="headerlink" href="#the-fex-stack-experimental" title="Permanent link">&para;</a></h1>
+<p>This page covers the project's <strong>post-Rosetta engine stack</strong>: native ARM64 Wine
+with <a href="https://github.com/FEX-Emu/FEX">FEX</a>'s wine-facing x86 emulation module
+instead of Rosetta 2. It exists because
+<a href="https://developer.apple.com/documentation/Apple-Silicon/about-the-rosetta-translation-environment">Apple has said</a>
+general-purpose Rosetta remains available only through macOS 27 — and the
+supported engine is an x86_64 binary that needs it (background:
+<a href="../HOW-IT-WORKS/#post-rosetta-direction">the Post-Rosetta direction</a>).</p>
+<div class="admonition warning">
+<p class="admonition-title">Read this first</p>
+<p><strong>There is no working FEX engine yet.</strong> What ships today is the complete,
+tested <em>plumbing</em> — a second engine stack that installs side by side with
+the supported one, a pinned slot for the engine tarball, smoke tests, and
+the installer UI to switch between stacks. Every piece of it is gated: for
+everyone who hasn't pinned an engine, nothing changes at all. The Rosetta
+stack remains the only supported way to play.</p>
+</div>
+<!-- engine-stack-panel.png and engine-stack-ready.png are faithful rendered
+mockups of the SwiftUI installer UI (generated without a Mac). To replace them
+with real captures, screenshot P99 Installer.app on macOS at the same size. -->
+<p><img alt="The installer's Engine stack panel: a picker offering the supported Rosetta
+stack and a greyed-out FEX option, with a caption explaining no FEX engine has
+been published yet." src="../img/engine-stack-panel.png" /></p>
+<h2 id="how-the-two-stacks-coexist">How the two stacks coexist<a class="headerlink" href="#how-the-two-stacks-coexist" title="Permanent link">&para;</a></h2>
+<p>Each stack is a <strong>complete, independent wrapper app</strong> — the experimental one
+never touches your working install:</p>
+<div class="highlight"><pre><span></span><code>/Applications/P99.app          the supported stack (x86_64 WineCX + Rosetta 2)
+/Applications/P99 FEX.app      the experimental stack (ARM64 wine + FEX)
+~/Games/EverQuest              your game files — shared, symlinked into BOTH
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Shared between stacks</th>
+<th>Per-stack</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>What</td>
+<td>Game files, P99 patches, the three Mac fixes, <code>eqclient.ini</code> (so your keybinds and settings follow you)</td>
+<td>Wrapper app, wine prefix, renderer choice, MoltenVK pairing, launch environment</td>
+</tr>
+<tr>
+<td>Why safe</td>
+<td>The fixes are on-disk changes to game files and are engine-independent — the unpacked <code>dpvs.dll</code> is functionally identical to the original, harmless under any engine</td>
+<td>Wine versions must never share a prefix; keeping them apart is what makes switching risk-free</td>
+</tr>
+</tbody>
+</table>
+<p>One consequence of the shared <code>eqclient.ini</code>: the <strong>Smoother visuals</strong> and
+frame-rate-cap settings apply to both stacks at once — they are EQ's own
+settings, not engine settings. The <strong>renderer</strong> choice, by contrast, is
+per-stack (it lives inside each wrapper's prefix).</p>
+<p>Which stack the Play button (and <code>40-launch.sh</code>) uses is recorded in one
+marker file: <code>~/Library/Application Support/p99-mac/active-stack</code>. Switching
+stacks rewrites that marker and nothing else, so you can toggle back and forth
+freely to compare. If the FEX wrapper is ever deleted by hand, the marker
+self-heals back to the Rosetta stack.</p>
+<h2 id="why-the-option-is-greyed-out">Why the option is greyed out<a class="headerlink" href="#why-the-option-is-greyed-out" title="Permanent link">&para;</a></h2>
+<p>The engine slot in <code>scripts/config.sh</code> follows the same rule as every other
+big component: a pinned URL plus a <strong>sha256 that must match</strong>. Right now:</p>
+<ul>
+<li><code>FEX_ENGINE_URL</code> points at a future release of this project
+  (<code>fex-engine-1</code>) that <strong>does not exist yet</strong>;</li>
+<li><code>FEX_ENGINE_SHA256</code> ships <strong>empty</strong>, and every FEX code path — the build
+  script, the stack switcher, the installer UI — refuses to proceed while it
+  is empty (<code>./status.sh</code> reports it as <code>fex_pinned</code>).</li>
+</ul>
+<p>When a prototype engine exists, pinning it is one release + two values. Until
+then the installer shows the panel with the FEX option locked and this
+explanation, which is exactly the state the screenshot above captures.</p>
+<h2 id="trying-it-with-your-own-engine-build">Trying it with your own engine build<a class="headerlink" href="#trying-it-with-your-own-engine-build" title="Permanent link">&para;</a></h2>
+<p>If you are experimenting with a native ARM64 wine + FEX build, point the slot
+at your own tarball — <code>file://</code> URLs work:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">FEX_ENGINE_URL</span><span class="o">=</span><span class="s2">&quot;file:///path/to/my-fexwine.tar.xz&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">FEX_ENGINE_SHA256</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>shasum<span class="w"> </span>-a<span class="w"> </span><span class="m">256</span><span class="w"> </span>/path/to/my-fexwine.tar.xz<span class="w"> </span><span class="p">|</span><span class="w"> </span>cut<span class="w"> </span>-d<span class="s1">&#39; &#39;</span><span class="w"> </span>-f1<span class="k">)</span><span class="s2">&quot;</span>
+
+<span class="nb">cd</span><span class="w"> </span>scripts
+<span class="nv">P99_STACK</span><span class="o">=</span>fex<span class="w"> </span>./10-build-wrapper.sh<span class="w">    </span><span class="c1"># builds /Applications/P99 FEX.app</span>
+<span class="nv">P99_STACK</span><span class="o">=</span>fex<span class="w"> </span>./20-install-game.sh<span class="w">     </span><span class="c1"># links the shared game folder in</span>
+./75-fex-smoke.sh<span class="w">                      </span><span class="c1"># smoke-test the engine (below)</span>
+./70-stack.sh<span class="w"> </span>fex<span class="w">                      </span><span class="c1"># Play now launches the FEX wrapper</span>
+./40-launch.sh<span class="w">                         </span><span class="c1"># ...moment of truth</span>
+./70-stack.sh<span class="w"> </span>rosetta<span class="w">                  </span><span class="c1"># switch back any time</span>
+</code></pre></div>
+<p>In the installer app the same flow is the <strong>Set Up FEX Stack</strong> button, which
+appears once an engine is pinned; after setup the stack picker unlocks and the
+<strong>Apply</strong> button in the Performance panel switches stacks:</p>
+<p><img alt="The Engine stack panel once a FEX engine is installed: the picker unlocked
+with FEX selected, an Installed badge for the wrapper and engine, smoke tests
+Passed, and the stack Play launches." src="../img/engine-stack-ready.png" /></p>
+<p><strong>The engine tarball contract:</strong> the tarball must contain a <code>wswine.bundle/</code>
+directory laid out like the Sikarugir WineCX engines (<code>bin/wine</code> inside it) —
+that is what <code>10-build-wrapper.sh</code> extracts into the wrapper. A future pinned
+engine release will follow the same layout.</p>
+<h3 id="what-the-smoke-tests-actually-prove">What the smoke tests actually prove<a class="headerlink" href="#what-the-smoke-tests-actually-prove" title="Permanent link">&para;</a></h3>
+<p><code>75-fex-smoke.sh</code> is deliberately honest about its coverage. Tier 1 runs
+offline against the installed engine:</p>
+<ol>
+<li><strong>Architecture</strong> — the wine binary should carry a native <code>arm64</code> slice; an
+   x86_64-only "FEX" engine still needs Rosetta (warned, not failed, so
+   prototype engines can be exercised).</li>
+<li><strong><code>wineboot</code></strong> — the prefix initializes.</li>
+<li><strong>32-bit <code>cmd.exe</code> echo</strong> — a real 32-bit Windows PE executes through the
+   emulation module and produces output: the minimal end-to-end proof that x86
+   code is being fetched, translated, and run.</li>
+<li><strong>Registry round-trip</strong> — <code>reg add</code> / <code>reg query</code> on a scratch key.</li>
+</ol>
+<p>What tier 1 <strong>cannot</strong> prove: structured-exception handling,
+memory-protection changes, and self-modifying code — the exact things P99's
+Themida-packed anti-cheat leans on (see
+<a href="../HOW-IT-WORKS/#the-complete-boot-sequence-annotated">the boot sequence</a>).
+Those need purpose-built 32-bit test binaries that this repo cannot bundle
+today. Tier 2 exists for exactly that hole: put your test <code>.exe</code> files in a
+folder and run</p>
+<div class="highlight"><pre><span></span><code><span class="nv">P99_FEX_SMOKE_EXES</span><span class="o">=</span>/path/to/tests<span class="w"> </span>./75-fex-smoke.sh
+</code></pre></div>
+<p>— each must exit 0. A pinned <code>fex-smoke-1</code> release asset of proper test
+binaries is the intended future source. The last result (<code>pass</code>/<code>fail</code>) is
+recorded and shown in the installer and in <code>./status.sh</code> as <code>fex_smoke</code>.</p>
+<h2 id="renderer-support-under-fex">Renderer support under FEX<a class="headerlink" href="#renderer-support-under-fex" title="Permanent link">&para;</a></h2>
+<p>The installer locks the renderer picker to <strong>Stock (wined3d)</strong> while the FEX
+stack is selected. The bundled D9VK/DXMT DLL sets — and the CrossOver MoltenVK
+build D9VK is paired with — have only ever been proven against the x86_64
+Rosetta engine; under a native ARM64 engine their host-side halves are the
+engine's own, untested territory. When a real engine exists and its renderers
+are verified, the matrix widens. (Terminal users can still experiment:
+<code>P99_STACK=fex P99_RENDERER=d9vk ./60-renderer.sh</code> — the renderer state is
+per-stack, so nothing you break leaks into the supported install.)</p>
+<h2 id="switching-back-removing-it">Switching back / removing it<a class="headerlink" href="#switching-back-removing-it" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Switch back:</strong> <code>./70-stack.sh rosetta</code> (or pick Rosetta in the app and
+  Apply). Both stacks stay installed.</li>
+<li><strong>Remove the experiment:</strong> the app's Uninstall screen gains a "Delete the
+  experimental FEX wrapper" toggle, or
+  <code>P99_NONINTERACTIVE=1 P99_REMOVE_FEX_WRAPPER=1 ./90-uninstall.sh</code>. Deleting
+  <code>P99 FEX.app</code> by hand also works — the stack marker self-heals. Your game
+  folder and the supported wrapper are untouched either way.</li>
+</ul>
+<h2 id="known-limits-deliberate-for-now">Known limits (deliberate, for now)<a class="headerlink" href="#known-limits-deliberate-for-now" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>The launcher binary question.</strong> The FEX wrapper reuses the Sikarugir
+  template, whose launcher may itself be an x86_64 binary — fine while Rosetta
+  exists (through macOS 27), but the fully Rosetta-free endgame needs an ARM64
+  launcher or a direct-wine launch path. Out of scope until an engine exists
+  to launch.</li>
+<li><strong>No SEH/self-modifying-code smoke binaries</strong> shipped yet (see above).</li>
+<li><strong>The anti-cheat is the real boss.</strong> Everything here is scaffolding for the
+  day an engine can attempt the Themida unpack. Expect that to be the hard
+  part, exactly as it was on Rosetta.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.indexes", "navigation.top", "search.suggest", "content.code.copy", "content.action.edit"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

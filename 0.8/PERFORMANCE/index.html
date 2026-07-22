@@ -1,0 +1,1473 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Run EverQuest Project 1999 natively-ish on a modern Mac with a free and open-source stack">
+      
+      
+      
+        <link rel="canonical" href="https://prokopto-dev.github.io/apple-silicon-p99/0.8/PERFORMANCE/">
+      
+      
+        <link rel="prev" href="../WHAT-WE-CHANGE/">
+      
+      
+        <link rel="next" href="../EXPERIMENTAL-FEX/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Performance - P99 on Apple Silicon</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#performance-tuning" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="P99 on Apple Silicon" class="md-header__button md-logo" aria-label="P99 on Apple Silicon" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            P99 on Apple Silicon
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Performance
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/prokopto-dev/apple-silicon-p99" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    prokopto-dev/apple-silicon-p99
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../HOW-IT-WORKS/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  How it works
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../WHAT-WE-CHANGE/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  What we change
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Performance
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../EXPERIMENTAL-FEX/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  FEX stack (experimental)
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../TROUBLESHOOTING/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Troubleshooting
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../FAQ/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  FAQ
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../changelog/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="P99 on Apple Silicon" class="md-nav__button md-logo" aria-label="P99 on Apple Silicon" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    P99 on Apple Silicon
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/prokopto-dev/apple-silicon-p99" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    prokopto-dev/apple-silicon-p99
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../HOW-IT-WORKS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How it works
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../WHAT-WE-CHANGE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What we change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#why-it-stutters-on-this-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why it stutters on this stack
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lever-1-try-the-d9vk-renderer-big-win-for-some-much-worse-for-others" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lever 1 — Try the D9VK renderer (big win for some, much worse for others)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lever-2-wine-msync-actually-reaching-the-game" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lever 2 — Wine msync actually reaching the game
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lever-3-eqs-own-graphics-load-view-distance-particles-fps-cap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lever 3 — EQ's own graphics load (view distance, particles, FPS cap)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lever-4-display-scaling-render-at-1-the-big-fill-rate-lever" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lever 4 — Display scaling: render at 1× (the big fill-rate lever)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lever-5-wined3d-registry-fine-tuning-stock-renderer-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lever 5 — wined3d registry fine-tuning (stock renderer only)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#applying-from-the-installer-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Applying from the installer app
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#measuring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Measuring
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-doesnt-help-or-we-cant-expose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What doesn't help (or we can't expose)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../EXPERIMENTAL-FEX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FEX stack (experimental)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TROUBLESHOOTING/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FAQ/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#why-it-stutters-on-this-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why it stutters on this stack
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lever-1-try-the-d9vk-renderer-big-win-for-some-much-worse-for-others" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lever 1 — Try the D9VK renderer (big win for some, much worse for others)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lever-2-wine-msync-actually-reaching-the-game" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lever 2 — Wine msync actually reaching the game
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lever-3-eqs-own-graphics-load-view-distance-particles-fps-cap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lever 3 — EQ's own graphics load (view distance, particles, FPS cap)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lever-4-display-scaling-render-at-1-the-big-fill-rate-lever" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lever 4 — Display scaling: render at 1× (the big fill-rate lever)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lever-5-wined3d-registry-fine-tuning-stock-renderer-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lever 5 — wined3d registry fine-tuning (stock renderer only)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#applying-from-the-installer-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Applying from the installer app
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#measuring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Measuring
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-doesnt-help-or-we-cant-expose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What doesn't help (or we can't expose)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/prokopto-dev/apple-silicon-p99/edit/main/docs/PERFORMANCE.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="performance-tuning">Performance tuning<a class="headerlink" href="#performance-tuning" title="Permanent link">&para;</a></h1>
+<p>Project 1999 is a 2005 game, so on a modern Mac the bottleneck is almost never
+raw GPU or CPU power — it's the translation stack between the game and the metal.
+This page collects the tunable knobs that actually move the needle on <strong>stutter
+and choppy frame pacing</strong>, ordered by impact, with the tradeoffs stated honestly.</p>
+<p>Everything here is <strong>opt-in and reversible</strong>. None of it changes your resolution
+or your keybinds/UI, and every knob can be switched back to the stock config
+without touching your other settings. If you don't opt in, your install behaves
+exactly as before.</p>
+<blockquote>
+<p><strong>The one rule that bites people:</strong> EQ rewrites <code>eqclient.ini</code> when it exits, so
+edit that file (or run the INI scripts below) only while the game is <strong>closed</strong>,
+or your changes are overwritten.</p>
+</blockquote>
+<!-- performance-panel.png and performance-apply.png are faithful rendered mockups
+of the SwiftUI installer UI (generated without a Mac). To replace them with real
+captures, screenshot P99 Installer.app on macOS at the same size.
+TODO: the mockups predate the Display scaling picker, the wined3d tuning group,
+and the Diagnostics disclosure (levers 4-5) — refresh them when a Mac capture or
+new mockup is available; the table under "Applying from the installer app" is
+the current source of truth for the panel's controls. -->
+<p><img alt="The installer app's Performance panel: a graphics-renderer picker (Stock wined3d or
+D9VK) and a &quot;Smoother visuals&quot; toggle, both opt-in and reversible, with an Apply
+button." src="../img/performance-panel.png" /></p>
+<h2 id="why-it-stutters-on-this-stack">Why it stutters on this stack<a class="headerlink" href="#why-it-stutters-on-this-stack" title="Permanent link">&para;</a></h2>
+<p>Three costs stack up, and only the first two are tunable:</p>
+<ol>
+<li><strong>The renderer path.</strong> By default rendering runs through wine's built-in
+   <code>wined3d</code>: Direct3D 9 → OpenGL → Apple's <strong>deprecated</strong> GL-on-Metal shim (see
+   <a href="../HOW-IT-WORKS/">HOW-IT-WORKS.md</a>). Apple has not optimized that OpenGL layer
+   in years; on newer GPUs (M4/M5) it is a major source of uneven frame times.
+   The template bundles an alternative renderer that skips it entirely (lever 1)
+   — a big win on some machines, and much slower on others, so it stays opt-in.</li>
+<li><strong>Thread scheduling.</strong> Wine's <code>msync</code> (mach-semaphore) fast path smooths the
+   hand-offs between the game's threads. It was <em>set</em> but not <em>reaching</em> the real
+   game session (lever 2 explains and fixes that).</li>
+<li><strong>Rosetta translation.</strong> x86 → ARM translation is a fixed cost of running a
+   Windows game on Apple Silicon; the ~1–2 minutes at 100% CPU on every launch is
+   the anti-cheat decrypting itself under Rosetta (normal — see
+   <a href="../TROUBLESHOOTING/">TROUBLESHOOTING.md</a>). This is <strong>not</strong> tunable, and no
+   CPU-affinity trick changes it (see "What doesn't help" below).</li>
+</ol>
+<h2 id="lever-1-try-the-d9vk-renderer-big-win-for-some-much-worse-for-others">Lever 1 — Try the D9VK renderer (big win for some, much worse for others)<a class="headerlink" href="#lever-1-try-the-d9vk-renderer-big-win-for-some-much-worse-for-others" title="Permanent link">&para;</a></h2>
+<p><strong>What it does:</strong> replaces the Direct3D 9 → OpenGL → deprecated-shim path with
+<strong>D9VK: Direct3D 9 → Vulkan → MoltenVK → Metal</strong>. When it works, it is the most
+direct route to the GPU and a real smoothness improvement. <strong>When it doesn't, it
+can be dramatically slower</strong> — a single-digit-FPS slideshow has been reported on
+an M4 MacBook Pro. That outcome is a known property of this stack, not user
+error; the fix is simply to switch back (below). wined3d remains the safe,
+verified default.</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>scripts
+<span class="nv">P99_RENDERER</span><span class="o">=</span>d9vk<span class="w"> </span>./60-renderer.sh<span class="w">      </span><span class="c1"># switch to D9VK</span>
+<span class="nv">P99_RENDERER</span><span class="o">=</span>wined3d<span class="w"> </span>./60-renderer.sh<span class="w">   </span><span class="c1"># switch back to the stock renderer</span>
+</code></pre></div>
+<p>Or use the installer app's <strong>Performance</strong> panel (renderer picker → Apply).</p>
+<p>The renderer choice is <strong>per engine stack</strong> (it lives inside each wrapper's
+prefix). Under the experimental <a href="../EXPERIMENTAL-FEX/">FEX stack</a> the installer
+locks the renderer to stock wined3d — the bundled D9VK/DXMT builds are only
+proven against the Rosetta engine.</p>
+<p><strong>Why D9VK can be slow, and what the script now does about it:</strong></p>
+<ol>
+<li><strong>It was running on the wrong MoltenVK.</strong> The wrapper template ships <em>two</em>
+   MoltenVK builds: a recent stock build, and CodeWeavers' patched build
+   (<code>moltenvkcx/</code>) — the one the bundled D9VK (DXVK 1.10) was actually built and
+   tested against. The wrapper's library links pointed the engine at the stock
+   build, which is years newer than that DXVK and turns on "Metal argument
+   buffers" by default — a documented DXVK performance cliff. Switching to d9vk
+   now re-points the engine at the CX build (and a wrapper rebuild preserves
+   that; <code>./status.sh</code> reports it as <code>moltenvk cx</code>).</li>
+<li><strong>Async shader compilation was never switched on.</strong> The bundled DLL is the
+   dxvk-<em>async</em> build, but the <code>DXVK_ASYNC=1</code> switch that activates it never
+   reached the game, so every new shader compiled on the render thread.
+   Switching to d9vk now injects it (plus <code>MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS=0</code>
+   as a belt-and-suspenders, fast-math, and device-loss resume) through the same
+   <code>LSEnvironment</code> channel as lever 2. Switching back to wined3d removes all of it.</li>
+<li><strong>One cost we cannot fix:</strong> this is a 32-bit game running through wine's
+   WoW64 mode, and without a Vulkan extension called <code>VK_EXT_map_memory_placed</code>
+   (which neither bundled MoltenVK supports) every GPU-memory map by a 32-bit
+   game takes an expensive fallback. A 2005 engine maps vertex buffers every
+   frame. On some machines this cost dominates everything else. The <em>indirect
+   buffer maps</em> experiment below attacks it from the other side; if that doesn't
+   help either, wined3d is the answer.</li>
+</ol>
+<p><strong>Diagnostics (optional, for reporting):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="nv">P99_RENDERER</span><span class="o">=</span>d9vk<span class="w"> </span><span class="nv">P99_RENDERER_DEBUG</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>./60-renderer.sh<span class="w">   </span><span class="c1"># verbose DXVK+MoltenVK logs</span>
+<span class="nv">P99_RENDERER</span><span class="o">=</span>d9vk<span class="w"> </span><span class="nv">P99_DXVK_HUD</span><span class="o">=</span>fps,frametimes<span class="w"> </span>./60-renderer.sh<span class="w">  </span><span class="c1"># in-game FPS overlay</span>
+</code></pre></div>
+<p><code>P99_RENDERER_DEBUG=1</code> makes the game write <code>~/Games/EverQuest/eqgame_d3d9.log</code>
+and makes a <code>./40-launch.sh --debug</code> trace include the MoltenVK version line —
+which tells us exactly which build loaded and whether argument buffers are off.
+Re-run the switch without the variable to turn either off.</p>
+<p><strong>Experiment — indirect buffer maps (if D9VK is still slow):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="nv">P99_RENDERER</span><span class="o">=</span>d9vk<span class="w"> </span><span class="nv">P99_DXVK_INDIRECT_MAPS</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>./60-renderer.sh<span class="w">   </span><span class="c1"># on</span>
+<span class="nv">P99_RENDERER</span><span class="o">=</span>d9vk<span class="w"> </span>./60-renderer.sh<span class="w">                            </span><span class="c1"># off (re-apply without it)</span>
+</code></pre></div>
+<p>This targets cost 3 above — the expensive 32-bit memory-map path — from the
+other side: instead of making the maps cheap (we can't), it tells DXVK to stop
+handing the game direct pointers into Vulkan-mapped memory
+(<code>d3d9.allowDirectBufferMapping = False</code>). Buffer locks then land in DXVK-owned
+CPU memory and DXVK manages the upload itself, which keeps the game's per-frame
+geometry traffic off the one code path this stack makes expensive. The price is
+extra CPU copying, so this is a measured experiment, not a default: try it with
+the FPS overlay on and keep whichever is faster on <em>your</em> machine. The setting
+lives in a single one-option file <strong>inside the wrapper</strong> (<code>drive_c/dxvk-p99.conf</code>
+— your game folder is not touched), is handed to DXVK via <code>DXVK_CONFIG_FILE</code>,
+and both disappear when you re-apply without the knob or revert to wined3d.
+<code>./status.sh</code> reports it as <code>dxvk_maps</code> (<code>indirect</code> vs <code>default</code>).</p>
+<p><strong>How it works / reversibility:</strong> <code>60-renderer.sh</code> backs up the stock
+<code>d3d9.dll</code> once as <code>d3d9.dll.wined3d.bak</code>, drops in the bundled D9VK <code>d3d9.dll</code>,
+adds a wine DLL override so wine loads it, re-points the engine's MoltenVK link
+at the CX build, and injects the <code>LSEnvironment</code> tuning above. Switching back
+restores the backup and removes every one of those changes — nothing else in
+your prefix or <code>eqclient.ini</code> is touched, so you can flip back and forth freely
+to compare. The active renderer shows up in <code>./status.sh</code> (and the app
+checklist) as <code>renderer</code>, the MoltenVK pairing as <code>moltenvk</code>.</p>
+<p><strong>Tradeoffs / caveats:</strong>
+- D9VK is opt-in, not the default: the stock <code>wined3d</code> path is the one this
+  project has verified on real hardware. If D9VK misbehaves for you (much lower
+  FPS, missing textures, a crash on load), switch straight back with the
+  <code>wined3d</code> command above — and see
+  <a href="../TROUBLESHOOTING/#after-switching-to-d9vk-the-game-is-much-slower-single-digit-fps">TROUBLESHOOTING.md</a>
+  if you want to report it usefully.
+- <code>d3dmetal</code> and <code>dxmt</code> are also accepted (<code>P99_RENDERER=d3dmetal</code>) but are
+  <strong>experimental for EQ</strong>: they target Direct3D 11/12, which EQ doesn't use, so
+  they may not change anything for this game.</p>
+<h2 id="lever-2-wine-msync-actually-reaching-the-game">Lever 2 — Wine msync actually reaching the game<a class="headerlink" href="#lever-2-wine-msync-actually-reaching-the-game" title="Permanent link">&para;</a></h2>
+<p><strong>The bug this fixes:</strong> the normal launch is <code>open P99.app</code>, which LaunchServices
+runs <strong>detached</strong> — it does not inherit the shell environment. So the
+<code>WINEESYNC=1 WINEMSYNC=1</code> that <code>wine_env()</code> sets reached the install steps and the
+<code>--debug</code> launch, but <strong>never the real double-click / Play session</strong>. The wrapper
+now injects them through the bundle's <code>Info.plist</code> (<code>LSEnvironment</code>), which
+LaunchServices does apply to the launched app, so wine finally sees them in-game.</p>
+<ul>
+<li><code>WINEMSYNC</code> (mach semaphores) is the macOS payload — this is the one that
+  matters for scheduling smoothness.</li>
+<li><code>WINEESYNC</code> is a Linux-native primitive, effectively ignored on macOS; it's set
+  only for parity.</li>
+<li><code>WINEFSYNC</code> is <strong>Linux-only</strong> and is deliberately not used here. If you read
+  advice elsewhere to "enable fsync," it does not apply to macOS.</li>
+</ul>
+<p>The same channel now also carries <strong><code>WINEDEBUG=-all</code></strong> as baseline. Wine's
+default logging keeps the <code>err</code> and <code>fixme</code> channels on, and a 2005 game trips
+fixmes on hot paths — each one formatted and written mid-frame. It had never
+been silenced for the real play session (the same detached-launch reason as
+msync). The <code>./40-launch.sh --debug</code> trace run is unaffected: it launches
+directly, not through LSEnvironment, and sets its own verbose channels on
+purpose. <code>./status.sh</code> reports this as <code>winedebug</code> (<code>quiet</code> once the wrapper
+has been rebuilt).</p>
+<p><strong>How to get it:</strong> rebuild the wrapper once — it skips the finished pieces and just
+refreshes the launch environment:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>scripts<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>./10-build-wrapper.sh
+</code></pre></div>
+<p>Note a routine <code>./50-update.sh</code> (P99 patch day) only re-stages game files; it does
+<strong>not</strong> rebuild the wrapper, so run <code>10-build-wrapper.sh</code> yourself if you installed
+before this change. (The installer app's <strong>Update Game Files</strong> button re-runs the
+wrapper build for you.)</p>
+<h2 id="lever-3-eqs-own-graphics-load-view-distance-particles-fps-cap">Lever 3 — EQ's own graphics load (view distance, particles, FPS cap)<a class="headerlink" href="#lever-3-eqs-own-graphics-load-view-distance-particles-fps-cap" title="Permanent link">&para;</a></h2>
+<p>EQ has its own graphics settings that trade visual richness for a steadier frame
+rate. The <strong>authoritative place to change these is the in-game Options window</strong>
+(Display / Particles) — it's live and safe. For a repeatable, scripted default,
+the same settings map to <code>eqclient.ini</code> <code>[Defaults]</code> keys, which these scripts can
+set for you. EQ silently ignores any key it doesn't recognize and regenerates
+unset keys at its own default, so applying and reverting is non-destructive.</p>
+<p>Apply to an existing install (game closed) with the surgical patcher — it changes
+<strong>only</strong> the performance keys and leaves every other setting (resolution, keybinds,
+colors, gamma) unchanged:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>scripts
+<span class="c1"># A conservative bundle, plus a 60-FPS cap:</span>
+<span class="nv">P99_APPLY_PERF</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="nv">P99_PERF_PROFILE</span><span class="o">=</span>smoother<span class="w"> </span><span class="nv">EQ_FPS_CAP</span><span class="o">=</span><span class="m">60</span><span class="w"> </span>./35-perf-ini.sh
+<span class="c1"># Revert just those keys (everything else untouched):</span>
+<span class="nv">P99_APPLY_PERF</span><span class="o">=</span><span class="m">0</span><span class="w"> </span>./35-perf-ini.sh
+</code></pre></div>
+<p>Fresh installs pick up the same knobs automatically if the <code>EQ_*</code> vars are set
+when <code>30-apply-mac-fixes.sh</code> runs.</p>
+<table>
+<thead>
+<tr>
+<th>Env var</th>
+<th><code>eqclient.ini</code> key</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>EQ_FARCLIP=&lt;n&gt;</code></td>
+<td><code>FarClipPlane</code></td>
+<td>View distance — lower draws less, smoother in open zones</td>
+</tr>
+<tr>
+<td><code>EQ_SPELL_PARTICLES=&lt;n&gt;</code></td>
+<td><code>SpellParticleDensity</code></td>
+<td>Spell particle density — lower in busy fights/raids</td>
+</tr>
+<tr>
+<td><code>EQ_ENV_PARTICLES=&lt;n&gt;</code></td>
+<td><code>EnvironmentParticleDensity</code></td>
+<td>Ambient particle density</td>
+</tr>
+<tr>
+<td><code>EQ_FPS_CAP=&lt;n&gt;</code></td>
+<td><code>MaxFPS</code> / <code>MaxBGFPS</code></td>
+<td>Frame cap — steadier pacing, less heat/fan (try 60)</td>
+</tr>
+<tr>
+<td><code>P99_PERF_PROFILE=smoother</code></td>
+<td>several</td>
+<td>Bundle: lowers particle density, disables water-specular and heat-shimmer</td>
+</tr>
+</tbody>
+</table>
+<p>Explicit <code>EQ_*</code> vars override the <code>smoother</code> bundle for that key. Resolution is
+<strong>never</strong> touched by any of this — change window size the usual way
+(<a href="../TROUBLESHOOTING/">TROUBLESHOOTING.md → "Window is tiny"</a>); note that a smaller
+window is itself a fill-rate win if you're GPU-bound.</p>
+<h2 id="lever-4-display-scaling-render-at-1-the-big-fill-rate-lever">Lever 4 — Display scaling: render at 1× (the big fill-rate lever)<a class="headerlink" href="#lever-4-display-scaling-render-at-1-the-big-fill-rate-lever" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>scripts
+<span class="nv">P99_HIDPI</span><span class="o">=</span>off<span class="w"> </span>./55-wrapper.sh<span class="w">   </span><span class="c1"># render at 1x, macOS scales the window up</span>
+<span class="nv">P99_HIDPI</span><span class="o">=</span>on<span class="w">  </span>./55-wrapper.sh<span class="w">   </span><span class="c1"># force Retina-scale rendering</span>
+./55-wrapper.sh<span class="w">                 </span><span class="c1"># restore the wrapper&#39;s shipped default</span>
+</code></pre></div>
+<p>Or the installer's <strong>Display scaling</strong> picker. It's one switch and fully
+reversible — the honest way to decide is to just try both for an evening each
+and keep whichever you prefer. Everything below is only so you know what you're
+looking at.</p>
+<p><strong>What it actually changes — and what it doesn't.</strong> On a Retina panel, macOS
+can hand the wrapper a backing store at 2× linear scale, which means the game
+is producing roughly <strong>four times the pixels every frame</strong>. Setting <code>off</code> makes
+the game render one 1×-sized buffer and lets macOS scale it up to fill the same
+window. That is the whole change. It does <strong>not</strong> change EQ's resolution
+setting, does not change the window size, does not touch the UI scale, and goes
+nowhere near your keybinds — <code>eqclient.ini</code> is not involved at all. The knob
+lives in the wrapper (an <code>Info.plist</code> value plus a wine registry value, moved
+together), which is also why it applies on <strong>both renderers and both engine
+stacks</strong> — unlike most of lever 1, it sits above the renderer entirely.</p>
+<p><strong>Why it helps so much on this stack specifically.</strong> A modern Apple GPU
+shrugs at four times the pixels of a 2005 game — raw GPU power was never the
+bottleneck. The problem is <em>where</em> those pixels flow: on the stock wined3d
+path, every one of them crosses Apple's deprecated, unoptimized GL-on-Metal
+shim, and fill rate is precisely what that layer is worst at. Cutting the pixel
+count by ~4× is the same reason a smaller window already helps GPU-bound
+machines — just much bigger, without shrinking anything.</p>
+<p><strong>What you will actually see.</strong> Be prepared for it honestly: UI text and
+window-edge lines get slightly softer, because that's where a Retina panel's
+extra pixels genuinely show. The 3D world is close to indistinguishable at a
+normal viewing distance — Titanium's textures are 2005-era, mostly 256 px or
+smaller, so there is no extra detail at 2× for the world to lose. The UI is the
+tradeoff; the world is nearly free.</p>
+<p><strong>"But won't it look pixelated?"</strong> This is the same rendering every Mac EQ
+player had before Retina panels existed (2012). It is not a retro filter, not
+nearest-neighbour chunkiness, and not the game running at a lower resolution —
+the window stays exactly the same size, macOS's scaler is good, and you are
+seeing the game the way it was drawn for two decades.</p>
+<p><strong>Who should try <code>off</code> first:</strong> anyone on a fanless MacBook Air, anyone
+reporting stutter on M4/M5, anyone playing on battery or noticing heat and fan
+noise. <strong>Who probably shouldn't:</strong> anyone on a large external display where UI
+text legibility matters more than frame pacing, and anyone running a
+high-resolution custom UI package where crisp text is the whole point.</p>
+<p><strong>Interaction with window size:</strong> a smaller window and 1× rendering compound —
+both cut pixels through the same weak layer. If you only want one, try <code>off</code>
+first: it removes more fill and shrinks nothing on screen.</p>
+<p>Details worth knowing:</p>
+<ul>
+<li>"System default" (the bare <code>./55-wrapper.sh</code> run) restores the wrapper's
+  exact shipped behavior — the script captures the template's original setting
+  before first touching it, so the revert is faithful even if a future template
+  ships a different default.</li>
+<li>With scaling <code>on</code> (Retina), winemac.drv counts in <em>physical</em> pixels, so EQ's
+  <code>Width</code>/<code>Height</code> suddenly mean physical pixels and the window will look half
+  its previous size — raise them to compensate (<a href="../FAQ/">FAQ</a>). This is the
+  main reason <code>on</code> is a niche choice on this game; <code>off</code> has no such surprise.</li>
+<li><code>./status.sh</code> reports the live state as <code>hidpi</code> (<code>on</code>/<code>off</code>/<code>default</code>), read
+  back from the wrapper's actual <code>Info.plist</code>, not from a variable.</li>
+<li>One honesty note: whether the <code>Info.plist</code> half reliably propagates to wine's
+  child processes under this launcher is <strong>awaiting confirmation on real
+  hardware</strong> — the knob ships both halves (plist + registry) precisely so
+  either mechanism can carry it. If you try it and see no difference in the
+  Metal HUD's numbers, that's worth a bug report.</li>
+</ul>
+<!-- TODO: side-by-side screenshots (docs/img/): a UI-heavy view (inventory +
+chat) and a world view, each at scaling on vs off, captured on a real Retina
+Mac. Not yet produced — this working copy was written without Mac hardware; do
+not describe or link images that don't exist. -->
+
+<h2 id="lever-5-wined3d-registry-fine-tuning-stock-renderer-only">Lever 5 — wined3d registry fine-tuning (stock renderer only)<a class="headerlink" href="#lever-5-wined3d-registry-fine-tuning-stock-renderer-only" title="Permanent link">&para;</a></h2>
+<p>The stock renderer has its own tuning values in the wine registry
+(<code>HKCU\Software\Wine\Direct3D</code>), which this project never touched before. All
+opt-in, all individually revertible, all <strong>experimental</strong> — wine's own defaults
+are the verified baseline, so change one at a time and measure (Metal HUD,
+below). Semantics below are verified against the wine 9.0 source that CrossOver
+24 builds on; CodeWeavers' private patches on top were not reviewed.</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>scripts
+<span class="nv">P99_WINED3D_CSMT</span><span class="o">=</span>off<span class="w"> </span>./65-wined3d.sh<span class="w">                   </span><span class="c1"># single knob</span>
+<span class="nv">P99_WINED3D_CSMT</span><span class="o">=</span>off<span class="w"> </span><span class="nv">P99_WINED3D_VRAM</span><span class="o">=</span><span class="m">512</span><span class="w"> </span>./65-wined3d.sh<span class="w">   </span><span class="c1"># combinations</span>
+./65-wined3d.sh<span class="w">                                        </span><span class="c1"># revert everything</span>
+</code></pre></div>
+<p>Each run applies the full requested state (anything unset is reverted), the
+same convention as the renderer switch. Under d9vk these values are inert —
+the renderer switch replaces the whole wined3d DLL — so the script <strong>refuses</strong>
+to set them there and the installer hides the controls, rather than shipping
+switches that silently do nothing.</p>
+<table>
+<thead>
+<tr>
+<th>Env var</th>
+<th>Registry value</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>P99_WINED3D_CSMT=off\|on\|serialize</code></td>
+<td><code>csmt</code> (dword)</td>
+<td>Command-stream multithreading. <strong>On by default in this wine</strong> — so the experiment worth running is <code>off</code>, which puts GL submission back on the game's thread: worse peak throughput in theory, but on a single-threaded 2005 client it may improve frame <em>pacing</em> and input latency. <code>serialize</code> is a debug mode, not a performance setting.</td>
+</tr>
+<tr>
+<td><code>P99_WINED3D_MAXGL=2.1</code>/<code>4.1</code></td>
+<td><code>MaxVersionGL</code> (dword)</td>
+<td>Caps the GL context version wined3d asks for. macOS tops out at 4.1 core / 2.1 legacy; capping changes which context and feature set the shim has to emulate. Could move things in either direction — measure.</td>
+</tr>
+<tr>
+<td><code>P99_WINED3D_VRAM=512</code> (MB)</td>
+<td><code>VideoMemorySize</code> (string)</td>
+<td>What wined3d reports as VRAM. Wine frequently under-reports on unified memory; if EQ is evicting textures because it believes VRAM is tiny, this rules that out cheaply. No effect if the auto-detect was already sane.</td>
+</tr>
+</tbody>
+</table>
+<p><code>./status.sh</code> reports the live values (<code>wined3d_csmt</code>, <code>wined3d_maxgl</code>,
+<code>wined3d_vram</code>, <code>wined3d_renderer</code>), read back from the prefix's <code>user.reg</code> —
+the same file the game's wine session loads, so what status shows is what the
+game gets on both the Play and <code>--debug</code> launch paths.</p>
+<p>One caution: wine also reads a <code>WINE_D3D_CONFIG</code> environment variable that
+silently <strong>overrides</strong> these registry values. Nothing in this project sets it,
+but if your experiments seem to change nothing, check <code>env | grep WINE_D3D</code>
+(see <a href="../TROUBLESHOOTING/">TROUBLESHOOTING.md</a>).</p>
+<h2 id="applying-from-the-installer-app">Applying from the installer app<a class="headerlink" href="#applying-from-the-installer-app" title="Permanent link">&para;</a></h2>
+<p>Prefer buttons to the terminal? The installer's <strong>Performance</strong> panel (shown
+above) is the same set of knobs with the same scripts behind them — every
+control maps to a variable documented on this page, so the terminal and the app
+always produce identical results:</p>
+<table>
+<thead>
+<tr>
+<th>Panel control</th>
+<th>Equivalent</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Graphics renderer</td>
+<td><code>P99_RENDERER</code> (lever 1)</td>
+</tr>
+<tr>
+<td>Indirect buffer maps <em>(shown for D9VK)</em></td>
+<td><code>P99_DXVK_INDIRECT_MAPS=1</code></td>
+</tr>
+<tr>
+<td>Command stream (CSMT) <em>(shown for Stock)</em></td>
+<td><code>P99_WINED3D_CSMT=off</code>/<code>serialize</code> (lever 5)</td>
+</tr>
+<tr>
+<td>OpenGL version cap <em>(shown for Stock)</em></td>
+<td><code>P99_WINED3D_MAXGL=2.1</code>/<code>4.1</code> (lever 5)</td>
+</tr>
+<tr>
+<td>Reported video memory <em>(shown for Stock)</em></td>
+<td><code>P99_WINED3D_VRAM=512</code>/<code>1024</code> (lever 5)</td>
+</tr>
+<tr>
+<td>Display scaling</td>
+<td><code>P99_HIDPI=off</code>/<code>on</code> (lever 4)</td>
+</tr>
+<tr>
+<td>Smoother visuals</td>
+<td><code>P99_APPLY_PERF=1 P99_PERF_PROFILE=smoother</code> (lever 3)</td>
+</tr>
+<tr>
+<td>Frame-rate cap</td>
+<td><code>EQ_FPS_CAP=30</code>/<code>60</code> (lever 3)</td>
+</tr>
+<tr>
+<td>Metal performance HUD <em>(Diagnostics)</em></td>
+<td><code>P99_METAL_HUD=1</code> (Measuring)</td>
+</tr>
+<tr>
+<td>Show DXVK FPS overlay <em>(Diagnostics, D9VK)</em></td>
+<td><code>P99_DXVK_HUD=fps,frametimes</code></td>
+</tr>
+<tr>
+<td>Verbose renderer logs <em>(Diagnostics, D9VK)</em></td>
+<td><code>P99_RENDERER_DEBUG=1</code></td>
+</tr>
+</tbody>
+</table>
+<p>Set your choices, then press <strong>Apply Performance Settings</strong> with the game
+closed. It runs <code>55-wrapper.sh</code>, <code>60-renderer.sh</code>, <code>65-wined3d.sh</code>, and
+<code>35-perf-ini.sh</code> for you and reports when it's done; turning everything off and
+applying reverts cleanly. The wined3d controls only appear while the Stock
+renderer is selected — under D9VK those registry values do nothing, so instead
+of showing dead switches the app hides them <em>and</em> the apply run sweeps any
+previously set values away. One terminal-only extra exists:
+<code>P99_WINED3D_RENDERER=vulkan</code> (see "What doesn't help" below) deliberately has
+no panel control. A full audit of what each switch touches on disk lives in
+<a href="../WHAT-WE-CHANGE/">WHAT-WE-CHANGE.md</a>.</p>
+<p><img alt="The installer's &quot;Applying performance settings&quot; screen: both steps — set the
+graphics renderer, apply EQ graphics settings — completed successfully." src="../img/performance-apply.png" /></p>
+<h2 id="measuring">Measuring<a class="headerlink" href="#measuring" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>In-game FPS:</strong> EVERQUEST's own frame counter, or just feel out a busy zone
+  (e.g. the East Commonlands tunnel, a raid) before and after a change. Under
+  d9vk, <code>P99_DXVK_HUD=fps,frametimes</code> (lever 1 diagnostics) draws an overlay.</li>
+<li><strong>The Metal performance HUD</strong> is the wined3d-path equivalent of the DXVK HUD
+  — the stock renderer never had an overlay until now. <code>P99_METAL_HUD=1
+  ./55-wrapper.sh</code> (or the panel's Diagnostics group) makes macOS draw its
+  built-in top-right overlay — FPS, frame-time graph, GPU time — on the next
+  launch. It's Apple's own instrumentation (macOS 13+), works on any
+  Metal-backed process, and is a diagnostic, not a speedup. Honesty note: it
+  <em>should</em> also appear over the GL-on-Metal shim, since that renders through
+  Metal underneath — but this hasn't been confirmed on this stack yet; if it
+  doesn't show for you, nothing else is affected, and the d9vk DXVK HUD remains
+  the sure thing.</li>
+<li><strong><code>sudo powermetrics --samplers gpu_power,cpu_power -i 1000 -n 10</code></strong> — built
+  into macOS, no Xcode needed, and unlike Activity Monitor it shows <strong>CPU
+  frequency</strong>, which is the number that separates "this stack is slow" from
+  "this fanless Air is thermally throttling twenty minutes into a session."
+  Worked example — run it during play and look at two things:<ul>
+<li><em>P-core frequency over time.</em> Starts near max (~3–4 GHz) and stays there:
+  you are not throttling; slowness is the translation stack, so work levers
+  1/4/5. Starts high but sags hundreds of MHz after 15–20 minutes while
+  package power falls too: thermal throttling — an FPS cap (lever 3), 1×
+  scaling (lever 4), or literally a lap desk will do more than any renderer
+  experiment. This is the most common story on fanless Airs.</li>
+<li><em>GPU residency/power.</em> GPU busy near 100 %: you're fill-bound — lever 4
+  (and a smaller window) is the targeted fix. GPU mostly idle while one
+  P-core is pinned: the bottleneck is CPU-side translation — GPU-side knobs
+  won't help; try lever 1 or lever 5's <code>csmt=off</code> pacing experiment.</li>
+</ul>
+</li>
+<li><strong><code>~/Games/EverQuest/Logs/dbg.txt</code></strong> confirms the game reached the engine.</li>
+<li><strong>Activity Monitor → Window → GPU History</strong> shows whether you're GPU-bound; if
+  the GPU is pinned, lever 1 (renderer), lever 4 (scaling), and lever 3
+  (particles/FPS cap) help most.</li>
+<li><strong><code>./status.sh</code></strong> reports the active <code>renderer</code>, the MoltenVK pairing
+  (<code>moltenvk</code>), display scaling (<code>hidpi</code>), the Metal HUD (<code>metal_hud</code>), quiet
+  wine logging (<code>winedebug</code>), the wined3d registry values (<code>wined3d_*</code>), and
+  whether the smoother INI profile is applied (<code>perf_ini</code>) — each read back
+  from where the setting actually lands, so "status says on" means the game
+  session sees it.</li>
+</ul>
+<h2 id="what-doesnt-help-or-we-cant-expose">What doesn't help (or we can't expose)<a class="headerlink" href="#what-doesnt-help-or-we-cant-expose" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Pinning to performance cores.</strong> The game launches detached via <code>open</code>, so the
+  scripts never hold its process to <code>taskpolicy</code> it — and macOS already schedules
+  the foreground GUI app on P-cores by default. <code>taskpolicy -b</code> would push it the
+  <em>wrong</em> way (toward efficiency cores). There is no supported "force P-core" knob
+  to offer, and it would not address the renderer/Rosetta costs that actually
+  dominate. Keep P99 as the active foreground app and that's the best macOS gives.</li>
+<li><strong><code>WINEFSYNC</code>.</strong> Linux-only (see lever 2). Setting it on macOS does nothing.</li>
+<li><strong><code>WINE_CPU_TOPOLOGY</code>.</strong> Occasionally suggested when a game misreads core count;
+  untested on this stack and not exposed — mentioned only so you don't chase it.</li>
+<li><strong>wined3d's own Vulkan backend (<code>renderer=vulkan</code>).</strong> Modern wine's wined3d
+  can target Vulkan instead of GL — on paper a third renderer path, distinct
+  from D9VK. The registry value exists in this wine, and the engine's
+  Vulkan→MoltenVK plumbing demonstrably works (D9VK uses it), but wined3d's
+  Vulkan backend was never aimed at MoltenVK and has not been verified on this
+  engine — expect a failed launch. It is deliberately <strong>not</strong> in the installer;
+  a terminal escape hatch exists for the curious
+  (<code>P99_WINED3D_RENDERER=vulkan ./65-wined3d.sh</code>, revert with a bare
+  <code>./65-wined3d.sh</code>). If you get it rendering, that's genuinely interesting —
+  open an issue. The <code>no3d</code>/<code>gdi</code> values disable 3D outright and the script
+  refuses them.</li>
+<li><strong>Disabling Rosetta / "native" tricks.</strong> The current engine depends on
+  general-purpose Rosetta; the post-Rosetta direction is research, not a knob (see
+  <a href="../HOW-IT-WORKS/#post-rosetta-direction">HOW-IT-WORKS.md</a>).</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.indexes", "navigation.top", "search.suggest", "content.code.copy", "content.action.edit"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
