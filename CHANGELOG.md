@@ -10,6 +10,30 @@ release's section below becomes its GitHub Release notes automatically
 
 <!-- version list -->
 
+## v0.8.0 (2026-07-22)
+
+### Documentation
+
+- **performance**: Display-scaling and wined3d levers, Metal HUD + powermetrics measuring
+  ([`90f376e`](https://github.com/prokopto-dev/apple-silicon-p99/commit/90f376e1c6ee75becd56af61ff942975faee894f))
+
+### Features
+
+- **app**: Display scaling, Metal HUD, and wined3d tuning in the Performance panel
+  ([`66a33e5`](https://github.com/prokopto-dev/apple-silicon-p99/commit/66a33e5dc2efd01f6ad593f49ce8a29e9bc61db2))
+
+- **scripts**: Display-scaling and Metal HUD wrapper knobs (55-wrapper.sh)
+  ([`e826ff4`](https://github.com/prokopto-dev/apple-silicon-p99/commit/e826ff476c490a51ebfc6f126c79f3b16a353113))
+
+- **scripts**: Wined3d registry tuning knobs (65-wined3d.sh)
+  ([`f5bc18c`](https://github.com/prokopto-dev/apple-silicon-p99/commit/f5bc18c4ef9ec4376ab1412a8e169c6eb81570fd))
+
+### Performance Improvements
+
+- **wrapper**: Silence wine debug channels in the real game session
+  ([`d85518a`](https://github.com/prokopto-dev/apple-silicon-p99/commit/d85518a2eaebc8aa46890ef05ace3bbfb32d2635))
+
+
 ## v0.7.0 (2026-07-21)
 
 ### Bug Fixes
