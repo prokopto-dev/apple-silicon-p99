@@ -867,6 +867,39 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#after-changing-display-scaling-the-window-looks-wrong-tiny-huge-or-soft" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        After changing Display scaling the window looks wrong (tiny, huge, or soft)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-metal-performance-hud-doesnt-appear" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Metal performance HUD doesn't appear
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#game-misbehaves-after-wined3d-registry-experiments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Game misbehaves after wined3d registry experiments
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#sound-issues" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1247,6 +1280,39 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#after-changing-display-scaling-the-window-looks-wrong-tiny-huge-or-soft" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        After changing Display scaling the window looks wrong (tiny, huge, or soft)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-metal-performance-hud-doesnt-appear" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Metal performance HUD doesn't appear
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#game-misbehaves-after-wined3d-registry-experiments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Game misbehaves after wined3d registry experiments
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#sound-issues" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1542,6 +1608,46 @@ D9VK will stay slow no matter what.
 attach <code>~/Games/EverQuest/eqgame_d3d9.log</code>, the <code>[mvk-info]</code> MoltenVK
 version/argument-buffer lines from a <code>./40-launch.sh --debug</code> trace, and the
 <code>renderer</code> + <code>moltenvk</code> lines from <code>./status.sh</code>.</p>
+<h3 id="after-changing-display-scaling-the-window-looks-wrong-tiny-huge-or-soft">After changing Display scaling the window looks wrong (tiny, huge, or soft)<a class="headerlink" href="#after-changing-display-scaling-the-window-looks-wrong-tiny-huge-or-soft" title="Permanent link">&para;</a></h3>
+<p><strong>Cause:</strong> the display-scaling knob (lever 4 in
+<a href="../PERFORMANCE/">PERFORMANCE.md</a>) changes what a "pixel" means to the game.
+At <strong>1×</strong> the window stays the same size and UI text gets slightly softer —
+that's the intended tradeoff, not a bug. Forced <strong>Retina</strong> is the surprising
+one: winemac.drv starts counting in physical pixels, so EQ's
+<code>Width</code>/<code>Height</code> suddenly mean physical pixels and the window appears half
+its previous size.
+<strong>Fix:</strong> for a half-size window under forced Retina, double
+<code>Width</code>/<code>Height</code>/etc. in <code>eqclient.ini</code> (game closed — see "Window is tiny"
+below). To undo the knob entirely: <code>cd scripts &amp;&amp; ./55-wrapper.sh</code> (no
+variables) restores the wrapper's exact shipped behavior, or set the panel's
+Display scaling picker back to <em>System default</em> and Apply. <code>./status.sh</code> →
+<code>hidpi</code> confirms the live state.</p>
+<h3 id="the-metal-performance-hud-doesnt-appear">The Metal performance HUD doesn't appear<a class="headerlink" href="#the-metal-performance-hud-doesnt-appear" title="Permanent link">&para;</a></h3>
+<p><strong>Cause:</strong> the HUD (<code>P99_METAL_HUD=1 ./55-wrapper.sh</code>, or the panel's
+Diagnostics group) is Apple's own overlay for Metal-backed processes on
+macOS 13+. It reaches the game via the wrapper's <code>LSEnvironment</code>, so it only
+applies to launches through <code>P99.app</code> or <code>./40-launch.sh</code> — and whether it
+draws over the GL-on-Metal shim on the stock renderer is not yet confirmed
+on this stack (it should, since that layer renders through Metal
+underneath).
+<strong>Fix:</strong> confirm <code>./status.sh</code> reports <code>metal_hud on</code>; make sure you
+launched normally (double-click / Play / <code>./40-launch.sh</code>) after applying;
+check macOS ≥ 13. If it still doesn't draw on the stock renderer, that's a
+data point we want — say so in an issue. Nothing else is affected either
+way; under d9vk the DXVK overlay (<code>P99_DXVK_HUD=fps,frametimes</code>) is the
+alternative.</p>
+<h3 id="game-misbehaves-after-wined3d-registry-experiments">Game misbehaves after wined3d registry experiments<a class="headerlink" href="#game-misbehaves-after-wined3d-registry-experiments" title="Permanent link">&para;</a></h3>
+<p><strong>Cause:</strong> lever 5's values (<code>csmt</code>, <code>MaxVersionGL</code>, <code>VideoMemorySize</code>,
+<code>renderer</code> under <code>HKCU\Software\Wine\Direct3D</code>) are experiments, and some
+combinations can genuinely regress or break rendering —
+<code>P99_WINED3D_RENDERER=vulkan</code> in particular is unverified on this engine
+and a failed launch is the expected outcome.
+<strong>Fix:</strong> <code>cd scripts &amp;&amp; ./65-wined3d.sh</code> (no variables) deletes every value
+this project manages; wine falls back to its own defaults, which are the
+verified baseline. <code>./status.sh</code> should then show every <code>wined3d_*</code> line as
+<code>default</code>. If experiments seem to change <em>nothing at all</em>, check for a
+<code>WINE_D3D_CONFIG</code> environment variable (<code>env | grep WINE_D3D</code>) — wine lets
+it silently override the registry; nothing in this project sets it.</p>
 <h3 id="sound-issues">Sound issues<a class="headerlink" href="#sound-issues" title="Permanent link">&para;</a></h3>
 <p>Sound runs through the game's own Miles Sound System (<code>mss32.dll</code>), not
 GStreamer — so ignore wine's GStreamer warnings; they're harmless here.</p>

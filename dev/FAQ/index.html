@@ -1143,6 +1143,13 @@ through to the <code>default</code> folder.</p>
 <code>WidthWindowed</code>/<code>HeightWindowed</code>/<code>WindowedWidth</code>/<code>WindowedHeight</code> keys to your
 size (e.g. 1440×900). Details and a caveat about UI window positions are in
 <a href="../TROUBLESHOOTING/#window-is-tiny-1024768">TROUBLESHOOTING.md</a>.</p>
+<p>Related but separate: the <strong>Display scaling</strong> knob
+(<a href="../PERFORMANCE/">PERFORMANCE.md</a>, lever 4) controls how many <em>physical</em>
+pixels the game renders per window pixel on a Retina panel. It never changes
+these INI keys or the window size — but if you force Retina scaling on, the
+keys above start meaning physical pixels, so the window looks half-size until
+you double them. The 1× direction has no such surprise and is the
+performance-relevant one.</p>
 
 
 

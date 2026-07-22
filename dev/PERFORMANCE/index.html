@@ -614,6 +614,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#lever-4-display-scaling-render-at-1-the-big-fill-rate-lever" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lever 4 — Display scaling: render at 1× (the big fill-rate lever)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lever-5-wined3d-registry-fine-tuning-stock-renderer-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lever 5 — wined3d registry fine-tuning (stock renderer only)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#applying-from-the-installer-app" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -833,6 +855,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#lever-4-display-scaling-render-at-1-the-big-fill-rate-lever" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lever 4 — Display scaling: render at 1× (the big fill-rate lever)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lever-5-wined3d-registry-fine-tuning-stock-renderer-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lever 5 — wined3d registry fine-tuning (stock renderer only)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#applying-from-the-installer-app" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -906,7 +950,11 @@ or your changes are overwritten.</p>
 </blockquote>
 <!-- performance-panel.png and performance-apply.png are faithful rendered mockups
 of the SwiftUI installer UI (generated without a Mac). To replace them with real
-captures, screenshot P99 Installer.app on macOS at the same size. -->
+captures, screenshot P99 Installer.app on macOS at the same size.
+TODO: the mockups predate the Display scaling picker, the wined3d tuning group,
+and the Diagnostics disclosure (levers 4-5) — refresh them when a Mac capture or
+new mockup is available; the table under "Applying from the installer app" is
+the current source of truth for the panel's controls. -->
 <p><img alt="The installer app's Performance panel: a graphics-renderer picker (Stock wined3d or
 D9VK) and a &quot;Smoother visuals&quot; toggle, both opt-in and reversible, with an Apply
 button." src="../img/performance-panel.png" /></p>
@@ -1026,6 +1074,14 @@ LaunchServices does apply to the launched app, so wine finally sees them in-game
 <li><code>WINEFSYNC</code> is <strong>Linux-only</strong> and is deliberately not used here. If you read
   advice elsewhere to "enable fsync," it does not apply to macOS.</li>
 </ul>
+<p>The same channel now also carries <strong><code>WINEDEBUG=-all</code></strong> as baseline. Wine's
+default logging keeps the <code>err</code> and <code>fixme</code> channels on, and a 2005 game trips
+fixmes on hot paths — each one formatted and written mid-frame. It had never
+been silenced for the real play session (the same detached-launch reason as
+msync). The <code>./40-launch.sh --debug</code> trace run is unaffected: it launches
+directly, not through LSEnvironment, and sets its own verbose channels on
+purpose. <code>./status.sh</code> reports this as <code>winedebug</code> (<code>quiet</code> once the wrapper
+has been rebuilt).</p>
 <p><strong>How to get it:</strong> rebuild the wrapper once — it skips the finished pieces and just
 refreshes the launch environment:</p>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>scripts<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>./10-build-wrapper.sh
@@ -1092,6 +1148,126 @@ when <code>30-apply-mac-fixes.sh</code> runs.</p>
 <strong>never</strong> touched by any of this — change window size the usual way
 (<a href="../TROUBLESHOOTING/">TROUBLESHOOTING.md → "Window is tiny"</a>); note that a smaller
 window is itself a fill-rate win if you're GPU-bound.</p>
+<h2 id="lever-4-display-scaling-render-at-1-the-big-fill-rate-lever">Lever 4 — Display scaling: render at 1× (the big fill-rate lever)<a class="headerlink" href="#lever-4-display-scaling-render-at-1-the-big-fill-rate-lever" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>scripts
+<span class="nv">P99_HIDPI</span><span class="o">=</span>off<span class="w"> </span>./55-wrapper.sh<span class="w">   </span><span class="c1"># render at 1x, macOS scales the window up</span>
+<span class="nv">P99_HIDPI</span><span class="o">=</span>on<span class="w">  </span>./55-wrapper.sh<span class="w">   </span><span class="c1"># force Retina-scale rendering</span>
+./55-wrapper.sh<span class="w">                 </span><span class="c1"># restore the wrapper&#39;s shipped default</span>
+</code></pre></div>
+<p>Or the installer's <strong>Display scaling</strong> picker. It's one switch and fully
+reversible — the honest way to decide is to just try both for an evening each
+and keep whichever you prefer. Everything below is only so you know what you're
+looking at.</p>
+<p><strong>What it actually changes — and what it doesn't.</strong> On a Retina panel, macOS
+can hand the wrapper a backing store at 2× linear scale, which means the game
+is producing roughly <strong>four times the pixels every frame</strong>. Setting <code>off</code> makes
+the game render one 1×-sized buffer and lets macOS scale it up to fill the same
+window. That is the whole change. It does <strong>not</strong> change EQ's resolution
+setting, does not change the window size, does not touch the UI scale, and goes
+nowhere near your keybinds — <code>eqclient.ini</code> is not involved at all. The knob
+lives in the wrapper (an <code>Info.plist</code> value plus a wine registry value, moved
+together), which is also why it applies on <strong>both renderers and both engine
+stacks</strong> — unlike most of lever 1, it sits above the renderer entirely.</p>
+<p><strong>Why it helps so much on this stack specifically.</strong> A modern Apple GPU
+shrugs at four times the pixels of a 2005 game — raw GPU power was never the
+bottleneck. The problem is <em>where</em> those pixels flow: on the stock wined3d
+path, every one of them crosses Apple's deprecated, unoptimized GL-on-Metal
+shim, and fill rate is precisely what that layer is worst at. Cutting the pixel
+count by ~4× is the same reason a smaller window already helps GPU-bound
+machines — just much bigger, without shrinking anything.</p>
+<p><strong>What you will actually see.</strong> Be prepared for it honestly: UI text and
+window-edge lines get slightly softer, because that's where a Retina panel's
+extra pixels genuinely show. The 3D world is close to indistinguishable at a
+normal viewing distance — Titanium's textures are 2005-era, mostly 256 px or
+smaller, so there is no extra detail at 2× for the world to lose. The UI is the
+tradeoff; the world is nearly free.</p>
+<p><strong>"But won't it look pixelated?"</strong> This is the same rendering every Mac EQ
+player had before Retina panels existed (2012). It is not a retro filter, not
+nearest-neighbour chunkiness, and not the game running at a lower resolution —
+the window stays exactly the same size, macOS's scaler is good, and you are
+seeing the game the way it was drawn for two decades.</p>
+<p><strong>Who should try <code>off</code> first:</strong> anyone on a fanless MacBook Air, anyone
+reporting stutter on M4/M5, anyone playing on battery or noticing heat and fan
+noise. <strong>Who probably shouldn't:</strong> anyone on a large external display where UI
+text legibility matters more than frame pacing, and anyone running a
+high-resolution custom UI package where crisp text is the whole point.</p>
+<p><strong>Interaction with window size:</strong> a smaller window and 1× rendering compound —
+both cut pixels through the same weak layer. If you only want one, try <code>off</code>
+first: it removes more fill and shrinks nothing on screen.</p>
+<p>Details worth knowing:</p>
+<ul>
+<li>"System default" (the bare <code>./55-wrapper.sh</code> run) restores the wrapper's
+  exact shipped behavior — the script captures the template's original setting
+  before first touching it, so the revert is faithful even if a future template
+  ships a different default.</li>
+<li>With scaling <code>on</code> (Retina), winemac.drv counts in <em>physical</em> pixels, so EQ's
+  <code>Width</code>/<code>Height</code> suddenly mean physical pixels and the window will look half
+  its previous size — raise them to compensate (<a href="../FAQ/">FAQ</a>). This is the
+  main reason <code>on</code> is a niche choice on this game; <code>off</code> has no such surprise.</li>
+<li><code>./status.sh</code> reports the live state as <code>hidpi</code> (<code>on</code>/<code>off</code>/<code>default</code>), read
+  back from the wrapper's actual <code>Info.plist</code>, not from a variable.</li>
+<li>One honesty note: whether the <code>Info.plist</code> half reliably propagates to wine's
+  child processes under this launcher is <strong>awaiting confirmation on real
+  hardware</strong> — the knob ships both halves (plist + registry) precisely so
+  either mechanism can carry it. If you try it and see no difference in the
+  Metal HUD's numbers, that's worth a bug report.</li>
+</ul>
+<!-- TODO: side-by-side screenshots (docs/img/): a UI-heavy view (inventory +
+chat) and a world view, each at scaling on vs off, captured on a real Retina
+Mac. Not yet produced — this working copy was written without Mac hardware; do
+not describe or link images that don't exist. -->
+
+<h2 id="lever-5-wined3d-registry-fine-tuning-stock-renderer-only">Lever 5 — wined3d registry fine-tuning (stock renderer only)<a class="headerlink" href="#lever-5-wined3d-registry-fine-tuning-stock-renderer-only" title="Permanent link">&para;</a></h2>
+<p>The stock renderer has its own tuning values in the wine registry
+(<code>HKCU\Software\Wine\Direct3D</code>), which this project never touched before. All
+opt-in, all individually revertible, all <strong>experimental</strong> — wine's own defaults
+are the verified baseline, so change one at a time and measure (Metal HUD,
+below). Semantics below are verified against the wine 9.0 source that CrossOver
+24 builds on; CodeWeavers' private patches on top were not reviewed.</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>scripts
+<span class="nv">P99_WINED3D_CSMT</span><span class="o">=</span>off<span class="w"> </span>./65-wined3d.sh<span class="w">                   </span><span class="c1"># single knob</span>
+<span class="nv">P99_WINED3D_CSMT</span><span class="o">=</span>off<span class="w"> </span><span class="nv">P99_WINED3D_VRAM</span><span class="o">=</span><span class="m">512</span><span class="w"> </span>./65-wined3d.sh<span class="w">   </span><span class="c1"># combinations</span>
+./65-wined3d.sh<span class="w">                                        </span><span class="c1"># revert everything</span>
+</code></pre></div>
+<p>Each run applies the full requested state (anything unset is reverted), the
+same convention as the renderer switch. Under d9vk these values are inert —
+the renderer switch replaces the whole wined3d DLL — so the script <strong>refuses</strong>
+to set them there and the installer hides the controls, rather than shipping
+switches that silently do nothing.</p>
+<table>
+<thead>
+<tr>
+<th>Env var</th>
+<th>Registry value</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>P99_WINED3D_CSMT=off\|on\|serialize</code></td>
+<td><code>csmt</code> (dword)</td>
+<td>Command-stream multithreading. <strong>On by default in this wine</strong> — so the experiment worth running is <code>off</code>, which puts GL submission back on the game's thread: worse peak throughput in theory, but on a single-threaded 2005 client it may improve frame <em>pacing</em> and input latency. <code>serialize</code> is a debug mode, not a performance setting.</td>
+</tr>
+<tr>
+<td><code>P99_WINED3D_MAXGL=2.1</code>/<code>4.1</code></td>
+<td><code>MaxVersionGL</code> (dword)</td>
+<td>Caps the GL context version wined3d asks for. macOS tops out at 4.1 core / 2.1 legacy; capping changes which context and feature set the shim has to emulate. Could move things in either direction — measure.</td>
+</tr>
+<tr>
+<td><code>P99_WINED3D_VRAM=512</code> (MB)</td>
+<td><code>VideoMemorySize</code> (string)</td>
+<td>What wined3d reports as VRAM. Wine frequently under-reports on unified memory; if EQ is evicting textures because it believes VRAM is tiny, this rules that out cheaply. No effect if the auto-detect was already sane.</td>
+</tr>
+</tbody>
+</table>
+<p><code>./status.sh</code> reports the live values (<code>wined3d_csmt</code>, <code>wined3d_maxgl</code>,
+<code>wined3d_vram</code>, <code>wined3d_renderer</code>), read back from the prefix's <code>user.reg</code> —
+the same file the game's wine session loads, so what status shows is what the
+game gets on both the Play and <code>--debug</code> launch paths.</p>
+<p>One caution: wine also reads a <code>WINE_D3D_CONFIG</code> environment variable that
+silently <strong>overrides</strong> these registry values. Nothing in this project sets it,
+but if your experiments seem to change nothing, check <code>env | grep WINE_D3D</code>
+(see <a href="../TROUBLESHOOTING/">TROUBLESHOOTING.md</a>).</p>
 <h2 id="applying-from-the-installer-app">Applying from the installer app<a class="headerlink" href="#applying-from-the-installer-app" title="Permanent link">&para;</a></h2>
 <p>Prefer buttons to the terminal? The installer's <strong>Performance</strong> panel (shown
 above) is the same set of knobs with the same scripts behind them — every
@@ -1114,12 +1290,20 @@ always produce identical results:</p>
 <td><code>P99_DXVK_INDIRECT_MAPS=1</code></td>
 </tr>
 <tr>
-<td>Show FPS overlay <em>(shown for D9VK)</em></td>
-<td><code>P99_DXVK_HUD=fps,frametimes</code></td>
+<td>Command stream (CSMT) <em>(shown for Stock)</em></td>
+<td><code>P99_WINED3D_CSMT=off</code>/<code>serialize</code> (lever 5)</td>
 </tr>
 <tr>
-<td>Verbose renderer logs <em>(shown for D9VK)</em></td>
-<td><code>P99_RENDERER_DEBUG=1</code></td>
+<td>OpenGL version cap <em>(shown for Stock)</em></td>
+<td><code>P99_WINED3D_MAXGL=2.1</code>/<code>4.1</code> (lever 5)</td>
+</tr>
+<tr>
+<td>Reported video memory <em>(shown for Stock)</em></td>
+<td><code>P99_WINED3D_VRAM=512</code>/<code>1024</code> (lever 5)</td>
+</tr>
+<tr>
+<td>Display scaling</td>
+<td><code>P99_HIDPI=off</code>/<code>on</code> (lever 4)</td>
 </tr>
 <tr>
 <td>Smoother visuals</td>
@@ -1129,12 +1313,29 @@ always produce identical results:</p>
 <td>Frame-rate cap</td>
 <td><code>EQ_FPS_CAP=30</code>/<code>60</code> (lever 3)</td>
 </tr>
+<tr>
+<td>Metal performance HUD <em>(Diagnostics)</em></td>
+<td><code>P99_METAL_HUD=1</code> (Measuring)</td>
+</tr>
+<tr>
+<td>Show DXVK FPS overlay <em>(Diagnostics, D9VK)</em></td>
+<td><code>P99_DXVK_HUD=fps,frametimes</code></td>
+</tr>
+<tr>
+<td>Verbose renderer logs <em>(Diagnostics, D9VK)</em></td>
+<td><code>P99_RENDERER_DEBUG=1</code></td>
+</tr>
 </tbody>
 </table>
 <p>Set your choices, then press <strong>Apply Performance Settings</strong> with the game
-closed. It runs <code>60-renderer.sh</code> and <code>35-perf-ini.sh</code> for you and reports when
-it's done; turning everything off and applying reverts cleanly. A full audit of
-what each switch touches on disk lives in
+closed. It runs <code>55-wrapper.sh</code>, <code>60-renderer.sh</code>, <code>65-wined3d.sh</code>, and
+<code>35-perf-ini.sh</code> for you and reports when it's done; turning everything off and
+applying reverts cleanly. The wined3d controls only appear while the Stock
+renderer is selected — under D9VK those registry values do nothing, so instead
+of showing dead switches the app hides them <em>and</em> the apply run sweeps any
+previously set values away. One terminal-only extra exists:
+<code>P99_WINED3D_RENDERER=vulkan</code> (see "What doesn't help" below) deliberately has
+no panel control. A full audit of what each switch touches on disk lives in
 <a href="../WHAT-WE-CHANGE/">WHAT-WE-CHANGE.md</a>.</p>
 <p><img alt="The installer's &quot;Applying performance settings&quot; screen: both steps — set the
 graphics renderer, apply EQ graphics settings — completed successfully." src="../img/performance-apply.png" /></p>
@@ -1143,12 +1344,43 @@ graphics renderer, apply EQ graphics settings — completed successfully." src="
 <li><strong>In-game FPS:</strong> EVERQUEST's own frame counter, or just feel out a busy zone
   (e.g. the East Commonlands tunnel, a raid) before and after a change. Under
   d9vk, <code>P99_DXVK_HUD=fps,frametimes</code> (lever 1 diagnostics) draws an overlay.</li>
+<li><strong>The Metal performance HUD</strong> is the wined3d-path equivalent of the DXVK HUD
+  — the stock renderer never had an overlay until now. <code>P99_METAL_HUD=1
+  ./55-wrapper.sh</code> (or the panel's Diagnostics group) makes macOS draw its
+  built-in top-right overlay — FPS, frame-time graph, GPU time — on the next
+  launch. It's Apple's own instrumentation (macOS 13+), works on any
+  Metal-backed process, and is a diagnostic, not a speedup. Honesty note: it
+  <em>should</em> also appear over the GL-on-Metal shim, since that renders through
+  Metal underneath — but this hasn't been confirmed on this stack yet; if it
+  doesn't show for you, nothing else is affected, and the d9vk DXVK HUD remains
+  the sure thing.</li>
+<li><strong><code>sudo powermetrics --samplers gpu_power,cpu_power -i 1000 -n 10</code></strong> — built
+  into macOS, no Xcode needed, and unlike Activity Monitor it shows <strong>CPU
+  frequency</strong>, which is the number that separates "this stack is slow" from
+  "this fanless Air is thermally throttling twenty minutes into a session."
+  Worked example — run it during play and look at two things:<ul>
+<li><em>P-core frequency over time.</em> Starts near max (~3–4 GHz) and stays there:
+  you are not throttling; slowness is the translation stack, so work levers
+  1/4/5. Starts high but sags hundreds of MHz after 15–20 minutes while
+  package power falls too: thermal throttling — an FPS cap (lever 3), 1×
+  scaling (lever 4), or literally a lap desk will do more than any renderer
+  experiment. This is the most common story on fanless Airs.</li>
+<li><em>GPU residency/power.</em> GPU busy near 100 %: you're fill-bound — lever 4
+  (and a smaller window) is the targeted fix. GPU mostly idle while one
+  P-core is pinned: the bottleneck is CPU-side translation — GPU-side knobs
+  won't help; try lever 1 or lever 5's <code>csmt=off</code> pacing experiment.</li>
+</ul>
+</li>
 <li><strong><code>~/Games/EverQuest/Logs/dbg.txt</code></strong> confirms the game reached the engine.</li>
 <li><strong>Activity Monitor → Window → GPU History</strong> shows whether you're GPU-bound; if
-  the GPU is pinned, lever 1 (renderer) and lever 3 (particles/FPS cap) help most.</li>
-<li><strong><code>./status.sh</code></strong> reports the active <code>renderer</code>, which MoltenVK build the
-  engine is paired with (<code>moltenvk</code>: <code>cx</code> under d9vk, <code>stock</code> otherwise), and
-  whether the smoother INI profile is applied (<code>perf_ini</code>).</li>
+  the GPU is pinned, lever 1 (renderer), lever 4 (scaling), and lever 3
+  (particles/FPS cap) help most.</li>
+<li><strong><code>./status.sh</code></strong> reports the active <code>renderer</code>, the MoltenVK pairing
+  (<code>moltenvk</code>), display scaling (<code>hidpi</code>), the Metal HUD (<code>metal_hud</code>), quiet
+  wine logging (<code>winedebug</code>), the wined3d registry values (<code>wined3d_*</code>), and
+  whether the smoother INI profile is applied (<code>perf_ini</code>) — each read back
+  from where the setting actually lands, so "status says on" means the game
+  session sees it.</li>
 </ul>
 <h2 id="what-doesnt-help-or-we-cant-expose">What doesn't help (or we can't expose)<a class="headerlink" href="#what-doesnt-help-or-we-cant-expose" title="Permanent link">&para;</a></h2>
 <ul>
@@ -1161,6 +1393,17 @@ graphics renderer, apply EQ graphics settings — completed successfully." src="
 <li><strong><code>WINEFSYNC</code>.</strong> Linux-only (see lever 2). Setting it on macOS does nothing.</li>
 <li><strong><code>WINE_CPU_TOPOLOGY</code>.</strong> Occasionally suggested when a game misreads core count;
   untested on this stack and not exposed — mentioned only so you don't chase it.</li>
+<li><strong>wined3d's own Vulkan backend (<code>renderer=vulkan</code>).</strong> Modern wine's wined3d
+  can target Vulkan instead of GL — on paper a third renderer path, distinct
+  from D9VK. The registry value exists in this wine, and the engine's
+  Vulkan→MoltenVK plumbing demonstrably works (D9VK uses it), but wined3d's
+  Vulkan backend was never aimed at MoltenVK and has not been verified on this
+  engine — expect a failed launch. It is deliberately <strong>not</strong> in the installer;
+  a terminal escape hatch exists for the curious
+  (<code>P99_WINED3D_RENDERER=vulkan ./65-wined3d.sh</code>, revert with a bare
+  <code>./65-wined3d.sh</code>). If you get it rendering, that's genuinely interesting —
+  open an issue. The <code>no3d</code>/<code>gdi</code> values disable 3D outright and the script
+  refuses them.</li>
 <li><strong>Disabling Rosetta / "native" tricks.</strong> The current engine depends on
   general-purpose Rosetta; the post-Rosetta direction is research, not a knob (see
   <a href="../HOW-IT-WORKS/#post-rosetta-direction">HOW-IT-WORKS.md</a>).</li>

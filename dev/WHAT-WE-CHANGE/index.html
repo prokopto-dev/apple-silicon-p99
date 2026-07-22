@@ -1004,6 +1004,11 @@ LGPL CrossOver 24.0.7 wine. Deleting <code>P99.app</code> removes all of it.</p>
 <td><code>readlink .../Contents/SharedSupport/libMoltenVK.dylib</code>, or <code>./status.sh</code> → <code>moltenvk</code></td>
 </tr>
 <tr>
+<td><strong><code>Info.plist</code>: <code>NSHighResolutionCapable</code></strong> (opt-in, display scaling)</td>
+<td>The plist half of the display-scaling knob (lever 4): <code>false</code> renders at 1× and lets macOS scale the window up, <code>true</code> forces Retina. The template's shipped value is captured once before the first change, so the bare revert (<code>./55-wrapper.sh</code>) restores the exact original — set or absent. A wrapper rebuild re-converges it from the prefix marker.</td>
+<td><code>plutil -p .../Info.plist \| grep NSHighRes</code>, or <code>./status.sh</code> → <code>hidpi</code></td>
+</tr>
+<tr>
 <td><strong><code>drive_c/dxvk-p99.conf</code></strong> (opt-in, d9vk experiment)</td>
 <td>The "indirect buffer maps" setting, one DXVK option in a file we own (first line marks it as ours; a hand-written file at that path is never touched). Lives in the wrapper, not your game folder.</td>
 <td><code>cat .../drive_c/dxvk-p99.conf</code>, or <code>./status.sh</code> → <code>dxvk_maps</code></td>
@@ -1025,6 +1030,12 @@ LGPL CrossOver 24.0.7 wine. Deleting <code>P99.app</code> removes all of it.</p>
 <td><code>WINEESYNC=1</code>, <code>WINEMSYNC=1</code></td>
 <td>always (baseline)</td>
 <td>Wine's mach-semaphore thread scheduling; the fix that made "smoothness" settings real, because the double-click session never saw shell env.</td>
+<td>uninstalling</td>
+</tr>
+<tr>
+<td><code>WINEDEBUG=-all</code></td>
+<td>always (baseline)</td>
+<td>Silences wine's default err+fixme log channels for the play session — a 2005 game trips fixmes on hot paths, and formatting them costs frames. The <code>--debug</code> trace launch sets its own verbose channels and is unaffected.</td>
 <td>uninstalling</td>
 </tr>
 <tr>
@@ -1069,6 +1080,12 @@ LGPL CrossOver 24.0.7 wine. Deleting <code>P99.app</code> removes all of it.</p>
 <td>On-screen frame counter for A/B comparisons.</td>
 <td>re-applying without the knob</td>
 </tr>
+<tr>
+<td><code>MTL_HUD_ENABLED=1</code></td>
+<td>Metal HUD knob</td>
+<td>Apple's built-in performance overlay (macOS 13+) — frametimes on any renderer, including the stock wined3d path that has no DXVK HUD. Diagnostic, not a speedup.</td>
+<td>re-applying without the knob (<code>./55-wrapper.sh</code>)</td>
+</tr>
 </tbody>
 </table>
 <h2 id="the-wine-prefix-inside-p99app">The wine prefix (inside <code>P99.app</code>)<a class="headerlink" href="#the-wine-prefix-inside-p99app" title="Permanent link">&para;</a></h2>
@@ -1102,9 +1119,24 @@ LGPL CrossOver 24.0.7 wine. Deleting <code>P99.app</code> removes all of it.</p>
 <td><code>P99_RENDERER=wined3d ./60-renderer.sh</code></td>
 </tr>
 <tr>
+<td><strong><code>Mac Driver\RetinaMode</code></strong> (opt-in, display scaling)</td>
+<td>The registry half of lever 4: <code>y</code> makes winemac.drv size its surfaces in physical pixels while Retina rendering is forced on; deleted for 1× and for the default state. Moves in lockstep with the <code>NSHighResolutionCapable</code> plist half above.</td>
+<td><code>./55-wrapper.sh</code> (no variables), or <code>./status.sh</code> → <code>hidpi</code></td>
+</tr>
+<tr>
+<td><strong><code>Direct3D</code> values</strong> (opt-in, wined3d tuning)</td>
+<td>At most these four values under <code>HKCU\Software\Wine\Direct3D</code>: <code>csmt</code>, <code>MaxVersionGL</code>, <code>VideoMemorySize</code>, <code>renderer</code> (lever 5). Reverting deletes exactly these — wine then uses its own defaults, which are the verified baseline. Only meaningful under the stock renderer; the script refuses to set them under d9vk.</td>
+<td><code>./65-wined3d.sh</code> (no variables), or <code>./status.sh</code> → <code>wined3d_*</code></td>
+</tr>
+<tr>
 <td><code>.p99-renderer</code> marker</td>
 <td>One-word file recording the active renderer so <code>status.sh</code> and rebuilds stay truthful.</td>
 <td>removed on revert</td>
+</tr>
+<tr>
+<td><code>.p99-hidpi</code> / <code>.p99-hidpi-stock</code> / <code>.p99-metal-hud</code> markers</td>
+<td>Display-scaling state, the captured original plist value, and the Metal-HUD flag — how <code>status.sh</code> and wrapper rebuilds stay truthful for lever 4 and the HUD.</td>
+<td>removed on revert (<code>./55-wrapper.sh</code>)</td>
 </tr>
 </tbody>
 </table>
