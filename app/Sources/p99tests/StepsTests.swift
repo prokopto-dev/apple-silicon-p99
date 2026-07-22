@@ -38,12 +38,15 @@ func runStepsTests() {
             "update: wrapper fixes re-applied before the patch update")
     T.expect(update.allSatisfy { $0.arguments.isEmpty }, "update: no arguments")
 
-    // Performance run: stack recorded first (so the renderer applies inside the
-    // wrapper future launches use), then renderer, then the eqclient.ini keys.
-    // All take their apply/revert mode from the environment — no positional args.
+    // Performance run: stack recorded first (so everything after applies inside
+    // the wrapper future launches use), wrapper knobs, renderer, then wined3d
+    // tuning AFTER the renderer switch (its guard must see the fresh renderer),
+    // then the eqclient.ini keys. All take their apply/revert mode from the
+    // environment — no positional args.
     let perf = Steps.performance()
-    T.equal(perf.map(\.script), ["70-stack.sh", "60-renderer.sh", "35-perf-ini.sh"],
-            "performance: stack, renderer, then eqclient.ini")
+    T.equal(perf.map(\.script),
+            ["70-stack.sh", "55-wrapper.sh", "60-renderer.sh", "65-wined3d.sh", "35-perf-ini.sh"],
+            "performance: stack, wrapper knobs, renderer, wined3d tuning, eqclient.ini")
     T.expect(perf.allSatisfy { $0.arguments.isEmpty }, "performance: no arguments (mode via env)")
 
     // FEX setup pipeline: build the side-by-side wrapper, link the shared game
@@ -61,15 +64,20 @@ func runStepsTests() {
     // mode so previously applied keys get cleaned out.
     let off = Steps.performanceEnv(stack: "rosetta", renderer: "wined3d", smoother: false,
                                    indirectMaps: false, fpsCap: "", rendererDebug: false,
-                                   fpsOverlay: false)
+                                   fpsOverlay: false, hidpi: "", metalHud: false,
+                                   wined3dCsmt: "", wined3dMaxGL: "", wined3dVram: "")
     T.equal(off["P99_STACK"] ?? "", "rosetta", "perfEnv: stack passthrough")
     T.equal(off["P99_RENDERER"] ?? "", "wined3d", "perfEnv: renderer passthrough")
     T.equal(off["P99_APPLY_PERF"] ?? "", "0", "perfEnv: all-off reverts the INI keys")
     T.equal(off["P99_DXVK_INDIRECT_MAPS"] ?? "?", "", "perfEnv: indirect maps off is empty")
+    T.equal(off["P99_HIDPI"] ?? "?", "", "perfEnv: hidpi off is empty (system default)")
+    T.equal(off["P99_METAL_HUD"] ?? "?", "", "perfEnv: metal hud off is empty")
+    T.equal(off["P99_WINED3D_CSMT"] ?? "?", "", "perfEnv: csmt off is empty (wine default)")
 
     let allOn = Steps.performanceEnv(stack: "fex", renderer: "d9vk", smoother: true,
                                      indirectMaps: true, fpsCap: "60", rendererDebug: true,
-                                     fpsOverlay: true)
+                                     fpsOverlay: true, hidpi: "off", metalHud: true,
+                                     wined3dCsmt: "off", wined3dMaxGL: "2.1", wined3dVram: "512")
     T.equal(allOn["P99_STACK"] ?? "", "fex", "perfEnv: fex stack passthrough")
     T.equal(allOn["P99_APPLY_PERF"] ?? "", "1", "perfEnv: smoother applies INI")
     T.equal(allOn["P99_PERF_PROFILE"] ?? "", "smoother", "perfEnv: smoother profile")
@@ -77,11 +85,37 @@ func runStepsTests() {
     T.equal(allOn["P99_DXVK_INDIRECT_MAPS"] ?? "", "1", "perfEnv: indirect maps on")
     T.equal(allOn["P99_RENDERER_DEBUG"] ?? "", "1", "perfEnv: debug on")
     T.equal(allOn["P99_DXVK_HUD"] ?? "", "fps,frametimes", "perfEnv: hud value")
+    // Wrapper-level knobs sit above the renderer: they pass through under d9vk.
+    T.equal(allOn["P99_HIDPI"] ?? "", "off", "perfEnv: hidpi passes through under d9vk")
+    T.equal(allOn["P99_METAL_HUD"] ?? "", "1", "perfEnv: metal hud passes through under d9vk")
+
+    // The knob/path matrix, enforced at the contract layer: wined3d registry
+    // values are meaningless under d9vk, so the env blanks them even when the
+    // stored choices are non-empty — 65-wined3d.sh then just sweeps clean.
+    T.equal(allOn["P99_WINED3D_CSMT"] ?? "?", "", "perfEnv: csmt blanked under d9vk")
+    T.equal(allOn["P99_WINED3D_MAXGL"] ?? "?", "", "perfEnv: maxgl blanked under d9vk")
+    T.equal(allOn["P99_WINED3D_VRAM"] ?? "?", "", "perfEnv: vram blanked under d9vk")
+    // ...and pass through whenever wined3d is the renderer — including on the
+    // FEX stack, where wined3d is the only renderer (the values live in that
+    // stack's own prefix).
+    let fexWined3d = Steps.performanceEnv(stack: "fex", renderer: "wined3d", smoother: false,
+                                          indirectMaps: false, fpsCap: "", rendererDebug: false,
+                                          fpsOverlay: false, hidpi: "on", metalHud: false,
+                                          wined3dCsmt: "off", wined3dMaxGL: "4.1",
+                                          wined3dVram: "1024")
+    T.equal(fexWined3d["P99_WINED3D_CSMT"] ?? "", "off", "perfEnv: csmt passes through on fex+wined3d")
+    T.equal(fexWined3d["P99_WINED3D_MAXGL"] ?? "", "4.1", "perfEnv: maxgl passes through on fex+wined3d")
+    T.equal(fexWined3d["P99_WINED3D_VRAM"] ?? "", "1024", "perfEnv: vram passes through on fex+wined3d")
+    T.equal(fexWined3d["P99_HIDPI"] ?? "", "on", "perfEnv: hidpi on passes through")
+    // The vulkan escape hatch never comes from the panel.
+    T.expect(fexWined3d["P99_WINED3D_RENDERER"] == nil,
+             "perfEnv: P99_WINED3D_RENDERER is terminal-only, never set by the panel")
 
     // An FPS cap alone must run the INI patcher in apply mode (no smoother profile).
     let capOnly = Steps.performanceEnv(stack: "rosetta", renderer: "wined3d", smoother: false,
                                        indirectMaps: false, fpsCap: "30", rendererDebug: false,
-                                       fpsOverlay: false)
+                                       fpsOverlay: false, hidpi: "", metalHud: false,
+                                       wined3dCsmt: "", wined3dMaxGL: "", wined3dVram: "")
     T.equal(capOnly["P99_APPLY_PERF"] ?? "", "1", "perfEnv: cap alone applies INI")
     T.equal(capOnly["P99_PERF_PROFILE"] ?? "?", "", "perfEnv: cap alone has no profile")
 }

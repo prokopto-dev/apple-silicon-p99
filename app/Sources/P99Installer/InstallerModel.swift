@@ -119,6 +119,41 @@ final class InstallerModel {
         didSet { UserDefaults.standard.set(fpsOverlay, forKey: Self.fpsOverlayKey) }
     }
 
+    /// Display scaling (55-wrapper.sh, both renderers, both stacks): "" leaves
+    /// the wrapper's shipped behavior, "off" renders at 1x and lets macOS scale
+    /// the window up (the wined3d fill-rate win), "on" forces Retina-scale
+    /// rendering. Fully reversible — "" restores the exact shipped state.
+    /// Persisted.
+    static let hidpiChoiceKey = "hidpiChoice"
+    var hidpiChoice: String = UserDefaults.standard.string(forKey: hidpiChoiceKey) ?? "" {
+        didSet { UserDefaults.standard.set(hidpiChoice, forKey: Self.hidpiChoiceKey) }
+    }
+
+    /// Apple's Metal performance HUD (55-wrapper.sh) — frametimes on any
+    /// renderer, including the stock wined3d path that has no DXVK HUD.
+    /// Diagnostics, not a performance setting. Persisted.
+    static let metalHudKey = "metalHud"
+    var metalHud: Bool = UserDefaults.standard.bool(forKey: metalHudKey) {
+        didSet { UserDefaults.standard.set(metalHud, forKey: Self.metalHudKey) }
+    }
+
+    /// wined3d registry tuning (65-wined3d.sh; stock renderer only — the env
+    /// contract blanks these under d9vk). Empty string = wine's own default.
+    /// csmt: ""/"off"/"serialize"; maxGL: ""/"2.1"/"4.1"; vram: ""/"512"/"1024".
+    /// Persisted.
+    static let wined3dCsmtKey = "wined3dCsmt"
+    var wined3dCsmt: String = UserDefaults.standard.string(forKey: wined3dCsmtKey) ?? "" {
+        didSet { UserDefaults.standard.set(wined3dCsmt, forKey: Self.wined3dCsmtKey) }
+    }
+    static let wined3dMaxGLKey = "wined3dMaxGL"
+    var wined3dMaxGL: String = UserDefaults.standard.string(forKey: wined3dMaxGLKey) ?? "" {
+        didSet { UserDefaults.standard.set(wined3dMaxGL, forKey: Self.wined3dMaxGLKey) }
+    }
+    static let wined3dVramKey = "wined3dVram"
+    var wined3dVram: String = UserDefaults.standard.string(forKey: wined3dVramKey) ?? "" {
+        didSet { UserDefaults.standard.set(wined3dVram, forKey: Self.wined3dVramKey) }
+    }
+
     // MARK: - Installer app updates
 
     enum AppUpdateState: Equatable {
@@ -349,7 +384,12 @@ final class InstallerModel {
                                                 indirectMaps: indirectMaps,
                                                 fpsCap: fpsCap,
                                                 rendererDebug: rendererDebug,
-                                                fpsOverlay: fpsOverlay))
+                                                fpsOverlay: fpsOverlay,
+                                                hidpi: hidpiChoice,
+                                                metalHud: metalHud,
+                                                wined3dCsmt: wined3dCsmt,
+                                                wined3dMaxGL: wined3dMaxGL,
+                                                wined3dVram: wined3dVram))
     }
 
     func uninstall(removeWrapper: Bool, removeGame: Bool, removeFex: Bool = false) {
