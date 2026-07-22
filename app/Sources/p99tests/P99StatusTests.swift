@@ -66,6 +66,23 @@ func runP99StatusTests() {
     let offPerf = P99Status(tsv: tsv(["renderer": "wined3d", "perf_ini": "missing"]))
     T.expect(offPerf.fullyInstalled, "perf_ini missing doesn't block readiness")
 
+    // The wrapper-knob and wined3d-tuning keys (55-wrapper.sh / 65-wined3d.sh)
+    // are informational exactly like the ones above — any value, including the
+    // Linux CI's n/a degradations, must leave readiness untouched.
+    let withKnobs = P99Status(tsv: tsv(["winedebug": "quiet", "hidpi": "off",
+                                        "metal_hud": "on", "wined3d_csmt": "off",
+                                        "wined3d_maxgl": "2.1", "wined3d_vram": "512",
+                                        "wined3d_renderer": "gl"]))
+    T.expect(withKnobs.fullyInstalled, "wrapper/wined3d knob keys don't affect fullyInstalled")
+    T.equal(withKnobs.value("hidpi"), "off", "hidpi value readable")
+    T.equal(withKnobs.value("metal_hud"), "on", "metal_hud value readable")
+    T.equal(withKnobs.value("winedebug"), "quiet", "winedebug value readable")
+    T.equal(withKnobs.value("wined3d_csmt"), "off", "wined3d_csmt value readable")
+    T.equal(withKnobs.value("wined3d_maxgl"), "2.1", "wined3d_maxgl value readable")
+    let naKnobs = P99Status(tsv: tsv(["winedebug": "n/a", "hidpi": "n/a",
+                                      "metal_hud": "n/a", "wined3d_csmt": "n/a"]))
+    T.expect(naKnobs.fullyInstalled, "n/a knob degradations don't affect fullyInstalled")
+
     // Experimental FEX stack keys are informational too — no state of the FEX
     // side may ever gate the supported install's readiness.
     let fexMissing = P99Status(tsv: tsv(["stack": "rosetta", "fex_pinned": "missing",

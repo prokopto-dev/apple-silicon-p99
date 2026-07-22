@@ -147,6 +147,17 @@ P99_PERF_PROFILE="${P99_PERF_PROFILE:-}"      # "smoother" or empty
 P99_RENDERER_DEBUG="${P99_RENDERER_DEBUG:-}"  # 1 = verbose DXVK/MoltenVK logs in-game
 P99_DXVK_HUD="${P99_DXVK_HUD:-}"              # DXVK_HUD value, e.g. "fps,frametimes"
 P99_DXVK_INDIRECT_MAPS="${P99_DXVK_INDIRECT_MAPS:-}"  # 1 = route buffer locks around the WoW64 map path
+# Wrapper-level knobs, applied by 55-wrapper.sh — these sit above the renderer,
+# so they are valid on every renderer and every engine stack.
+P99_HIDPI="${P99_HIDPI:-}"          # off = render at 1x (fill-rate win) | on = force Retina | empty = template default
+P99_METAL_HUD="${P99_METAL_HUD:-}"  # 1 = Apple's Metal performance HUD overlay in the game session
+# wined3d registry knobs, applied by 65-wined3d.sh — stock-renderer only
+# (inert under d9vk, which replaces wined3d entirely; the script refuses them
+# there rather than shipping a switch that silently does nothing).
+P99_WINED3D_CSMT="${P99_WINED3D_CSMT:-}"          # off | on | serialize | empty = wine default (on)
+P99_WINED3D_MAXGL="${P99_WINED3D_MAXGL:-}"        # cap the GL context version, e.g. "2.1" or "4.1"
+P99_WINED3D_VRAM="${P99_WINED3D_VRAM:-}"          # VideoMemorySize in MB, e.g. 512
+P99_WINED3D_RENDERER="${P99_WINED3D_RENDERER:-}"  # gl | vulkan (escape hatch, unverified; no GUI)
 
 # --- Derived paths (don't edit) ----------------------------------------------
 PREFIX="$WRAPPER/Contents/SharedSupport/prefix"
@@ -170,6 +181,12 @@ MOLTENVK_CX_REL="../Frameworks/moltenvkcx/libMoltenVK.dylib"
 # state files next to the user's game.
 DXVK_CONF="$PREFIX/drive_c/dxvk-p99.conf"
 DXVK_CONF_WIN='C:\dxvk-p99.conf'
+# Display-scaling / Metal-HUD state, recorded by 55-wrapper.sh. Like the
+# renderer marker these live in the prefix, so they survive an idempotent
+# wrapper rebuild (which re-converges the plist from them) and are per-stack.
+HIDPI_MARKER="$PREFIX/.p99-hidpi"              # "on"/"off"; absent = template default
+HIDPI_STOCK="$PREFIX/.p99-hidpi-stock"         # template's original plist value, captured once
+METAL_HUD_MARKER="$PREFIX/.p99-metal-hud"      # present = MTL_HUD_ENABLED injected
 
 # Env every direct wine invocation needs. DYLD_FALLBACK_LIBRARY_PATH lets the
 # engine find FreeType/libinotify/etc. shipped inside the wrapper's Frameworks.
@@ -252,13 +269,32 @@ remove_plist_env() {
   [ -f "$p" ] && plutil -remove "LSEnvironment.$1" "$p" >/dev/null 2>&1 || true
 }
 
-# apply_wrapper_sync — make WINEESYNC/WINEMSYNC actually reach the open-launched
-# game. WINEMSYNC (mach semaphores) is the macOS payload; WINEESYNC is Linux-native
-# and effectively ignored on macOS but set for parity. WINEFSYNC is Linux-only and
-# is deliberately NOT set. Idempotent.
-apply_wrapper_sync() {
+# apply_wrapper_baseline_env — the always-on LSEnvironment baseline for the
+# open-launched game. WINEMSYNC (mach semaphores) is the macOS payload; WINEESYNC
+# is Linux-native and effectively ignored on macOS but set for parity. WINEFSYNC
+# is Linux-only and is deliberately NOT set. WINEDEBUG=-all silences wine's
+# default err+fixme channels for the play session — without it every fixme from
+# a 2005 game's API surface is formatted and written on hot paths. (The
+# `./40-launch.sh --debug` trace run sets its own verbose WINEDEBUG and is
+# unaffected — it doesn't launch through LSEnvironment at all.) Idempotent.
+apply_wrapper_baseline_env() {
   set_plist_env WINEESYNC 1
   set_plist_env WINEMSYNC 1
+  set_plist_env WINEDEBUG '-all'
+}
+
+# Whether the play session's wine log channels are silenced: reads WINEDEBUG
+# back from where it actually lands (the bundle's LSEnvironment) — not from a
+# variable a script set. quiet = "-all" injected; default = wine's own
+# (err+fixme); n/a = no wrapper plist or no plutil (Linux CI).
+active_winedebug() {
+  command -v plutil >/dev/null 2>&1 || { echo n/a; return 0; }
+  local p; p="$(plist_path)"
+  [ -f "$p" ] || { echo n/a; return 0; }
+  case "$(plutil -extract LSEnvironment.WINEDEBUG raw -o - "$p" 2>/dev/null)" in
+    -all) echo quiet ;;
+    *)    echo default ;;
+  esac
 }
 
 # set_plist_flag / remove_plist_flag — top-level flags such as the Sikarugir
@@ -267,6 +303,78 @@ apply_wrapper_sync() {
 # typed Swift decode silently drops a string "1". Graceful no-op if unsupported.
 set_plist_flag()    { local p; p="$(plist_path)"; [ -f "$p" ] && plutil -replace "$1" -integer "$2" "$p" >/dev/null 2>&1 || true; }
 remove_plist_flag() { local p; p="$(plist_path)"; [ -f "$p" ] && plutil -remove  "$1"            "$p" >/dev/null 2>&1 || true; }
+# set_plist_bool — top-level real booleans (NSHighResolutionCapable must be a
+# bool, not an integer, for AppKit to honor it). Graceful no-op if unsupported.
+set_plist_bool()    { local p; p="$(plist_path)"; [ -f "$p" ] && plutil -replace "$1" -bool "$2" "$p" >/dev/null 2>&1 || true; }
+
+# refresh_launch_services — LaunchServices caches a bundle's Info.plist, so an
+# edited NSHighResolutionCapable may not take effect on the next `open` without
+# a nudge. touch updates the bundle mtime (the documented invalidation signal);
+# lsregister -f is belt-and-suspenders. Both best-effort (absent on Linux CI).
+refresh_launch_services() {
+  [ -d "$WRAPPER" ] || return 0
+  touch "$WRAPPER" 2>/dev/null || true
+  # Only (re)register a real bundle — the test fakes have no Info.plist and
+  # should never enter the LaunchServices database.
+  [ -f "$(plist_path)" ] || return 0
+  /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister \
+    -f "$WRAPPER" >/dev/null 2>&1 || true
+}
+
+# --- Display scaling (HiDPI) + Metal HUD (55-wrapper.sh) ----------------------
+# The scaling knob has TWO halves that must move together (Wineskin lineage):
+# the bundle's NSHighResolutionCapable bool (whether macOS gives the app a
+# Retina backing store at all) and wine's Mac Driver RetinaMode registry value
+# (whether winemac.drv sizes its surfaces in physical pixels). 55-wrapper.sh
+# owns both; these helpers read the state back.
+
+# The plist half, read from where it actually lands: true|false|absent.
+# "absent" also stands in on Linux CI (no plutil), where only markers exist.
+hidpi_plist_value() {
+  command -v plutil >/dev/null 2>&1 || { echo absent; return 0; }
+  local p; p="$(plist_path)"
+  [ -f "$p" ] || { echo absent; return 0; }
+  plutil -extract NSHighResolutionCapable raw -o - "$p" 2>/dev/null || echo absent
+}
+
+# Effective display-scaling state for status.sh: on|off|default. Prefers the
+# live plist value (so a template that ships the key is reported truthfully);
+# falls back to the 55-wrapper.sh marker where plutil doesn't exist.
+active_hidpi() {
+  case "$(hidpi_plist_value)" in
+    true)  echo on ;;
+    false) echo off ;;
+    *)     cat "$HIDPI_MARKER" 2>/dev/null || echo default ;;
+  esac
+}
+
+# Whether the Metal performance HUD is injected: on|off. Prefers the live
+# LSEnvironment readback; marker fallback for plutil-less platforms.
+active_metal_hud() {
+  local p v=""
+  if command -v plutil >/dev/null 2>&1; then
+    p="$(plist_path)"
+    [ -f "$p" ] && v="$(plutil -extract LSEnvironment.MTL_HUD_ENABLED raw -o - "$p" 2>/dev/null)" || true
+  fi
+  if [ "$v" = 1 ]; then echo on
+  elif [ -f "$METAL_HUD_MARKER" ]; then echo on
+  else echo off; fi
+}
+
+# sync_wrapper_to_markers — re-converge the plist halves with the recorded
+# markers. Called by 55-wrapper.sh on every switch AND by 10-build-wrapper.sh
+# (same rebuild-safety contract as sync_moltenvk_to_renderer: the prefix — and
+# with it these markers — survives an idempotent rebuild, but a re-extracted
+# template plist would otherwise silently drop the user's choice). The registry
+# half lives in the prefix and survives on its own.
+sync_wrapper_to_markers() {
+  case "$(cat "$HIDPI_MARKER" 2>/dev/null || true)" in
+    on)  set_plist_bool NSHighResolutionCapable true ;;
+    off) set_plist_bool NSHighResolutionCapable false ;;
+  esac
+  if [ -f "$METAL_HUD_MARKER" ]; then set_plist_env MTL_HUD_ENABLED 1; fi
+  return 0
+}
 
 # Which renderer is active (recorded by 60-renderer.sh; default is the stock path).
 active_renderer() { cat "$RENDERER_MARKER" 2>/dev/null || echo wined3d; }
@@ -304,10 +412,83 @@ sync_moltenvk_to_renderer() {
   if [ "$(active_renderer)" = d9vk ]; then set_moltenvk cx; else set_moltenvk stock; fi
 }
 
+# --- wined3d registry knobs (65-wined3d.sh) -----------------------------------
+# All under HKCU\Software\Wine\Direct3D in the wrapper's prefix. Names, types,
+# and encodings verified against the wine-9.0 source (dlls/wined3d/
+# wined3d_main.c) — the base CrossOver 24 builds on:
+#   csmt            REG_DWORD  bit 0x1 enable (the DEFAULT), bit 0x2 serialize
+#   MaxVersionGL    REG_DWORD  (major << 16) | minor — GL 4.1 = 0x00040001
+#   VideoMemorySize REG_SZ     megabytes, parsed with atoi
+#   renderer        REG_SZ     "gl" | "vulkan" | "no3d"/"gdi" (we refuse those)
+# Note: wine 9.0 also reads a WINE_D3D_CONFIG env var that silently OVERRIDES
+# the registry — docs/TROUBLESHOOTING.md tells users to check for it.
+
+# wined3d_reg_keys — every Direct3D value this project may set, one per line.
+# Reverting deletes exactly these, so apply and revert can never drift apart.
+wined3d_reg_keys() {
+  cat <<'EOF'
+csmt
+MaxVersionGL
+VideoMemorySize
+renderer
+EOF
+}
+
+# wined3d_reg_value NAME — read one value back from where it actually lands:
+# the prefix's text registry (user.reg), which is what the game session's wine
+# loads. Works offline, no wine invocation. Prints the raw right-hand side
+# (dword:00000001, "512", ...) or nothing when the value is unset.
+wined3d_reg_value() {
+  [ -f "$PREFIX/user.reg" ] || return 0
+  awk -v k="\"$1\"=" '
+    /^\[Software\\\\Wine\\\\Direct3D\]/ { insec = 1; next }  # header keeps a trailing timestamp
+    /^\[/ { insec = 0 }
+    insec && index($0, k) == 1 { sub(/^[^=]*=/, ""); print; exit }
+  ' "$PREFIX/user.reg"
+}
+
+# Human decodes for status.sh. "default" = value unset (wine's own behavior);
+# "custom" = a hand-set value outside anything this project writes.
+wined3d_csmt_status() {
+  case "$(wined3d_reg_value csmt)" in
+    "")             echo default ;;
+    dword:00000000) echo off ;;
+    dword:00000001) echo on ;;
+    dword:00000003) echo serialize ;;
+    *)              echo custom ;;
+  esac
+}
+
+wined3d_maxgl_status() {
+  local v; v="$(wined3d_reg_value MaxVersionGL)"
+  case "$v" in
+    "")      echo default; return 0 ;;
+    dword:*) v="${v#dword:}" ;;
+    *)       echo custom;  return 0 ;;
+  esac
+  case "$v" in
+    ""|*[!0-9a-fA-F]*) echo custom; return 0 ;;
+  esac
+  echo "$(( 16#$v >> 16 )).$(( 16#$v & 0xffff ))"
+}
+
+wined3d_vram_status() {
+  local v; v="$(wined3d_reg_value VideoMemorySize)"
+  [ -n "$v" ] || { echo default; return 0; }
+  v="${v#\"}"; echo "${v%\"}"
+}
+
+wined3d_renderer_status() {
+  local v; v="$(wined3d_reg_value renderer)"
+  [ -n "$v" ] || { echo default; return 0; }
+  v="${v#\"}"; echo "${v%\"}"
+}
+
 # --- d9vk LSEnvironment bundle ------------------------------------------------
-# Everything here rides the same LSEnvironment channel as apply_wrapper_sync so
-# it reaches the real double-click session. WINEESYNC/WINEMSYNC are deliberately
-# NOT in this list — they are renderer-independent and owned by apply_wrapper_sync.
+# Everything here rides the same LSEnvironment channel as
+# apply_wrapper_baseline_env so it reaches the real double-click session.
+# WINEESYNC/WINEMSYNC/WINEDEBUG are deliberately NOT in this list — they are
+# renderer-independent and owned by apply_wrapper_baseline_env.
 
 # d9vk_env_keys — every LSEnvironment key this project may set for the d9vk
 # renderer (tuning + diagnostics), one per line. Reverting removes exactly these,

@@ -51,6 +51,7 @@ LGPL CrossOver 24.0.7 wine. Deleting `P99.app` removes all of it.
 | `Info.plist`: renderer flags | `D9VK`/`DXMT`/`D3DMETAL` integers the Sikarugir launcher reads; set/cleared by the renderer switch. | same |
 | Engine dylib symlinks | The engine finds its bundled libraries via relative paths into `Contents/SharedSupport/`; we link them there from `Contents/Frameworks/`. | `ls -l .../Contents/SharedSupport/*.dylib` |
 | **MoltenVK pairing** (opt-in, d9vk) | The template ships two Vulkan→Metal translators: a recent stock MoltenVK and CodeWeavers' patched build (`moltenvkcx/`) that the bundled D9VK was made for. The `libMoltenVK.dylib` symlink points at stock normally, and at the CX build while d9vk is active. | `readlink .../Contents/SharedSupport/libMoltenVK.dylib`, or `./status.sh` → `moltenvk` |
+| **`Info.plist`: `NSHighResolutionCapable`** (opt-in, display scaling) | The plist half of the display-scaling knob (lever 4): `false` renders at 1× and lets macOS scale the window up, `true` forces Retina. The template's shipped value is captured once before the first change, so the bare revert (`./55-wrapper.sh`) restores the exact original — set or absent. A wrapper rebuild re-converges it from the prefix marker. | `plutil -p .../Info.plist \| grep NSHighRes`, or `./status.sh` → `hidpi` |
 | **`drive_c/dxvk-p99.conf`** (opt-in, d9vk experiment) | The "indirect buffer maps" setting, one DXVK option in a file we own (first line marks it as ours; a hand-written file at that path is never touched). Lives in the wrapper, not your game folder. | `cat .../drive_c/dxvk-p99.conf`, or `./status.sh` → `dxvk_maps` |
 
 ### Every environment variable we set (`LSEnvironment`)
@@ -58,6 +59,7 @@ LGPL CrossOver 24.0.7 wine. Deleting `P99.app` removes all of it.
 | Variable | When | Why | Removed by |
 |---|---|---|---|
 | `WINEESYNC=1`, `WINEMSYNC=1` | always (baseline) | Wine's mach-semaphore thread scheduling; the fix that made "smoothness" settings real, because the double-click session never saw shell env. | uninstalling |
+| `WINEDEBUG=-all` | always (baseline) | Silences wine's default err+fixme log channels for the play session — a 2005 game trips fixmes on hot paths, and formatting them costs frames. The `--debug` trace launch sets its own verbose channels and is unaffected. | uninstalling |
 | `MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS=0` | d9vk | Newer MoltenVK defaults this on; with DXVK it's a documented performance cliff. | switching to wined3d |
 | `MVK_CONFIG_FAST_MATH_ENABLED=1` | d9vk | Cheaper shader math, safe for a 2005 title. | switching to wined3d |
 | `MVK_CONFIG_RESUME_LOST_DEVICE=1` | d9vk | Resume instead of crashing on a lost GPU device. | switching to wined3d |
@@ -65,6 +67,7 @@ LGPL CrossOver 24.0.7 wine. Deleting `P99.app` removes all of it.
 | `DXVK_CONFIG_FILE=C:\dxvk-p99.conf` | d9vk + indirect maps | Points DXVK at the one-option conf above. | re-applying without the knob |
 | `DXVK_LOG_LEVEL=info`, `MVK_CONFIG_LOG_LEVEL=2` | d9vk + debug knob | Verbose renderer logs for bug reports. | re-applying without the knob |
 | `DXVK_HUD=fps,frametimes` | d9vk + FPS overlay | On-screen frame counter for A/B comparisons. | re-applying without the knob |
+| `MTL_HUD_ENABLED=1` | Metal HUD knob | Apple's built-in performance overlay (macOS 13+) — frametimes on any renderer, including the stock wined3d path that has no DXVK HUD. Diagnostic, not a speedup. | re-applying without the knob (`./55-wrapper.sh`) |
 
 ## The wine prefix (inside `P99.app`)
 
@@ -74,7 +77,10 @@ LGPL CrossOver 24.0.7 wine. Deleting `P99.app` removes all of it.
 | DirectInput `MouseWarpOverride=force` | Keeps the cursor captured in the window during right-click mouselook (wine re-centers it while the game holds the mouse; free otherwise). | `P99_MOUSE_WARP=enable ./10-build-wrapper.sh` |
 | MS core fonts installed | EQ renders UI text through Windows font APIs; without real Arial etc. the UI is fuzzy. | delete `drive_c/windows/Fonts` copies |
 | **`d3d9.dll` swap** (opt-in, d9vk) | The renderer switch. Stock file is backed up once (`d3d9.dll.wined3d.bak`) and a wine DLL override is added; switching back restores the exact stock state and deletes the override. | `P99_RENDERER=wined3d ./60-renderer.sh` |
+| **`Mac Driver\RetinaMode`** (opt-in, display scaling) | The registry half of lever 4: `y` makes winemac.drv size its surfaces in physical pixels while Retina rendering is forced on; deleted for 1× and for the default state. Moves in lockstep with the `NSHighResolutionCapable` plist half above. | `./55-wrapper.sh` (no variables), or `./status.sh` → `hidpi` |
+| **`Direct3D` values** (opt-in, wined3d tuning) | At most these four values under `HKCU\Software\Wine\Direct3D`: `csmt`, `MaxVersionGL`, `VideoMemorySize`, `renderer` (lever 5). Reverting deletes exactly these — wine then uses its own defaults, which are the verified baseline. Only meaningful under the stock renderer; the script refuses to set them under d9vk. | `./65-wined3d.sh` (no variables), or `./status.sh` → `wined3d_*` |
 | `.p99-renderer` marker | One-word file recording the active renderer so `status.sh` and rebuilds stay truthful. | removed on revert |
+| `.p99-hidpi` / `.p99-hidpi-stock` / `.p99-metal-hud` markers | Display-scaling state, the captured original plist value, and the Metal-HUD flag — how `status.sh` and wrapper rebuilds stay truthful for lever 4 and the HUD. | removed on revert (`./55-wrapper.sh`) |
 
 ## The experimental FEX stack (opt-in, gated)
 

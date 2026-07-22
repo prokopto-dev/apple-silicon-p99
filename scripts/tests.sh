@@ -27,6 +27,11 @@ assert_eq "empty: fix_dsetup n/a"    "n/a"     "$(field "$OUT" fix_dsetup)"
 assert_eq "empty: fix_ini n/a"       "n/a"     "$(field "$OUT" fix_ini)"
 assert_eq "empty: moltenvk n/a"      "n/a"     "$(field "$OUT" moltenvk)"
 assert_eq "empty: dxvk_maps n/a"     "n/a"     "$(field "$OUT" dxvk_maps)"
+assert_eq "empty: winedebug n/a"     "n/a"     "$(field "$OUT" winedebug)"
+assert_eq "empty: hidpi n/a"         "n/a"     "$(field "$OUT" hidpi)"
+assert_eq "empty: metal_hud n/a"     "n/a"     "$(field "$OUT" metal_hud)"
+assert_eq "empty: wined3d_csmt n/a"  "n/a"     "$(field "$OUT" wined3d_csmt)"
+assert_eq "empty: wined3d_maxgl n/a" "n/a"     "$(field "$OUT" wined3d_maxgl)"
 
 # --- status.sh: faked install ------------------------------------------------
 W="$T/w.app"; G="$T/game"
@@ -51,6 +56,9 @@ assert_eq "fake: p99files version"  "V62"     "$(field "$OUT" p99files)"
 assert_eq "fake: wrong-md5 dsetup"  "missing" "$(field "$OUT" fix_dsetup)"
 assert_eq "fake: unpacked dpvs ok"  "ok"      "$(field "$OUT" fix_dpvs)"
 assert_eq "fake: ini marker ok"     "ok"      "$(field "$OUT" fix_ini)"
+# The fake wrapper has no Info.plist (and Linux has no plutil), so the WINEDEBUG
+# readback must degrade to n/a rather than claiming quiet or default.
+assert_eq "fake: winedebug degrades to n/a" "n/a" "$(field "$OUT" winedebug)"
 
 # UPX-marked dpvs.dll must read as missing (= still packed).
 printf 'MZ....UPX!....' > "$G/dpvs.dll"
@@ -224,6 +232,183 @@ assert_eq "perf: foreign conf preserved on apply" "my own settings" "$(head -1 "
 WRAPPER="$PW" GAME_DIR="$PG" P99_RENDERER=wined3d ./60-renderer.sh >/dev/null 2>&1
 assert_eq "perf: foreign conf preserved on revert" "my own settings" "$(head -1 "$PCONF")"
 rm -f "$PCONF"
+
+# --- 55-wrapper.sh: display scaling + Metal HUD -------------------------------
+# Swap the perf wrapper's mute wine stub for a recording one so the registry
+# half of each knob (reg add/delete argv) is assertable on Linux; the plist
+# half is plutil-only and, per the convention above, not asserted here.
+REGLOG="$T/reg.log"
+cat > "$PW/Contents/SharedSupport/wine/bin/wine" <<STUB
+#!/bin/sh
+[ "\$1" = reg ] && printf '%s\n' "\$*" >> "$REGLOG"
+exit 0
+STUB
+chmod +x "$PW/Contents/SharedSupport/wine/bin/wine"
+PPFX="$PW/Contents/SharedSupport/prefix"
+
+# Untouched install: no forced scaling, no HUD.
+OUT=$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)
+assert_eq "wrapper: hidpi defaults default" "default" "$(field "$OUT" hidpi)"
+assert_eq "wrapper: metal_hud defaults off" "off"     "$(field "$OUT" metal_hud)"
+
+# hidpi off: marker + one-time stock capture + registry half removed.
+: > "$REGLOG"
+WRAPPER="$PW" GAME_DIR="$PG" P99_HIDPI=off ./55-wrapper.sh >/dev/null 2>&1
+assert_eq "wrapper: hidpi off marker"      "off" "$(cat "$PPFX/.p99-hidpi" 2>/dev/null)"
+assert_eq "wrapper: stock captured once"   "yes" "$([ -f "$PPFX/.p99-hidpi-stock" ] && echo yes || echo no)"
+assert_eq "wrapper: off deletes RetinaMode" "1" "$(grep -c 'reg delete.*RetinaMode' "$REGLOG")"
+assert_eq "wrapper: hidpi status off" "off" "$(field "$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)" hidpi)"
+
+# hidpi on: marker flips, RetinaMode=y written.
+: > "$REGLOG"
+WRAPPER="$PW" GAME_DIR="$PG" P99_HIDPI=on ./55-wrapper.sh >/dev/null 2>&1
+assert_eq "wrapper: hidpi on marker"    "on" "$(cat "$PPFX/.p99-hidpi" 2>/dev/null)"
+assert_eq "wrapper: on adds RetinaMode y" "1" "$(grep -c 'reg add.*RetinaMode.*y' "$REGLOG")"
+assert_eq "wrapper: hidpi status on" "on" "$(field "$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)" hidpi)"
+
+# Full-state semantics: HUD on + scaling kept, then a run without the HUD var
+# reverts the HUD but keeps the scaling choice that WAS passed.
+WRAPPER="$PW" GAME_DIR="$PG" P99_HIDPI=on P99_METAL_HUD=1 ./55-wrapper.sh >/dev/null 2>&1
+assert_eq "wrapper: hud marker set" "yes" "$([ -f "$PPFX/.p99-metal-hud" ] && echo yes || echo no)"
+assert_eq "wrapper: metal_hud status on" "on" "$(field "$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)" metal_hud)"
+WRAPPER="$PW" GAME_DIR="$PG" P99_HIDPI=on ./55-wrapper.sh >/dev/null 2>&1
+assert_eq "wrapper: hud reverted without var" "off" "$(field "$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)" metal_hud)"
+assert_eq "wrapper: scaling survives hud revert" "on" "$(field "$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)" hidpi)"
+
+# Bare run restores the template default: markers gone, stock consumed,
+# registry half removed.
+: > "$REGLOG"
+WRAPPER="$PW" GAME_DIR="$PG" ./55-wrapper.sh >/dev/null 2>&1
+assert_eq "wrapper: bare run clears marker" "no" "$([ -f "$PPFX/.p99-hidpi" ] && echo yes || echo no)"
+assert_eq "wrapper: bare run consumes stock" "no" "$([ -f "$PPFX/.p99-hidpi-stock" ] && echo yes || echo no)"
+assert_eq "wrapper: bare run deletes RetinaMode" "1" "$(grep -c 'reg delete.*RetinaMode' "$REGLOG")"
+assert_eq "wrapper: hidpi status back to default" "default" "$(field "$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)" hidpi)"
+
+# A rebuild re-converges the plist from the markers (plutil effects are not
+# assertable here; assert the hook runs cleanly and never destroys the state
+# it re-converges from — the same contract sync_moltenvk_to_renderer has).
+WRAPPER="$PW" GAME_DIR="$PG" P99_HIDPI=off P99_METAL_HUD=1 ./55-wrapper.sh >/dev/null 2>&1
+if (WRAPPER="$PW" GAME_DIR="$PG" bash -c 'source ./config.sh; sync_wrapper_to_markers') >/dev/null 2>&1; then ok; else
+  bad "wrapper: sync_wrapper_to_markers runs clean" "exit 0" "nonzero exit"
+fi
+assert_eq "wrapper: sync keeps hidpi marker" "off" "$(cat "$PPFX/.p99-hidpi" 2>/dev/null)"
+assert_eq "wrapper: sync keeps hud marker" "yes" "$([ -f "$PPFX/.p99-metal-hud" ] && echo yes || echo no)"
+WRAPPER="$PW" GAME_DIR="$PG" ./55-wrapper.sh >/dev/null 2>&1
+
+# A bogus value dies naming the knob, before touching anything.
+if ERR=$(WRAPPER="$PW" GAME_DIR="$PG" P99_HIDPI=bogus ./55-wrapper.sh 2>&1); then
+  bad "wrapper: bogus hidpi must fail" "nonzero exit" "exit 0"
+else
+  ok
+fi
+case "$ERR" in
+  *P99_HIDPI*) ok ;;
+  *) bad "wrapper: error names the knob" "*P99_HIDPI*" "$ERR" ;;
+esac
+
+# --- 65-wined3d.sh: wined3d registry tuning -----------------------------------
+# Apply and revert consume the same value list — pin it like the d9vk env list.
+assert_eq "wined3d: managed value count" "4" "$(wined3d_reg_keys | wc -l | tr -d ' ')"
+
+# Bare run: reset sweep only — one delete per managed value, no adds.
+: > "$REGLOG"
+WRAPPER="$PW" GAME_DIR="$PG" ./65-wined3d.sh >/dev/null 2>&1
+assert_eq "wined3d: bare run sweeps all values" "4" "$(grep -c '^reg delete' "$REGLOG")"
+assert_eq "wined3d: bare run adds nothing"      "0" "$(grep -c '^reg add' "$REGLOG")"
+
+# Apply: sweep first, then exact adds with the wine-9.0-verified types and
+# encodings (csmt dword; MaxVersionGL (major<<16)|minor, so 2.1 = 131073;
+# VideoMemorySize REG_SZ in MB).
+: > "$REGLOG"
+WRAPPER="$PW" GAME_DIR="$PG" P99_WINED3D_CSMT=off P99_WINED3D_MAXGL=2.1 \
+  P99_WINED3D_VRAM=512 ./65-wined3d.sh >/dev/null 2>&1
+assert_eq "wined3d: csmt off is dword 0"     "1" "$(grep -c 'csmt /t REG_DWORD /d 0 /f' "$REGLOG")"
+assert_eq "wined3d: 2.1 encodes to 131073"   "1" "$(grep -c 'MaxVersionGL /t REG_DWORD /d 131073 /f' "$REGLOG")"
+assert_eq "wined3d: vram is REG_SZ 512"      "1" "$(grep -c 'VideoMemorySize /t REG_SZ /d 512 /f' "$REGLOG")"
+assert_eq "wined3d: unrequested renderer not set" "0" "$(grep -c 'reg add.*Direct3D /v renderer' "$REGLOG")"
+
+# 4.1 must encode to 0x00040001 = 262145 (the wine-9.0 format, NOT 0x40100).
+: > "$REGLOG"
+WRAPPER="$PW" GAME_DIR="$PG" P99_WINED3D_MAXGL=4.1 ./65-wined3d.sh >/dev/null 2>&1
+assert_eq "wined3d: 4.1 encodes to 262145" "1" "$(grep -c 'MaxVersionGL /t REG_DWORD /d 262145 /f' "$REGLOG")"
+
+# renderer=vulkan applies (escape hatch) but warns it's unverified.
+: > "$REGLOG"
+if ERR=$(WRAPPER="$PW" GAME_DIR="$PG" P99_WINED3D_RENDERER=vulkan ./65-wined3d.sh 2>&1); then ok; else
+  bad "wined3d: vulkan escape hatch applies" "exit 0" "nonzero exit"
+fi
+assert_eq "wined3d: vulkan written REG_SZ" "1" "$(grep -c 'renderer /t REG_SZ /d vulkan /f' "$REGLOG")"
+case "$ERR" in
+  *UNVERIFIED*) ok ;;
+  *) bad "wined3d: vulkan warns unverified" "*UNVERIFIED*" "$ERR" ;;
+esac
+
+# no3d/gdi disable 3D outright — refused before any registry work.
+: > "$REGLOG"
+if WRAPPER="$PW" GAME_DIR="$PG" P99_WINED3D_RENDERER=no3d ./65-wined3d.sh >/dev/null 2>&1; then
+  bad "wined3d: no3d must be refused" "nonzero exit" "exit 0"
+else
+  ok
+fi
+assert_eq "wined3d: refusal touched nothing" "0" "$(wc -l < "$REGLOG" | tr -d ' ')"
+
+# A bogus GL version dies naming the knob.
+if ERR=$(WRAPPER="$PW" GAME_DIR="$PG" P99_WINED3D_MAXGL=banana ./65-wined3d.sh 2>&1); then
+  bad "wined3d: bogus maxgl must fail" "nonzero exit" "exit 0"
+else
+  ok
+fi
+case "$ERR" in
+  *P99_WINED3D_MAXGL*) ok ;;
+  *) bad "wined3d: error names the knob" "*P99_WINED3D_MAXGL*" "$ERR" ;;
+esac
+
+# Matrix guard: setting values under d9vk is refused (they'd silently do
+# nothing there), but a bare reset run still works so the GUI's
+# apply-everything pass can clean up under any renderer.
+WRAPPER="$PW" GAME_DIR="$PG" P99_RENDERER=d9vk ./60-renderer.sh >/dev/null 2>&1
+if ERR=$(WRAPPER="$PW" GAME_DIR="$PG" P99_WINED3D_CSMT=off ./65-wined3d.sh 2>&1); then
+  bad "wined3d: set under d9vk must be refused" "nonzero exit" "exit 0"
+else
+  ok
+fi
+case "$ERR" in
+  *wined3d*) ok ;;
+  *) bad "wined3d: refusal names the fix" "*wined3d*" "$ERR" ;;
+esac
+if WRAPPER="$PW" GAME_DIR="$PG" ./65-wined3d.sh >/dev/null 2>&1; then ok; else
+  bad "wined3d: bare reset allowed under d9vk" "exit 0" "nonzero exit"
+fi
+WRAPPER="$PW" GAME_DIR="$PG" P99_RENDERER=wined3d ./60-renderer.sh >/dev/null 2>&1
+
+# Status probes parse the real user.reg text-registry format (escaped
+# backslashes, timestamped section headers, quoted names, lowercase hex).
+cat > "$PPFX/user.reg" <<'REG'
+WINE REGISTRY Version 2
+;; All keys relative to \\User\\S-1-5-21-0-0-0-1000
+
+[Software\\Wine\\Direct3D] 1700000000
+#time=1da12345678abcd
+"MaxVersionGL"=dword:00020001
+"VideoMemorySize"="512"
+"csmt"=dword:00000000
+"renderer"="gl"
+
+[Software\\Wine\\DirectInput] 1700000000
+"MouseWarpOverride"="force"
+REG
+OUT=$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)
+assert_eq "wined3d: status csmt off"     "off" "$(field "$OUT" wined3d_csmt)"
+assert_eq "wined3d: status maxgl 2.1"    "2.1" "$(field "$OUT" wined3d_maxgl)"
+assert_eq "wined3d: status vram 512"     "512" "$(field "$OUT" wined3d_vram)"
+assert_eq "wined3d: status renderer gl"  "gl"  "$(field "$OUT" wined3d_renderer)"
+# A value from another section must never bleed in.
+assert_eq "wined3d: other sections ignored" "" "$(WRAPPER="$PW" GAME_DIR="$PG" bash -c 'source ./config.sh; wined3d_reg_value MouseWarpOverride')"
+# Unset values read as wine defaults.
+rm -f "$PPFX/user.reg"
+OUT=$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)
+assert_eq "wined3d: status csmt default"  "default" "$(field "$OUT" wined3d_csmt)"
+assert_eq "wined3d: status maxgl default" "default" "$(field "$OUT" wined3d_maxgl)"
 
 # --- Engine stack: overlay, switcher, gating, smoke tests ---------------------
 # Fake FEX wrapper mirroring the earlier fakes, plus a wine stub smart enough

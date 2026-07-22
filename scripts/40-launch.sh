@@ -24,14 +24,22 @@ if [ "${1:-}" = "--debug" ]; then
   # and whether Metal argument buffers are active — the two facts a slow-d9vk
   # report needs.
   # The debug launch bypasses LSEnvironment (it's a direct wine run), so hand
-  # the indirect-maps conf over explicitly when it's applied — otherwise a
-  # debug session would silently behave differently from the Play session.
-  # Plain string, expanded unquoted: macOS bash 3.2 can't expand an empty array
-  # under `set -u`, and the value ($DXVK_CONF_WIN) never contains spaces.
+  # the indirect-maps conf and the Metal-HUD switch over explicitly when they
+  # are applied — otherwise a debug session would silently behave differently
+  # from the Play session. The wined3d registry knobs (65-wined3d.sh) and the
+  # RetinaMode half of display scaling need no mirroring: they live in the
+  # prefix, which both launch paths share. Display scaling's plist half does
+  # NOT apply to a direct launch (there's no bundle), so a debug window may
+  # not match the Play session's scale — expected. WINEDEBUG is intentionally
+  # verbose here, overriding the wrapper's baseline -all: a trace is the point.
+  # Plain strings, expanded unquoted: macOS bash 3.2 can't expand an empty
+  # array under `set -u`, and neither value ever contains spaces.
   DXVK_CONF_ENV=""
   [ -f "$DXVK_CONF" ] && DXVK_CONF_ENV="DXVK_CONFIG_FILE=$DXVK_CONF_WIN"
+  HUD_ENV=""
+  [ "$(active_metal_hud)" = on ] && HUD_ENV="MTL_HUD_ENABLED=1"
   wine_env env WINEDEBUG=+seh,+loaddll \
-    DXVK_LOG_LEVEL=info MVK_CONFIG_LOG_LEVEL=2 $DXVK_CONF_ENV \
+    DXVK_LOG_LEVEL=info MVK_CONFIG_LOG_LEVEL=2 $DXVK_CONF_ENV $HUD_ENV \
     "$WINE" cmd /c 'cd /d C:\Program Files\EverQuest && eqgame.exe patchme' \
     2>&1 | tee "$LOG" || true
   say "Game exited. Log: $LOG   (see docs/TROUBLESHOOTING.md for signatures)"

@@ -199,52 +199,118 @@ struct StatusView: View {
         @Bindable var model = model
         return GroupBox("Performance") {
             VStack(alignment: .leading, spacing: 10) {
-                Picker("Graphics renderer", selection: $model.rendererChoice) {
-                    Text("Stock (wined3d)").tag("wined3d")
-                    Text("D9VK — Vulkan/Metal (experimental)").tag("d9vk")
-                }
-                .disabled(model.stackChoice == "fex")
-                if model.stackChoice == "fex" {
-                    caption("Renderer choices are Rosetta-stack only for now: the bundled "
-                            + "D9VK/DXMT libraries and their MoltenVK pairing are x86_64 "
-                            + "builds, unverified under the FEX engine. The FEX stack runs "
-                            + "the stock wined3d renderer.")
-                } else {
-                    caption("D9VK skips the deprecated OpenGL path and can be much smoother "
-                            + "on newer chips — but on some machines it is much slower "
-                            + "(single-digit FPS has been reported). If that happens, switch "
-                            + "back to Stock and Apply; it restores the original renderer "
-                            + "and changes nothing else.")
-                }
-                if model.rendererChoice == "d9vk" {
-                    Toggle(isOn: $model.indirectMaps) {
-                        Text("Indirect buffer maps (experiment)")
+                Group {
+                    Picker("Graphics renderer", selection: $model.rendererChoice) {
+                        Text("Stock (wined3d)").tag("wined3d")
+                        Text("D9VK — Vulkan/Metal (experimental)").tag("d9vk")
                     }
-                    caption("If D9VK is still slow, try this: it keeps the game's "
-                            + "geometry updates out of the one code path this stack "
-                            + "makes expensive, at the cost of some extra CPU copying.")
-                    Toggle(isOn: $model.fpsOverlay) {
-                        Text("Show FPS overlay in-game")
+                    .disabled(model.stackChoice == "fex")
+                    if model.stackChoice == "fex" {
+                        caption("Renderer choices are Rosetta-stack only for now: the bundled "
+                                + "D9VK/DXMT libraries and their MoltenVK pairing are x86_64 "
+                                + "builds, unverified under the FEX engine. The FEX stack runs "
+                                + "the stock wined3d renderer.")
+                    } else {
+                        caption("D9VK skips the deprecated OpenGL path and can be much smoother "
+                                + "on newer chips — but on some machines it is much slower "
+                                + "(single-digit FPS has been reported). If that happens, switch "
+                                + "back to Stock and Apply; it restores the original renderer "
+                                + "and changes nothing else.")
                     }
-                    Toggle(isOn: $model.rendererDebug) {
-                        Text("Verbose renderer logs (for bug reports)")
+                    if model.rendererChoice == "d9vk" {
+                        Toggle(isOn: $model.indirectMaps) {
+                            Text("Indirect buffer maps (experiment)")
+                        }
+                        caption("If D9VK is still slow, try this: it keeps the game's "
+                                + "geometry updates out of the one code path this stack "
+                                + "makes expensive, at the cost of some extra CPU copying.")
                     }
-                    caption("Diagnostics for comparing D9VK against Stock. The logs "
-                            + "name exactly which components loaded — attach them if "
-                            + "you report a slow or broken D9VK run.")
-                    Divider()
+                    // wined3d registry tuning: stock renderer only — under d9vk
+                    // the whole wined3d DLL is replaced, so these values would
+                    // silently do nothing there (Steps.performanceEnv blanks
+                    // them too, and 65-wined3d.sh refuses to set them; hiding
+                    // the controls is the same convention as the d9vk-only
+                    // toggles above). Valid on both engine stacks: the registry
+                    // lives in each stack's own prefix.
+                    if model.rendererChoice == "wined3d" {
+                        Picker("Command stream (CSMT)", selection: $model.wined3dCsmt) {
+                            Text("Wine default (on)").tag("")
+                            Text("Off — pacing experiment").tag("off")
+                            Text("Serialize (debug only)").tag("serialize")
+                        }
+                        Picker("OpenGL version cap", selection: $model.wined3dMaxGL) {
+                            Text("Wine default").tag("")
+                            Text("2.1 (legacy context)").tag("2.1")
+                            Text("4.1 (macOS core max)").tag("4.1")
+                        }
+                        Picker("Reported video memory", selection: $model.wined3dVram) {
+                            Text("Wine default").tag("")
+                            Text("512 MB").tag("512")
+                            Text("1 GB").tag("1024")
+                        }
+                        caption("Stock-renderer fine-tuning (wine registry, experimental). "
+                                + "Wine's own defaults are the verified baseline — change "
+                                + "one at a time and measure with the Metal HUD below. "
+                                + "\"Wine default\" everywhere restores exactly the stock "
+                                + "behavior.")
+                    }
                 }
-                Toggle(isOn: $model.smootherINI) {
-                    Text("Smoother visuals (lower particle load)")
+                Divider()
+                Group {
+                    Picker("Display scaling", selection: $model.hidpiChoice) {
+                        Text("System default").tag("")
+                        Text("1× — smoother, less heat").tag("off")
+                        Text("Retina — crisper text").tag("on")
+                    }
+                    caption("1× renders a quarter of the pixels and lets macOS scale the "
+                            + "window up — the biggest fill-rate cut available on the "
+                            + "stock renderer, where every pixel crosses Apple's "
+                            + "deprecated OpenGL layer. UI text gets slightly softer; "
+                            + "the 3D world barely changes (2005 textures have no extra "
+                            + "detail to lose). Applies on every renderer and stack, "
+                            + "never touches EQ's own settings, and is fully reversible "
+                            + "— try both and keep what you prefer.")
                 }
-                Picker("Frame-rate cap", selection: $model.fpsCap) {
-                    Text("Off").tag("")
-                    Text("30 FPS").tag("30")
-                    Text("60 FPS").tag("60")
+                Divider()
+                Group {
+                    Toggle(isOn: $model.smootherINI) {
+                        Text("Smoother visuals (lower particle load)")
+                    }
+                    Picker("Frame-rate cap", selection: $model.fpsCap) {
+                        Text("Off").tag("")
+                        Text("30 FPS").tag("30")
+                        Text("60 FPS").tag("60")
+                    }
+                    caption("EverQuest's own settings (eqclient.ini): fewer particles and "
+                            + "a steadier frame cap. Never changes your resolution or "
+                            + "keybinds, and is fully reversible.")
                 }
-                caption("EverQuest's own settings (eqclient.ini): fewer particles and "
-                        + "a steadier frame cap. Never changes your resolution or "
-                        + "keybinds, and is fully reversible.")
+                DisclosureGroup("Diagnostics") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Toggle(isOn: $model.metalHud) {
+                            Text("Metal performance HUD")
+                        }
+                        caption("Apple's built-in overlay (top right: FPS, frame "
+                                + "times, GPU time) — works on any renderer, so it's "
+                                + "the way to measure the stock wined3d path, which "
+                                + "has no other overlay. macOS 13+. Unconfirmed over "
+                                + "the OpenGL compatibility layer on this stack; if "
+                                + "it doesn't appear, nothing else is affected.")
+                        if model.rendererChoice == "d9vk" {
+                            Toggle(isOn: $model.fpsOverlay) {
+                                Text("Show DXVK FPS overlay in-game")
+                            }
+                            Toggle(isOn: $model.rendererDebug) {
+                                Text("Verbose renderer logs (for bug reports)")
+                            }
+                            caption("D9VK-only diagnostics. The logs name exactly "
+                                    + "which components loaded — attach them if you "
+                                    + "report a slow or broken D9VK run.")
+                        }
+                    }
+                    .padding(.top, 6)
+                }
+                .font(.callout)
                 HStack {
                     Text("Close EverQuest before applying.")
                         .font(.caption)

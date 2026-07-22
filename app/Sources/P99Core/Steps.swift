@@ -103,14 +103,18 @@ public enum Steps {
          StepRun(title: "Download + apply newest P99 files", script: "50-update.sh")]
     }
 
-    /// Stack switch + renderer swap + eqclient.ini perf keys. All three scripts
-    /// read their mode from the environment (P99_STACK / P99_RENDERER /
-    /// P99_APPLY_PERF), so this same list applies or reverts the settings
-    /// depending on the current toggles. The stack is recorded first so the
-    /// renderer applies inside the wrapper future launches will actually use.
+    /// Stack switch + wrapper knobs + renderer swap + wined3d tuning +
+    /// eqclient.ini perf keys. Every script reads its mode from the
+    /// environment, so this same list applies or reverts the settings
+    /// depending on the current toggles. Ordering matters twice: the stack is
+    /// recorded first so everything after it applies inside the wrapper future
+    /// launches will actually use, and the wined3d tuning runs after the
+    /// renderer switch so its renderer guard sees the freshly applied state.
     public static func performance() -> [StepRun] {
         [StepRun(title: "Set the engine stack", script: "70-stack.sh"),
+         StepRun(title: "Apply display scaling + Metal HUD", script: "55-wrapper.sh"),
          StepRun(title: "Set the graphics renderer", script: "60-renderer.sh"),
+         StepRun(title: "Apply wined3d tuning", script: "65-wined3d.sh"),
          StepRun(title: "Apply EQ graphics settings", script: "35-perf-ini.sh")]
     }
 
@@ -133,10 +137,23 @@ public enum Steps {
     /// script treats an empty variable as unset. The INI patcher runs in apply
     /// mode whenever any INI-backed choice is on, and in revert mode otherwise,
     /// so turning the last toggle off cleans the keys back out.
+    ///
+    /// The knob/path matrix is enforced HERE, not just in the view: wined3d
+    /// registry values are meaningless under d9vk (the renderer switch replaces
+    /// the whole wined3d DLL), so they are blanked whenever another renderer is
+    /// chosen — 65-wined3d.sh then runs as a pure reset sweep and cleans up any
+    /// previously applied values. The view also hides those controls, but this
+    /// is the guarantee the tests pin. P99_WINED3D_RENDERER (wined3d's own
+    /// Vulkan backend) is deliberately absent: it's an unverified terminal-only
+    /// escape hatch, never a panel control.
     public static func performanceEnv(stack: String, renderer: String, smoother: Bool,
                                       indirectMaps: Bool, fpsCap: String,
-                                      rendererDebug: Bool, fpsOverlay: Bool) -> [String: String] {
+                                      rendererDebug: Bool, fpsOverlay: Bool,
+                                      hidpi: String, metalHud: Bool,
+                                      wined3dCsmt: String, wined3dMaxGL: String,
+                                      wined3dVram: String) -> [String: String] {
         let applyINI = smoother || !fpsCap.isEmpty
+        let onWined3d = renderer == "wined3d"
         return ["P99_STACK": stack,
                 "P99_RENDERER": renderer,
                 "P99_APPLY_PERF": applyINI ? "1" : "0",
@@ -144,6 +161,11 @@ public enum Steps {
                 "EQ_FPS_CAP": fpsCap,
                 "P99_DXVK_INDIRECT_MAPS": indirectMaps ? "1" : "",
                 "P99_RENDERER_DEBUG": rendererDebug ? "1" : "",
-                "P99_DXVK_HUD": fpsOverlay ? "fps,frametimes" : ""]
+                "P99_DXVK_HUD": fpsOverlay ? "fps,frametimes" : "",
+                "P99_HIDPI": hidpi,
+                "P99_METAL_HUD": metalHud ? "1" : "",
+                "P99_WINED3D_CSMT": onWined3d ? wined3dCsmt : "",
+                "P99_WINED3D_MAXGL": onWined3d ? wined3dMaxGL : "",
+                "P99_WINED3D_VRAM": onWined3d ? wined3dVram : ""]
     }
 }

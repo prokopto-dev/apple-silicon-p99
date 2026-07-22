@@ -77,13 +77,15 @@ plutil -replace "Program Name and Path" -string "/Program Files/EverQuest/eqgame
 plutil -replace "Program Flags" -string "patchme" "$WRAPPER/Contents/Info.plist"
 plutil -replace CFBundleName -string "$P99_BUNDLE_NAME" "$WRAPPER/Contents/Info.plist" 2>/dev/null || true
 
-# Make wine's msync scheduling actually reach the double-click / Play session.
-# `open "$WRAPPER"` launches detached via LaunchServices and does NOT inherit the
-# shell env, so the WINEESYNC/WINEMSYNC in wine_env() never touched the real game;
-# LSEnvironment injects them into the bundle's launch environment instead. Cheap,
-# reversible, idempotent. Full rationale in docs/PERFORMANCE.md.
-say "Enabling wine msync for the game session (Info.plist LSEnvironment)"
-apply_wrapper_sync
+# Make wine's msync scheduling (and quiet logging) actually reach the
+# double-click / Play session. `open "$WRAPPER"` launches detached via
+# LaunchServices and does NOT inherit the shell env, so the WINEESYNC/WINEMSYNC
+# in wine_env() never touched the real game; LSEnvironment injects them into the
+# bundle's launch environment instead. WINEDEBUG=-all rides the same channel for
+# the same reason. Cheap, reversible, idempotent. Full rationale in
+# docs/PERFORMANCE.md.
+say "Enabling wine msync + quiet logging for the game session (Info.plist LSEnvironment)"
+apply_wrapper_baseline_env
 
 # The engine's binaries find their bundled dylibs via @rpath = bin/../../,
 # which is Contents/SharedSupport/ after the engine move above — but the
@@ -100,6 +102,12 @@ done
 # with it the renderer marker — survives rebuilds), re-pair it with the CX
 # MoltenVK; on a fresh wrapper the marker is absent and this is a no-op.
 sync_moltenvk_to_renderer
+
+# Same rebuild-safety contract for the 55-wrapper.sh knobs: their markers live
+# in the prefix and survive a rebuild, but a re-extracted template plist would
+# silently drop the user's display-scaling / Metal-HUD choice — re-converge the
+# plist halves from the markers. No-op when the knobs were never applied.
+sync_wrapper_to_markers
 
 if ! check_prefix; then
   say "Initializing wine prefix (first run; takes a minute)"
