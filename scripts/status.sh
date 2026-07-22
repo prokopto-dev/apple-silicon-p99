@@ -57,6 +57,21 @@ if check_prefix; then printf 'hidpi\t%s\n' "$(active_hidpi)"; else printf 'hidpi
 # into the play session. Informational.
 if check_prefix; then printf 'metal_hud\t%s\n' "$(active_metal_hud)"; else printf 'metal_hud\tn/a\n'; fi
 
+# wined3d registry tuning (65-wined3d.sh), read back from the prefix's text
+# registry (user.reg) — the very file the game session's wine loads. "default"
+# = value unset, wine's own behavior. Informational.
+if check_prefix; then
+  printf 'wined3d_csmt\t%s\n'     "$(wined3d_csmt_status)"
+  printf 'wined3d_maxgl\t%s\n'    "$(wined3d_maxgl_status)"
+  printf 'wined3d_vram\t%s\n'     "$(wined3d_vram_status)"
+  printf 'wined3d_renderer\t%s\n' "$(wined3d_renderer_status)"
+else
+  printf 'wined3d_csmt\tn/a\n'
+  printf 'wined3d_maxgl\tn/a\n'
+  printf 'wined3d_vram\tn/a\n'
+  printf 'wined3d_renderer\tn/a\n'
+fi
+
 # Whether the indirect-buffer-maps experiment conf is in place (d9vk knob).
 if check_prefix; then
   printf 'dxvk_maps\t%s\n' "$([ -f "$DXVK_CONF" ] && echo indirect || echo default)"

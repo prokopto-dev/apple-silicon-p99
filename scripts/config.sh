@@ -412,6 +412,78 @@ sync_moltenvk_to_renderer() {
   if [ "$(active_renderer)" = d9vk ]; then set_moltenvk cx; else set_moltenvk stock; fi
 }
 
+# --- wined3d registry knobs (65-wined3d.sh) -----------------------------------
+# All under HKCU\Software\Wine\Direct3D in the wrapper's prefix. Names, types,
+# and encodings verified against the wine-9.0 source (dlls/wined3d/
+# wined3d_main.c) — the base CrossOver 24 builds on:
+#   csmt            REG_DWORD  bit 0x1 enable (the DEFAULT), bit 0x2 serialize
+#   MaxVersionGL    REG_DWORD  (major << 16) | minor — GL 4.1 = 0x00040001
+#   VideoMemorySize REG_SZ     megabytes, parsed with atoi
+#   renderer        REG_SZ     "gl" | "vulkan" | "no3d"/"gdi" (we refuse those)
+# Note: wine 9.0 also reads a WINE_D3D_CONFIG env var that silently OVERRIDES
+# the registry — docs/TROUBLESHOOTING.md tells users to check for it.
+
+# wined3d_reg_keys — every Direct3D value this project may set, one per line.
+# Reverting deletes exactly these, so apply and revert can never drift apart.
+wined3d_reg_keys() {
+  cat <<'EOF'
+csmt
+MaxVersionGL
+VideoMemorySize
+renderer
+EOF
+}
+
+# wined3d_reg_value NAME — read one value back from where it actually lands:
+# the prefix's text registry (user.reg), which is what the game session's wine
+# loads. Works offline, no wine invocation. Prints the raw right-hand side
+# (dword:00000001, "512", ...) or nothing when the value is unset.
+wined3d_reg_value() {
+  [ -f "$PREFIX/user.reg" ] || return 0
+  awk -v k="\"$1\"=" '
+    /^\[Software\\\\Wine\\\\Direct3D\]/ { insec = 1; next }  # header keeps a trailing timestamp
+    /^\[/ { insec = 0 }
+    insec && index($0, k) == 1 { sub(/^[^=]*=/, ""); print; exit }
+  ' "$PREFIX/user.reg"
+}
+
+# Human decodes for status.sh. "default" = value unset (wine's own behavior);
+# "custom" = a hand-set value outside anything this project writes.
+wined3d_csmt_status() {
+  case "$(wined3d_reg_value csmt)" in
+    "")             echo default ;;
+    dword:00000000) echo off ;;
+    dword:00000001) echo on ;;
+    dword:00000003) echo serialize ;;
+    *)              echo custom ;;
+  esac
+}
+
+wined3d_maxgl_status() {
+  local v; v="$(wined3d_reg_value MaxVersionGL)"
+  case "$v" in
+    "")      echo default; return 0 ;;
+    dword:*) v="${v#dword:}" ;;
+    *)       echo custom;  return 0 ;;
+  esac
+  case "$v" in
+    ""|*[!0-9a-fA-F]*) echo custom; return 0 ;;
+  esac
+  echo "$(( 16#$v >> 16 )).$(( 16#$v & 0xffff ))"
+}
+
+wined3d_vram_status() {
+  local v; v="$(wined3d_reg_value VideoMemorySize)"
+  [ -n "$v" ] || { echo default; return 0; }
+  v="${v#\"}"; echo "${v%\"}"
+}
+
+wined3d_renderer_status() {
+  local v; v="$(wined3d_reg_value renderer)"
+  [ -n "$v" ] || { echo default; return 0; }
+  v="${v#\"}"; echo "${v%\"}"
+}
+
 # --- d9vk LSEnvironment bundle ------------------------------------------------
 # Everything here rides the same LSEnvironment channel as
 # apply_wrapper_baseline_env so it reaches the real double-click session.

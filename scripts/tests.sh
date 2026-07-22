@@ -28,6 +28,10 @@ assert_eq "empty: fix_ini n/a"       "n/a"     "$(field "$OUT" fix_ini)"
 assert_eq "empty: moltenvk n/a"      "n/a"     "$(field "$OUT" moltenvk)"
 assert_eq "empty: dxvk_maps n/a"     "n/a"     "$(field "$OUT" dxvk_maps)"
 assert_eq "empty: winedebug n/a"     "n/a"     "$(field "$OUT" winedebug)"
+assert_eq "empty: hidpi n/a"         "n/a"     "$(field "$OUT" hidpi)"
+assert_eq "empty: metal_hud n/a"     "n/a"     "$(field "$OUT" metal_hud)"
+assert_eq "empty: wined3d_csmt n/a"  "n/a"     "$(field "$OUT" wined3d_csmt)"
+assert_eq "empty: wined3d_maxgl n/a" "n/a"     "$(field "$OUT" wined3d_maxgl)"
 
 # --- status.sh: faked install ------------------------------------------------
 W="$T/w.app"; G="$T/game"
@@ -301,6 +305,110 @@ case "$ERR" in
   *P99_HIDPI*) ok ;;
   *) bad "wrapper: error names the knob" "*P99_HIDPI*" "$ERR" ;;
 esac
+
+# --- 65-wined3d.sh: wined3d registry tuning -----------------------------------
+# Apply and revert consume the same value list — pin it like the d9vk env list.
+assert_eq "wined3d: managed value count" "4" "$(wined3d_reg_keys | wc -l | tr -d ' ')"
+
+# Bare run: reset sweep only — one delete per managed value, no adds.
+: > "$REGLOG"
+WRAPPER="$PW" GAME_DIR="$PG" ./65-wined3d.sh >/dev/null 2>&1
+assert_eq "wined3d: bare run sweeps all values" "4" "$(grep -c '^reg delete' "$REGLOG")"
+assert_eq "wined3d: bare run adds nothing"      "0" "$(grep -c '^reg add' "$REGLOG")"
+
+# Apply: sweep first, then exact adds with the wine-9.0-verified types and
+# encodings (csmt dword; MaxVersionGL (major<<16)|minor, so 2.1 = 131073;
+# VideoMemorySize REG_SZ in MB).
+: > "$REGLOG"
+WRAPPER="$PW" GAME_DIR="$PG" P99_WINED3D_CSMT=off P99_WINED3D_MAXGL=2.1 \
+  P99_WINED3D_VRAM=512 ./65-wined3d.sh >/dev/null 2>&1
+assert_eq "wined3d: csmt off is dword 0"     "1" "$(grep -c 'csmt /t REG_DWORD /d 0 /f' "$REGLOG")"
+assert_eq "wined3d: 2.1 encodes to 131073"   "1" "$(grep -c 'MaxVersionGL /t REG_DWORD /d 131073 /f' "$REGLOG")"
+assert_eq "wined3d: vram is REG_SZ 512"      "1" "$(grep -c 'VideoMemorySize /t REG_SZ /d 512 /f' "$REGLOG")"
+assert_eq "wined3d: unrequested renderer not set" "0" "$(grep -c 'reg add.*Direct3D /v renderer' "$REGLOG")"
+
+# 4.1 must encode to 0x00040001 = 262145 (the wine-9.0 format, NOT 0x40100).
+: > "$REGLOG"
+WRAPPER="$PW" GAME_DIR="$PG" P99_WINED3D_MAXGL=4.1 ./65-wined3d.sh >/dev/null 2>&1
+assert_eq "wined3d: 4.1 encodes to 262145" "1" "$(grep -c 'MaxVersionGL /t REG_DWORD /d 262145 /f' "$REGLOG")"
+
+# renderer=vulkan applies (escape hatch) but warns it's unverified.
+: > "$REGLOG"
+if ERR=$(WRAPPER="$PW" GAME_DIR="$PG" P99_WINED3D_RENDERER=vulkan ./65-wined3d.sh 2>&1); then ok; else
+  bad "wined3d: vulkan escape hatch applies" "exit 0" "nonzero exit"
+fi
+assert_eq "wined3d: vulkan written REG_SZ" "1" "$(grep -c 'renderer /t REG_SZ /d vulkan /f' "$REGLOG")"
+case "$ERR" in
+  *UNVERIFIED*) ok ;;
+  *) bad "wined3d: vulkan warns unverified" "*UNVERIFIED*" "$ERR" ;;
+esac
+
+# no3d/gdi disable 3D outright — refused before any registry work.
+: > "$REGLOG"
+if WRAPPER="$PW" GAME_DIR="$PG" P99_WINED3D_RENDERER=no3d ./65-wined3d.sh >/dev/null 2>&1; then
+  bad "wined3d: no3d must be refused" "nonzero exit" "exit 0"
+else
+  ok
+fi
+assert_eq "wined3d: refusal touched nothing" "0" "$(wc -l < "$REGLOG" | tr -d ' ')"
+
+# A bogus GL version dies naming the knob.
+if ERR=$(WRAPPER="$PW" GAME_DIR="$PG" P99_WINED3D_MAXGL=banana ./65-wined3d.sh 2>&1); then
+  bad "wined3d: bogus maxgl must fail" "nonzero exit" "exit 0"
+else
+  ok
+fi
+case "$ERR" in
+  *P99_WINED3D_MAXGL*) ok ;;
+  *) bad "wined3d: error names the knob" "*P99_WINED3D_MAXGL*" "$ERR" ;;
+esac
+
+# Matrix guard: setting values under d9vk is refused (they'd silently do
+# nothing there), but a bare reset run still works so the GUI's
+# apply-everything pass can clean up under any renderer.
+WRAPPER="$PW" GAME_DIR="$PG" P99_RENDERER=d9vk ./60-renderer.sh >/dev/null 2>&1
+if ERR=$(WRAPPER="$PW" GAME_DIR="$PG" P99_WINED3D_CSMT=off ./65-wined3d.sh 2>&1); then
+  bad "wined3d: set under d9vk must be refused" "nonzero exit" "exit 0"
+else
+  ok
+fi
+case "$ERR" in
+  *wined3d*) ok ;;
+  *) bad "wined3d: refusal names the fix" "*wined3d*" "$ERR" ;;
+esac
+if WRAPPER="$PW" GAME_DIR="$PG" ./65-wined3d.sh >/dev/null 2>&1; then ok; else
+  bad "wined3d: bare reset allowed under d9vk" "exit 0" "nonzero exit"
+fi
+WRAPPER="$PW" GAME_DIR="$PG" P99_RENDERER=wined3d ./60-renderer.sh >/dev/null 2>&1
+
+# Status probes parse the real user.reg text-registry format (escaped
+# backslashes, timestamped section headers, quoted names, lowercase hex).
+cat > "$PPFX/user.reg" <<'REG'
+WINE REGISTRY Version 2
+;; All keys relative to \\User\\S-1-5-21-0-0-0-1000
+
+[Software\\Wine\\Direct3D] 1700000000
+#time=1da12345678abcd
+"MaxVersionGL"=dword:00020001
+"VideoMemorySize"="512"
+"csmt"=dword:00000000
+"renderer"="gl"
+
+[Software\\Wine\\DirectInput] 1700000000
+"MouseWarpOverride"="force"
+REG
+OUT=$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)
+assert_eq "wined3d: status csmt off"     "off" "$(field "$OUT" wined3d_csmt)"
+assert_eq "wined3d: status maxgl 2.1"    "2.1" "$(field "$OUT" wined3d_maxgl)"
+assert_eq "wined3d: status vram 512"     "512" "$(field "$OUT" wined3d_vram)"
+assert_eq "wined3d: status renderer gl"  "gl"  "$(field "$OUT" wined3d_renderer)"
+# A value from another section must never bleed in.
+assert_eq "wined3d: other sections ignored" "" "$(WRAPPER="$PW" GAME_DIR="$PG" bash -c 'source ./config.sh; wined3d_reg_value MouseWarpOverride')"
+# Unset values read as wine defaults.
+rm -f "$PPFX/user.reg"
+OUT=$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)
+assert_eq "wined3d: status csmt default"  "default" "$(field "$OUT" wined3d_csmt)"
+assert_eq "wined3d: status maxgl default" "default" "$(field "$OUT" wined3d_maxgl)"
 
 # --- Engine stack: overlay, switcher, gating, smoke tests ---------------------
 # Fake FEX wrapper mirroring the earlier fakes, plus a wine stub smart enough
