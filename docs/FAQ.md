@@ -177,3 +177,11 @@ Yes — edit `eqclient.ini` (game closed) and set all six `Width`/`Height`/
 `WidthWindowed`/`HeightWindowed`/`WindowedWidth`/`WindowedHeight` keys to your
 size (e.g. 1440×900). Details and a caveat about UI window positions are in
 [TROUBLESHOOTING.md](TROUBLESHOOTING.md#window-is-tiny-1024768).
+
+Related but separate: the **Display scaling** knob
+([PERFORMANCE.md](PERFORMANCE.md), lever 4) controls how many *physical*
+pixels the game renders per window pixel on a Retina panel. It never changes
+these INI keys or the window size — but if you force Retina scaling on, the
+keys above start meaning physical pixels, so the window looks half-size until
+you double them. The 1× direction has no such surprise and is the
+performance-relevant one.

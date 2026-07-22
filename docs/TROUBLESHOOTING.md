@@ -250,6 +250,49 @@ attach `~/Games/EverQuest/eqgame_d3d9.log`, the `[mvk-info]` MoltenVK
 version/argument-buffer lines from a `./40-launch.sh --debug` trace, and the
 `renderer` + `moltenvk` lines from `./status.sh`.
 
+### After changing Display scaling the window looks wrong (tiny, huge, or soft)
+**Cause:** the display-scaling knob (lever 4 in
+[PERFORMANCE.md](PERFORMANCE.md)) changes what a "pixel" means to the game.
+At **1×** the window stays the same size and UI text gets slightly softer —
+that's the intended tradeoff, not a bug. Forced **Retina** is the surprising
+one: winemac.drv starts counting in physical pixels, so EQ's
+`Width`/`Height` suddenly mean physical pixels and the window appears half
+its previous size.
+**Fix:** for a half-size window under forced Retina, double
+`Width`/`Height`/etc. in `eqclient.ini` (game closed — see "Window is tiny"
+below). To undo the knob entirely: `cd scripts && ./55-wrapper.sh` (no
+variables) restores the wrapper's exact shipped behavior, or set the panel's
+Display scaling picker back to *System default* and Apply. `./status.sh` →
+`hidpi` confirms the live state.
+
+### The Metal performance HUD doesn't appear
+**Cause:** the HUD (`P99_METAL_HUD=1 ./55-wrapper.sh`, or the panel's
+Diagnostics group) is Apple's own overlay for Metal-backed processes on
+macOS 13+. It reaches the game via the wrapper's `LSEnvironment`, so it only
+applies to launches through `P99.app` or `./40-launch.sh` — and whether it
+draws over the GL-on-Metal shim on the stock renderer is not yet confirmed
+on this stack (it should, since that layer renders through Metal
+underneath).
+**Fix:** confirm `./status.sh` reports `metal_hud on`; make sure you
+launched normally (double-click / Play / `./40-launch.sh`) after applying;
+check macOS ≥ 13. If it still doesn't draw on the stock renderer, that's a
+data point we want — say so in an issue. Nothing else is affected either
+way; under d9vk the DXVK overlay (`P99_DXVK_HUD=fps,frametimes`) is the
+alternative.
+
+### Game misbehaves after wined3d registry experiments
+**Cause:** lever 5's values (`csmt`, `MaxVersionGL`, `VideoMemorySize`,
+`renderer` under `HKCU\Software\Wine\Direct3D`) are experiments, and some
+combinations can genuinely regress or break rendering —
+`P99_WINED3D_RENDERER=vulkan` in particular is unverified on this engine
+and a failed launch is the expected outcome.
+**Fix:** `cd scripts && ./65-wined3d.sh` (no variables) deletes every value
+this project manages; wine falls back to its own defaults, which are the
+verified baseline. `./status.sh` should then show every `wined3d_*` line as
+`default`. If experiments seem to change *nothing at all*, check for a
+`WINE_D3D_CONFIG` environment variable (`env | grep WINE_D3D`) — wine lets
+it silently override the registry; nothing in this project sets it.
+
 ### Sound issues
 Sound runs through the game's own Miles Sound System (`mss32.dll`), not
 GStreamer — so ignore wine's GStreamer warnings; they're harmless here.
