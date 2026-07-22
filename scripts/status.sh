@@ -48,6 +48,15 @@ if check_wrapper; then printf 'moltenvk\t%s\n' "$(active_moltenvk)"; else printf
 # n/a without a wrapper or without plutil (Linux CI). Informational.
 if check_wrapper; then printf 'winedebug\t%s\n' "$(active_winedebug)"; else printf 'winedebug\tn/a\n'; fi
 
+# Display scaling (55-wrapper.sh): on = Retina forced, off = 1x forced,
+# default = template's shipped behavior. Read from the live plist where
+# possible, marker fallback elsewhere. Informational.
+if check_prefix; then printf 'hidpi\t%s\n' "$(active_hidpi)"; else printf 'hidpi\tn/a\n'; fi
+
+# Metal performance HUD (55-wrapper.sh): whether MTL_HUD_ENABLED is injected
+# into the play session. Informational.
+if check_prefix; then printf 'metal_hud\t%s\n' "$(active_metal_hud)"; else printf 'metal_hud\tn/a\n'; fi
+
 # Whether the indirect-buffer-maps experiment conf is in place (d9vk knob).
 if check_prefix; then
   printf 'dxvk_maps\t%s\n' "$([ -f "$DXVK_CONF" ] && echo indirect || echo default)"

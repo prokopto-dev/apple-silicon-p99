@@ -229,6 +229,79 @@ WRAPPER="$PW" GAME_DIR="$PG" P99_RENDERER=wined3d ./60-renderer.sh >/dev/null 2>
 assert_eq "perf: foreign conf preserved on revert" "my own settings" "$(head -1 "$PCONF")"
 rm -f "$PCONF"
 
+# --- 55-wrapper.sh: display scaling + Metal HUD -------------------------------
+# Swap the perf wrapper's mute wine stub for a recording one so the registry
+# half of each knob (reg add/delete argv) is assertable on Linux; the plist
+# half is plutil-only and, per the convention above, not asserted here.
+REGLOG="$T/reg.log"
+cat > "$PW/Contents/SharedSupport/wine/bin/wine" <<STUB
+#!/bin/sh
+[ "\$1" = reg ] && printf '%s\n' "\$*" >> "$REGLOG"
+exit 0
+STUB
+chmod +x "$PW/Contents/SharedSupport/wine/bin/wine"
+PPFX="$PW/Contents/SharedSupport/prefix"
+
+# Untouched install: no forced scaling, no HUD.
+OUT=$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)
+assert_eq "wrapper: hidpi defaults default" "default" "$(field "$OUT" hidpi)"
+assert_eq "wrapper: metal_hud defaults off" "off"     "$(field "$OUT" metal_hud)"
+
+# hidpi off: marker + one-time stock capture + registry half removed.
+: > "$REGLOG"
+WRAPPER="$PW" GAME_DIR="$PG" P99_HIDPI=off ./55-wrapper.sh >/dev/null 2>&1
+assert_eq "wrapper: hidpi off marker"      "off" "$(cat "$PPFX/.p99-hidpi" 2>/dev/null)"
+assert_eq "wrapper: stock captured once"   "yes" "$([ -f "$PPFX/.p99-hidpi-stock" ] && echo yes || echo no)"
+assert_eq "wrapper: off deletes RetinaMode" "1" "$(grep -c 'reg delete.*RetinaMode' "$REGLOG")"
+assert_eq "wrapper: hidpi status off" "off" "$(field "$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)" hidpi)"
+
+# hidpi on: marker flips, RetinaMode=y written.
+: > "$REGLOG"
+WRAPPER="$PW" GAME_DIR="$PG" P99_HIDPI=on ./55-wrapper.sh >/dev/null 2>&1
+assert_eq "wrapper: hidpi on marker"    "on" "$(cat "$PPFX/.p99-hidpi" 2>/dev/null)"
+assert_eq "wrapper: on adds RetinaMode y" "1" "$(grep -c 'reg add.*RetinaMode.*y' "$REGLOG")"
+assert_eq "wrapper: hidpi status on" "on" "$(field "$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)" hidpi)"
+
+# Full-state semantics: HUD on + scaling kept, then a run without the HUD var
+# reverts the HUD but keeps the scaling choice that WAS passed.
+WRAPPER="$PW" GAME_DIR="$PG" P99_HIDPI=on P99_METAL_HUD=1 ./55-wrapper.sh >/dev/null 2>&1
+assert_eq "wrapper: hud marker set" "yes" "$([ -f "$PPFX/.p99-metal-hud" ] && echo yes || echo no)"
+assert_eq "wrapper: metal_hud status on" "on" "$(field "$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)" metal_hud)"
+WRAPPER="$PW" GAME_DIR="$PG" P99_HIDPI=on ./55-wrapper.sh >/dev/null 2>&1
+assert_eq "wrapper: hud reverted without var" "off" "$(field "$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)" metal_hud)"
+assert_eq "wrapper: scaling survives hud revert" "on" "$(field "$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)" hidpi)"
+
+# Bare run restores the template default: markers gone, stock consumed,
+# registry half removed.
+: > "$REGLOG"
+WRAPPER="$PW" GAME_DIR="$PG" ./55-wrapper.sh >/dev/null 2>&1
+assert_eq "wrapper: bare run clears marker" "no" "$([ -f "$PPFX/.p99-hidpi" ] && echo yes || echo no)"
+assert_eq "wrapper: bare run consumes stock" "no" "$([ -f "$PPFX/.p99-hidpi-stock" ] && echo yes || echo no)"
+assert_eq "wrapper: bare run deletes RetinaMode" "1" "$(grep -c 'reg delete.*RetinaMode' "$REGLOG")"
+assert_eq "wrapper: hidpi status back to default" "default" "$(field "$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)" hidpi)"
+
+# A rebuild re-converges the plist from the markers (plutil effects are not
+# assertable here; assert the hook runs cleanly and never destroys the state
+# it re-converges from — the same contract sync_moltenvk_to_renderer has).
+WRAPPER="$PW" GAME_DIR="$PG" P99_HIDPI=off P99_METAL_HUD=1 ./55-wrapper.sh >/dev/null 2>&1
+if (WRAPPER="$PW" GAME_DIR="$PG" bash -c 'source ./config.sh; sync_wrapper_to_markers') >/dev/null 2>&1; then ok; else
+  bad "wrapper: sync_wrapper_to_markers runs clean" "exit 0" "nonzero exit"
+fi
+assert_eq "wrapper: sync keeps hidpi marker" "off" "$(cat "$PPFX/.p99-hidpi" 2>/dev/null)"
+assert_eq "wrapper: sync keeps hud marker" "yes" "$([ -f "$PPFX/.p99-metal-hud" ] && echo yes || echo no)"
+WRAPPER="$PW" GAME_DIR="$PG" ./55-wrapper.sh >/dev/null 2>&1
+
+# A bogus value dies naming the knob, before touching anything.
+if ERR=$(WRAPPER="$PW" GAME_DIR="$PG" P99_HIDPI=bogus ./55-wrapper.sh 2>&1); then
+  bad "wrapper: bogus hidpi must fail" "nonzero exit" "exit 0"
+else
+  ok
+fi
+case "$ERR" in
+  *P99_HIDPI*) ok ;;
+  *) bad "wrapper: error names the knob" "*P99_HIDPI*" "$ERR" ;;
+esac
+
 # --- Engine stack: overlay, switcher, gating, smoke tests ---------------------
 # Fake FEX wrapper mirroring the earlier fakes, plus a wine stub smart enough
 # for 75-fex-smoke.sh (echoes the cmd token, answers reg query).

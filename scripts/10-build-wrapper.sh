@@ -103,6 +103,12 @@ done
 # MoltenVK; on a fresh wrapper the marker is absent and this is a no-op.
 sync_moltenvk_to_renderer
 
+# Same rebuild-safety contract for the 55-wrapper.sh knobs: their markers live
+# in the prefix and survive a rebuild, but a re-extracted template plist would
+# silently drop the user's display-scaling / Metal-HUD choice — re-converge the
+# plist halves from the markers. No-op when the knobs were never applied.
+sync_wrapper_to_markers
+
 if ! check_prefix; then
   say "Initializing wine prefix (first run; takes a minute)"
   wine_env "$WINE" wineboot -i
