@@ -77,13 +77,15 @@ plutil -replace "Program Name and Path" -string "/Program Files/EverQuest/eqgame
 plutil -replace "Program Flags" -string "patchme" "$WRAPPER/Contents/Info.plist"
 plutil -replace CFBundleName -string "$P99_BUNDLE_NAME" "$WRAPPER/Contents/Info.plist" 2>/dev/null || true
 
-# Make wine's msync scheduling actually reach the double-click / Play session.
-# `open "$WRAPPER"` launches detached via LaunchServices and does NOT inherit the
-# shell env, so the WINEESYNC/WINEMSYNC in wine_env() never touched the real game;
-# LSEnvironment injects them into the bundle's launch environment instead. Cheap,
-# reversible, idempotent. Full rationale in docs/PERFORMANCE.md.
-say "Enabling wine msync for the game session (Info.plist LSEnvironment)"
-apply_wrapper_sync
+# Make wine's msync scheduling (and quiet logging) actually reach the
+# double-click / Play session. `open "$WRAPPER"` launches detached via
+# LaunchServices and does NOT inherit the shell env, so the WINEESYNC/WINEMSYNC
+# in wine_env() never touched the real game; LSEnvironment injects them into the
+# bundle's launch environment instead. WINEDEBUG=-all rides the same channel for
+# the same reason. Cheap, reversible, idempotent. Full rationale in
+# docs/PERFORMANCE.md.
+say "Enabling wine msync + quiet logging for the game session (Info.plist LSEnvironment)"
+apply_wrapper_baseline_env
 
 # The engine's binaries find their bundled dylibs via @rpath = bin/../../,
 # which is Contents/SharedSupport/ after the engine move above — but the

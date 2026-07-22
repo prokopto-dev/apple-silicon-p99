@@ -27,6 +27,7 @@ assert_eq "empty: fix_dsetup n/a"    "n/a"     "$(field "$OUT" fix_dsetup)"
 assert_eq "empty: fix_ini n/a"       "n/a"     "$(field "$OUT" fix_ini)"
 assert_eq "empty: moltenvk n/a"      "n/a"     "$(field "$OUT" moltenvk)"
 assert_eq "empty: dxvk_maps n/a"     "n/a"     "$(field "$OUT" dxvk_maps)"
+assert_eq "empty: winedebug n/a"     "n/a"     "$(field "$OUT" winedebug)"
 
 # --- status.sh: faked install ------------------------------------------------
 W="$T/w.app"; G="$T/game"
@@ -51,6 +52,9 @@ assert_eq "fake: p99files version"  "V62"     "$(field "$OUT" p99files)"
 assert_eq "fake: wrong-md5 dsetup"  "missing" "$(field "$OUT" fix_dsetup)"
 assert_eq "fake: unpacked dpvs ok"  "ok"      "$(field "$OUT" fix_dpvs)"
 assert_eq "fake: ini marker ok"     "ok"      "$(field "$OUT" fix_ini)"
+# The fake wrapper has no Info.plist (and Linux has no plutil), so the WINEDEBUG
+# readback must degrade to n/a rather than claiming quiet or default.
+assert_eq "fake: winedebug degrades to n/a" "n/a" "$(field "$OUT" winedebug)"
 
 # UPX-marked dpvs.dll must read as missing (= still packed).
 printf 'MZ....UPX!....' > "$G/dpvs.dll"

@@ -58,6 +58,7 @@ LGPL CrossOver 24.0.7 wine. Deleting `P99.app` removes all of it.
 | Variable | When | Why | Removed by |
 |---|---|---|---|
 | `WINEESYNC=1`, `WINEMSYNC=1` | always (baseline) | Wine's mach-semaphore thread scheduling; the fix that made "smoothness" settings real, because the double-click session never saw shell env. | uninstalling |
+| `WINEDEBUG=-all` | always (baseline) | Silences wine's default err+fixme log channels for the play session — a 2005 game trips fixmes on hot paths, and formatting them costs frames. The `--debug` trace launch sets its own verbose channels and is unaffected. | uninstalling |
 | `MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS=0` | d9vk | Newer MoltenVK defaults this on; with DXVK it's a documented performance cliff. | switching to wined3d |
 | `MVK_CONFIG_FAST_MATH_ENABLED=1` | d9vk | Cheaper shader math, safe for a 2005 title. | switching to wined3d |
 | `MVK_CONFIG_RESUME_LOST_DEVICE=1` | d9vk | Resume instead of crashing on a lost GPU device. | switching to wined3d |

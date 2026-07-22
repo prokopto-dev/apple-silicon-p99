@@ -43,6 +43,11 @@ if check_prefix; then printf 'renderer\t%s\n' "$(active_renderer)"; else printf 
 # the one d9vk is paired with; stock = the template's newer build). Informational.
 if check_wrapper; then printf 'moltenvk\t%s\n' "$(active_moltenvk)"; else printf 'moltenvk\tn/a\n'; fi
 
+# Whether WINEDEBUG=-all reaches the play session (read back from the bundle's
+# LSEnvironment — the only channel the detached launch sees). quiet|default;
+# n/a without a wrapper or without plutil (Linux CI). Informational.
+if check_wrapper; then printf 'winedebug\t%s\n' "$(active_winedebug)"; else printf 'winedebug\tn/a\n'; fi
+
 # Whether the indirect-buffer-maps experiment conf is in place (d9vk knob).
 if check_prefix; then
   printf 'dxvk_maps\t%s\n' "$([ -f "$DXVK_CONF" ] && echo indirect || echo default)"

@@ -155,6 +155,15 @@ LaunchServices does apply to the launched app, so wine finally sees them in-game
 - `WINEFSYNC` is **Linux-only** and is deliberately not used here. If you read
   advice elsewhere to "enable fsync," it does not apply to macOS.
 
+The same channel now also carries **`WINEDEBUG=-all`** as baseline. Wine's
+default logging keeps the `err` and `fixme` channels on, and a 2005 game trips
+fixmes on hot paths — each one formatted and written mid-frame. It had never
+been silenced for the real play session (the same detached-launch reason as
+msync). The `./40-launch.sh --debug` trace run is unaffected: it launches
+directly, not through LSEnvironment, and sets its own verbose channels on
+purpose. `./status.sh` reports this as `winedebug` (`quiet` once the wrapper
+has been rebuilt).
+
 **How to get it:** rebuild the wrapper once — it skips the finished pieces and just
 refreshes the launch environment:
 

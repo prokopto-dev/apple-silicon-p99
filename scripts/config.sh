@@ -252,13 +252,32 @@ remove_plist_env() {
   [ -f "$p" ] && plutil -remove "LSEnvironment.$1" "$p" >/dev/null 2>&1 || true
 }
 
-# apply_wrapper_sync — make WINEESYNC/WINEMSYNC actually reach the open-launched
-# game. WINEMSYNC (mach semaphores) is the macOS payload; WINEESYNC is Linux-native
-# and effectively ignored on macOS but set for parity. WINEFSYNC is Linux-only and
-# is deliberately NOT set. Idempotent.
-apply_wrapper_sync() {
+# apply_wrapper_baseline_env — the always-on LSEnvironment baseline for the
+# open-launched game. WINEMSYNC (mach semaphores) is the macOS payload; WINEESYNC
+# is Linux-native and effectively ignored on macOS but set for parity. WINEFSYNC
+# is Linux-only and is deliberately NOT set. WINEDEBUG=-all silences wine's
+# default err+fixme channels for the play session — without it every fixme from
+# a 2005 game's API surface is formatted and written on hot paths. (The
+# `./40-launch.sh --debug` trace run sets its own verbose WINEDEBUG and is
+# unaffected — it doesn't launch through LSEnvironment at all.) Idempotent.
+apply_wrapper_baseline_env() {
   set_plist_env WINEESYNC 1
   set_plist_env WINEMSYNC 1
+  set_plist_env WINEDEBUG '-all'
+}
+
+# Whether the play session's wine log channels are silenced: reads WINEDEBUG
+# back from where it actually lands (the bundle's LSEnvironment) — not from a
+# variable a script set. quiet = "-all" injected; default = wine's own
+# (err+fixme); n/a = no wrapper plist or no plutil (Linux CI).
+active_winedebug() {
+  command -v plutil >/dev/null 2>&1 || { echo n/a; return 0; }
+  local p; p="$(plist_path)"
+  [ -f "$p" ] || { echo n/a; return 0; }
+  case "$(plutil -extract LSEnvironment.WINEDEBUG raw -o - "$p" 2>/dev/null)" in
+    -all) echo quiet ;;
+    *)    echo default ;;
+  esac
 }
 
 # set_plist_flag / remove_plist_flag — top-level flags such as the Sikarugir
@@ -305,9 +324,10 @@ sync_moltenvk_to_renderer() {
 }
 
 # --- d9vk LSEnvironment bundle ------------------------------------------------
-# Everything here rides the same LSEnvironment channel as apply_wrapper_sync so
-# it reaches the real double-click session. WINEESYNC/WINEMSYNC are deliberately
-# NOT in this list — they are renderer-independent and owned by apply_wrapper_sync.
+# Everything here rides the same LSEnvironment channel as
+# apply_wrapper_baseline_env so it reaches the real double-click session.
+# WINEESYNC/WINEMSYNC/WINEDEBUG are deliberately NOT in this list — they are
+# renderer-independent and owned by apply_wrapper_baseline_env.
 
 # d9vk_env_keys — every LSEnvironment key this project may set for the d9vk
 # renderer (tuning + diagnostics), one per line. Reverting removes exactly these,
