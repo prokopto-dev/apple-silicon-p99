@@ -1094,9 +1094,22 @@ wrapper build for you.)</p>
 <p>EQ has its own graphics settings that trade visual richness for a steadier frame
 rate. The <strong>authoritative place to change these is the in-game Options window</strong>
 (Display / Particles) — it's live and safe. For a repeatable, scripted default,
-the same settings map to <code>eqclient.ini</code> <code>[Defaults]</code> keys, which these scripts can
-set for you. EQ silently ignores any key it doesn't recognize and regenerates
-unset keys at its own default, so applying and reverting is non-destructive.</p>
+the same settings map to <code>eqclient.ini</code> keys, which these scripts can set for you.</p>
+<p><strong><code>eqclient.ini</code> has two stores, and each key is read from exactly one of them:</strong></p>
+<ul>
+<li><strong><code>[Options]</code></strong> — the in-game Options → Display page. Every key here is backed
+  by a control in <code>uifiles/*/EQUI_OptionsWindow.xml</code> (<code>ODP_MaxFPSSlider</code> →
+  <code>MaxFPS</code>, <code>ODP_ClipPlaneSlider</code> → <code>ClipPlane</code>, …), and EQ rewrites the whole
+  section from the live UI state when it exits.</li>
+<li><strong><code>[Defaults]</code></strong> — startup/engine state, including the Luclin-era advanced
+  particle floats behind the Options window's <strong>Advanced</strong> button.</li>
+</ul>
+<p>Writing an <code>[Options]</code> key into <code>[Defaults]</code> is <strong>inert</strong>: EQ keeps the stray key
+forever but never reads it. Through v0.8.0 this project did exactly that with the
+frame cap, and shipped four more keys the Titanium client has no code for at all.
+Both are fixed in v0.8.1, which also sweeps the dead keys out of your file on the
+next apply <em>or</em> revert. EQ still ignores keys it doesn't recognize, so apply and
+revert remain non-destructive.</p>
 <p>Apply to an existing install (game closed) with the surgical patcher — it changes
 <strong>only</strong> the performance keys and leaves every other setting (resolution, keybinds,
 colors, gamma) unchanged:</p>
@@ -1113,41 +1126,62 @@ when <code>30-apply-mac-fixes.sh</code> runs.</p>
 <tr>
 <th>Env var</th>
 <th><code>eqclient.ini</code> key</th>
+<th>Scale</th>
 <th>Effect</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>EQ_FARCLIP=&lt;n&gt;</code></td>
-<td><code>FarClipPlane</code></td>
+<td><code>[Options] ClipPlane</code></td>
+<td>integer, higher = further (EQ's default: 20)</td>
 <td>View distance — lower draws less, smoother in open zones</td>
 </tr>
 <tr>
 <td><code>EQ_SPELL_PARTICLES=&lt;n&gt;</code></td>
-<td><code>SpellParticleDensity</code></td>
+<td><code>[Defaults] SpellParticleDensity</code></td>
+<td>float <code>0.0</code>–<code>1.0</code></td>
 <td>Spell particle density — lower in busy fights/raids</td>
 </tr>
 <tr>
 <td><code>EQ_ENV_PARTICLES=&lt;n&gt;</code></td>
-<td><code>EnvironmentParticleDensity</code></td>
+<td><code>[Defaults] EnvironmentParticleDensity</code></td>
+<td>float <code>0.0</code>–<code>1.0</code></td>
 <td>Ambient particle density</td>
 </tr>
 <tr>
 <td><code>EQ_FPS_CAP=&lt;n&gt;</code></td>
-<td><code>MaxFPS</code> / <code>MaxBGFPS</code></td>
+<td><code>[Options] MaxFPS</code></td>
+<td>integer</td>
 <td>Frame cap — steadier pacing, less heat/fan (try 60)</td>
 </tr>
 <tr>
 <td><code>P99_PERF_PROFILE=smoother</code></td>
 <td>several</td>
-<td>Bundle: lowers particle density, disables water-specular and heat-shimmer</td>
+<td>—</td>
+<td>Bundle: particle densities to <code>0.5</code>, <code>[Options] ParticleDensity</code> to <code>2</code></td>
 </tr>
 </tbody>
 </table>
-<p>Explicit <code>EQ_*</code> vars override the <code>smoother</code> bundle for that key. Resolution is
-<strong>never</strong> touched by any of this — change window size the usual way
+<p>The scales are the client's own, taken from the values EQ itself writes — they
+are not interchangeable. A wrong-scale value is not harmless: the pre-v0.8.1
+profile wrote <code>64</code> into the <code>0.0</code>–<code>1.0</code> density floats, which clamps to <em>full</em>
+density — the opposite of what it promised.</p>
+<p>Explicit <code>EQ_*</code> vars override the <code>smoother</code> bundle for that key. Every run applies
+the full requested state, and a managed key you <em>don't</em> ask for goes back to the
+value it had before this project first touched the file (kept in
+<code>eqclient.ini.perf.bak</code>) — so asking for only an FPS cap will never quietly wipe
+the view distance you set in-game. Revert restores those same pre-apply values
+rather than deleting the keys. Resolution is <strong>never</strong> touched by any of this —
+change window size the usual way
 (<a href="../TROUBLESHOOTING/">TROUBLESHOOTING.md → "Window is tiny"</a>); note that a smaller
 window is itself a fill-rate win if you're GPU-bound.</p>
+<blockquote>
+<p><strong>Upgrading from v0.8.0 or earlier?</strong> Your <code>eqclient.ini</code> probably still has
+<code>[Defaults] MaxFPS</code>, <code>MaxBGFPS</code>, <code>WaterSpecular</code>, <code>HeatShimmer</code>, and/or
+<code>FarClipPlane</code> in it — all inert. Running <code>35-perf-ini.sh</code> either way (apply or
+<code>P99_APPLY_PERF=0</code>) removes them and puts the cap where EQ reads it.</p>
+</blockquote>
 <h2 id="lever-4-display-scaling-render-at-1-the-big-fill-rate-lever">Lever 4 — Display scaling: render at 1× (the big fill-rate lever)<a class="headerlink" href="#lever-4-display-scaling-render-at-1-the-big-fill-rate-lever" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>scripts
 <span class="nv">P99_HIDPI</span><span class="o">=</span>off<span class="w"> </span>./55-wrapper.sh<span class="w">   </span><span class="c1"># render at 1x, macOS scales the window up</span>

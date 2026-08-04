@@ -1202,12 +1202,20 @@ exactly three things, all during install, all backed up:</p>
 </tbody>
 </table>
 <p>Opt-in on top of that (the <strong>Smoother visuals</strong> / <strong>frame-rate cap</strong> settings):
-<code>35-perf-ini.sh</code> sets at most these seven <code>[Defaults]</code> keys — <code>FarClipPlane</code>,
-<code>SpellParticleDensity</code>, <code>EnvironmentParticleDensity</code>, <code>WaterSpecular</code>,
-<code>HeatShimmer</code>, <code>MaxFPS</code>, <code>MaxBGFPS</code> — and reverting deletes exactly those keys,
-nothing else (EQ regenerates its own defaults). A one-time safety copy is kept
-as <code>eqclient.ini.perf.bak</code>; the <code>.p99-perf-applied</code> sentinel is how <code>status.sh</code>
-knows the profile is on.</p>
+<code>35-perf-ini.sh</code> sets at most these five keys, each in the section EQ actually
+reads it from — <code>[Options] MaxFPS</code>, <code>[Options] ClipPlane</code>,
+<code>[Options] ParticleDensity</code>, <code>[Defaults] SpellParticleDensity</code>,
+<code>[Defaults] EnvironmentParticleDensity</code>. Reverting puts exactly those keys back
+to their pre-apply values, nothing else.</p>
+<p>Both apply and revert additionally <strong>delete</strong> five keys written by v0.8.0 and
+earlier that this client has no code for: <code>[Defaults] FarClipPlane</code>,
+<code>WaterSpecular</code>, <code>HeatShimmer</code>, <code>MaxBGFPS</code>, and <code>[Defaults] MaxFPS</code> (the right key
+in the wrong section — EQ reads <code>MaxFPS</code> from <code>[Options]</code>). Verified absent two
+independent ways: no such string in <code>eqgame.exe</code>, and never written by EQ itself
+in any pristine Titanium <code>eqclient.ini</code>.</p>
+<p>A one-time safety copy is kept as <code>eqclient.ini.perf.bak</code> — it is also what
+revert and the unrequested-key fallback read from, so it is never auto-removed.
+The <code>.p99-perf-applied</code> sentinel is how <code>status.sh</code> knows the profile is on.</p>
 <h2 id="verify-it-yourself">Verify it yourself<a class="headerlink" href="#verify-it-yourself" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>scripts<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>./status.sh<span class="w">          </span><span class="c1"># every probe above, one line each</span>
 plutil<span class="w"> </span>-p<span class="w"> </span>/Applications/P99.app/Contents/Info.plist<span class="w">        </span><span class="c1"># flags + LSEnvironment</span>
