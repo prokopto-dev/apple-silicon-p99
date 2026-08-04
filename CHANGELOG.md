@@ -10,6 +10,14 @@ release's section below becomes its GitHub Release notes automatically
 
 <!-- version list -->
 
+## v0.8.2 (2026-08-04)
+
+### Bug Fixes
+
+- **perf**: Read the pre-apply baseline from CRLF eqclient.ini correctly
+  ([`a232a74`](https://github.com/prokopto-dev/apple-silicon-p99/commit/a232a74cc8c6780d1a43832c86dd1d2c11439868))
+
+
 ## v0.8.1 (2026-08-04)
 
 ### Bug Fixes
