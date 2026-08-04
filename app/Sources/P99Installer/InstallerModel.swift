@@ -83,16 +83,17 @@ final class InstallerModel {
         didSet { UserDefaults.standard.set(rendererChoice, forKey: Self.rendererKey) }
     }
 
-    /// Apply the "smoother" eqclient.ini profile (lower particle load, capped
-    /// effects). Applied/reverted surgically by 35-perf-ini.sh — never touches
-    /// resolution or keybinds. Persisted.
+    /// Apply the "smoother" eqclient.ini profile (lower particle load). Applied
+    /// and reverted surgically by 35-perf-ini.sh — never touches resolution or
+    /// keybinds. Persisted.
     static let smootherINIKey = "smootherINI"
     var smootherINI: Bool = UserDefaults.standard.bool(forKey: smootherINIKey) {
         didSet { UserDefaults.standard.set(smootherINI, forKey: Self.smootherINIKey) }
     }
 
-    /// Frame-rate cap (eqclient.ini MaxFPS/MaxBGFPS via 35-perf-ini.sh): "" = off,
-    /// otherwise the cap as a string ("30"/"60"). Persisted.
+    /// Frame-rate cap (eqclient.ini `[Options] MaxFPS` via 35-perf-ini.sh — the
+    /// section EQ's own Options window reads it from): "" = off, otherwise the
+    /// cap as a string ("30"/"60"). Persisted.
     static let fpsCapKey = "fpsCap"
     var fpsCap: String = UserDefaults.standard.string(forKey: fpsCapKey) ?? "" {
         didSet { UserDefaults.standard.set(fpsCap, forKey: Self.fpsCapKey) }

@@ -72,9 +72,11 @@ else
   else
     touch eqclient.ini.pre-mac.bak
   fi
-  # Optional performance keys (empty unless EQ_*/P99_PERF_PROFILE is set), appended
-  # to the end of [Defaults]. With nothing opted in this file is byte-identical to
-  # the proven config. Resolution keys below are never affected. See config.sh.
+  # Optional performance keys (empty unless EQ_*/P99_PERF_PROFILE is set). They
+  # are applied further down, AFTER the user's [Options] section is restored from
+  # the backup — that restore replaces [Options] wholesale, so writing them here
+  # would silently lose the ones that live in it. With nothing opted in this file
+  # is byte-identical to the proven config. Resolution keys are never affected.
   PERF_LINES="$(perf_ini_lines)"
   {
     cat <<'EOF'
@@ -92,7 +94,6 @@ WindowedModeXOffset=1
 WindowedModeYOffset=1
 WindowedMode=TRUE
 EOF
-    [ -n "$PERF_LINES" ] && printf '%s\n' "$PERF_LINES"
     cat <<'EOF'
 [VideoMode]
 Width=1024
@@ -105,7 +106,6 @@ FullscreenBitsPerPixel=32
 FullscreenRefreshRate=0
 EOF
   } > eqclient.ini
-  [ -n "$PERF_LINES" ] && touch "$GAME_DIR/.p99-perf-applied"
   say "  wrote eqclient.ini"
 
   # Carry the user's personal settings over from their original INI. The fresh
@@ -154,6 +154,15 @@ with open('eqclient.ini', 'w', encoding='latin-1') as f:
                 f.write(l + '\n')
 print('  restored user sections (keybinds, camera, colors, gamma) from backup')
 PYEOF
+  fi
+
+  # Now that [Options] is final, lay the opted-in performance keys over it. Same
+  # section-aware applier 35-perf-ini.sh uses, so a fresh install and a retrofit
+  # produce identical files.
+  if [ -n "$PERF_LINES" ]; then
+    perf_ini_apply "$GAME_DIR/eqclient.ini" "$PERF_LINES"
+    touch "$GAME_DIR/.p99-perf-applied"
+    say "  applied performance keys"
   fi
 fi
 

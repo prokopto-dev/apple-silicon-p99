@@ -24,55 +24,35 @@ MODE="${P99_APPLY_PERF:-1}"      # 1 = apply, 0 = revert
 [ -f "$GAME_DIR/eqclient.ini.perf.bak" ] || cp "$INI" "$GAME_DIR/eqclient.ini.perf.bak"
 
 if [ "$MODE" = "0" ]; then
-  PERF_SET=""
-  say "Reverting eqclient.ini performance keys to EQ defaults"
+  # Restore the managed keys to whatever they were before this project first
+  # touched the file, rather than deleting them: they are all keys EQ owns and
+  # the player may have set in-game. Legacy no-op keys are swept either way.
+  PERF_SET="$(perf_ini_restore_lines "$GAME_DIR/eqclient.ini.perf.bak")"
+  if [ -n "$PERF_SET" ]; then
+    say "Reverting eqclient.ini performance keys to their pre-apply values:"
+    printf '%s\n' "$PERF_SET" | sed 's/^/    /'
+  else
+    say "Reverting eqclient.ini performance keys to EQ defaults"
+  fi
 else
-  PERF_SET="$(perf_ini_lines)"
-  if [ -z "$PERF_SET" ]; then
+  REQUESTED="$(perf_ini_lines)"
+  if [ -z "$REQUESTED" ]; then
     warn "no performance keys selected (set P99_PERF_PROFILE=smoother or an EQ_* var) — nothing to apply"
     exit 0
   fi
   say "Applying eqclient.ini performance keys:"
-  printf '%s\n' "$PERF_SET" | sed 's/^/    /'
+  printf '%s\n' "$REQUESTED" | sed 's/^/    /'
+  # Managed keys this run does NOT set fall back to their pre-apply values
+  # instead of being deleted — see perf_ini_effective_lines.
+  PERF_SET="$(perf_ini_effective_lines "$GAME_DIR/eqclient.ini.perf.bak" "$REQUESTED")"
 fi
 
-# Delete every managed key from [Defaults], then (apply mode) append the requested
-# values. Reuses the section-preserving parse from 30-apply-mac-fixes.sh so no other
-# key or section is disturbed.
-PERF_KEYS="$(perf_ini_managed_keys)" PERF_SET="$PERF_SET" python3 - "$INI" <<'PYEOF'
-import os, re, sys
-
-path = sys.argv[1]
-managed  = set(k.strip() for k in os.environ.get('PERF_KEYS', '').splitlines() if k.strip())
-set_lines = [l for l in os.environ.get('PERF_SET', '').splitlines() if l.strip()]
-
-sections, order, cur = {}, [], None
-for line in open(path, encoding='latin-1'):
-    line = line.rstrip('\r\n')
-    m = re.match(r'\[(.+)\]\s*$', line)
-    if m:
-        cur = m.group(1)
-        if cur not in sections:
-            sections[cur] = []; order.append(cur)
-    elif cur is not None:
-        sections[cur].append(line)
-
-if 'Defaults' not in sections:
-    sections['Defaults'] = []; order.insert(0, 'Defaults')
-
-def key_of(l):
-    return l.split('=', 1)[0].strip() if '=' in l else None
-
-sections['Defaults'] = [l for l in sections['Defaults'] if key_of(l) not in managed]
-sections['Defaults'].extend(set_lines)
-
-with open(path, 'w', encoding='latin-1') as f:
-    for sec in order:
-        f.write(f'[{sec}]\n')
-        for l in sections[sec]:
-            if l.strip():
-                f.write(l + '\n')
-PYEOF
+# Delete every managed (and legacy) key from its own section, then — in apply
+# mode — append the requested values to the sections they name. Revert mode
+# passes no values, so it is the same sweep without the append. Both modes also
+# clear the pre-v0.8.1 keys that were written to the wrong section or that this
+# client has no code for at all (perf_ini_legacy_keys).
+perf_ini_apply "$INI" "$PERF_SET"
 
 if [ "$MODE" = "0" ]; then
   rm -f "$GAME_DIR/.p99-perf-applied"

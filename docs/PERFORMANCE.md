@@ -185,9 +185,23 @@ wrapper build for you.)
 EQ has its own graphics settings that trade visual richness for a steadier frame
 rate. The **authoritative place to change these is the in-game Options window**
 (Display / Particles) — it's live and safe. For a repeatable, scripted default,
-the same settings map to `eqclient.ini` `[Defaults]` keys, which these scripts can
-set for you. EQ silently ignores any key it doesn't recognize and regenerates
-unset keys at its own default, so applying and reverting is non-destructive.
+the same settings map to `eqclient.ini` keys, which these scripts can set for you.
+
+**`eqclient.ini` has two stores, and each key is read from exactly one of them:**
+
+- **`[Options]`** — the in-game Options → Display page. Every key here is backed
+  by a control in `uifiles/*/EQUI_OptionsWindow.xml` (`ODP_MaxFPSSlider` →
+  `MaxFPS`, `ODP_ClipPlaneSlider` → `ClipPlane`, …), and EQ rewrites the whole
+  section from the live UI state when it exits.
+- **`[Defaults]`** — startup/engine state, including the Luclin-era advanced
+  particle floats behind the Options window's **Advanced** button.
+
+Writing an `[Options]` key into `[Defaults]` is **inert**: EQ keeps the stray key
+forever but never reads it. Through v0.8.0 this project did exactly that with the
+frame cap, and shipped four more keys the Titanium client has no code for at all.
+Both are fixed in v0.8.1, which also sweeps the dead keys out of your file on the
+next apply *or* revert. EQ still ignores keys it doesn't recognize, so apply and
+revert remain non-destructive.
 
 Apply to an existing install (game closed) with the surgical patcher — it changes
 **only** the performance keys and leaves every other setting (resolution, keybinds,
@@ -204,18 +218,33 @@ P99_APPLY_PERF=0 ./35-perf-ini.sh
 Fresh installs pick up the same knobs automatically if the `EQ_*` vars are set
 when `30-apply-mac-fixes.sh` runs.
 
-| Env var | `eqclient.ini` key | Effect |
-|---|---|---|
-| `EQ_FARCLIP=<n>` | `FarClipPlane` | View distance — lower draws less, smoother in open zones |
-| `EQ_SPELL_PARTICLES=<n>` | `SpellParticleDensity` | Spell particle density — lower in busy fights/raids |
-| `EQ_ENV_PARTICLES=<n>` | `EnvironmentParticleDensity` | Ambient particle density |
-| `EQ_FPS_CAP=<n>` | `MaxFPS` / `MaxBGFPS` | Frame cap — steadier pacing, less heat/fan (try 60) |
-| `P99_PERF_PROFILE=smoother` | several | Bundle: lowers particle density, disables water-specular and heat-shimmer |
+| Env var | `eqclient.ini` key | Scale | Effect |
+|---|---|---|---|
+| `EQ_FARCLIP=<n>` | `[Options] ClipPlane` | integer, higher = further (EQ's default: 20) | View distance — lower draws less, smoother in open zones |
+| `EQ_SPELL_PARTICLES=<n>` | `[Defaults] SpellParticleDensity` | float `0.0`–`1.0` | Spell particle density — lower in busy fights/raids |
+| `EQ_ENV_PARTICLES=<n>` | `[Defaults] EnvironmentParticleDensity` | float `0.0`–`1.0` | Ambient particle density |
+| `EQ_FPS_CAP=<n>` | `[Options] MaxFPS` | integer | Frame cap — steadier pacing, less heat/fan (try 60) |
+| `P99_PERF_PROFILE=smoother` | several | — | Bundle: particle densities to `0.5`, `[Options] ParticleDensity` to `2` |
 
-Explicit `EQ_*` vars override the `smoother` bundle for that key. Resolution is
-**never** touched by any of this — change window size the usual way
+The scales are the client's own, taken from the values EQ itself writes — they
+are not interchangeable. A wrong-scale value is not harmless: the pre-v0.8.1
+profile wrote `64` into the `0.0`–`1.0` density floats, which clamps to *full*
+density — the opposite of what it promised.
+
+Explicit `EQ_*` vars override the `smoother` bundle for that key. Every run applies
+the full requested state, and a managed key you *don't* ask for goes back to the
+value it had before this project first touched the file (kept in
+`eqclient.ini.perf.bak`) — so asking for only an FPS cap will never quietly wipe
+the view distance you set in-game. Revert restores those same pre-apply values
+rather than deleting the keys. Resolution is **never** touched by any of this —
+change window size the usual way
 ([TROUBLESHOOTING.md → "Window is tiny"](TROUBLESHOOTING.md)); note that a smaller
 window is itself a fill-rate win if you're GPU-bound.
+
+> **Upgrading from v0.8.0 or earlier?** Your `eqclient.ini` probably still has
+> `[Defaults] MaxFPS`, `MaxBGFPS`, `WaterSpecular`, `HeatShimmer`, and/or
+> `FarClipPlane` in it — all inert. Running `35-perf-ini.sh` either way (apply or
+> `P99_APPLY_PERF=0`) removes them and puts the cap where EQ reads it.
 
 ## Lever 4 — Display scaling: render at 1× (the big fill-rate lever)
 

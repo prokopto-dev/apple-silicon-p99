@@ -14,6 +14,18 @@ assert_eq() { [ "$2" = "$3" ] && ok || bad "$1" "$2" "$3"; }
 
 field() { awk -F'\t' -v k="$2" '$1==k{print $2}' <<<"$1"; }
 
+# ini_get <file> <Section> <Key> — the value of Key inside Section only. Empty
+# if absent. Section-aware because eqclient.ini reuses key names across sections
+# and "in the file somewhere" is exactly the bug these tests now guard against.
+ini_get() {
+  awk -F= -v want="$2" -v k="$3" '
+    /^\[/ { sec = substr($0, 2, length($0) - 2); next }
+    sec == want && $1 == k { print substr($0, index($0, "=") + 1) }
+  ' "$1"
+}
+# ini_count <file> <Key> — occurrences of Key across the WHOLE file, any section.
+ini_count() { grep -c "^$2=" "$1" || true; }
+
 T=$(mktemp -d)
 trap 'rm -rf "$T"' EXIT
 
@@ -138,34 +150,105 @@ OUT=$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)
 assert_eq "perf: renderer defaults wined3d" "wined3d" "$(field "$OUT" renderer)"
 assert_eq "perf: perf_ini missing"          "missing" "$(field "$OUT" perf_ini)"
 
-# 35-perf-ini.sh: surgical apply touches only the managed keys.
-cat > "$PG/eqclient.ini" <<'INI'
+# 35-perf-ini.sh: surgical apply touches only the managed keys, in the right
+# sections. The fixture carries the pre-v0.8.1 damage this release has to clean
+# up: MaxFPS/MaxBGFPS written into [Defaults] (inert — EQ reads [Options]) and
+# three keys the Titanium client has no code for at all.
+write_perf_fixture() {
+  cat > "$PG/eqclient.ini" <<'INI'
 [Defaults]
 Sound=TRUE
 TextureQuality=1
 Gamma=8
+SpellParticleDensity=1.000000
+EnvironmentParticleDensity=1.000000
+FarClipPlane=200
+WaterSpecular=FALSE
+HeatShimmer=FALSE
+MaxFPS=60
+MaxBGFPS=60
 [VideoMode]
 Width=1440
 WindowedWidth=1440
+[Options]
+ClipPlane=20
+ParticleDensity=3
+MaxFPS=100
+MouseSensitivity=5
 [KeyMaps]
 Ke_Forward=W
 INI
-WRAPPER="$PW" GAME_DIR="$PG" P99_APPLY_PERF=1 P99_PERF_PROFILE=smoother EQ_FPS_CAP=60 ./35-perf-ini.sh >/dev/null 2>&1
-assert_eq "perf: MaxFPS applied"       "MaxFPS=60"    "$(grep '^MaxFPS=' "$PG/eqclient.ini")"
-assert_eq "perf: resolution untouched" "Width=1440"   "$(grep '^Width=' "$PG/eqclient.ini")"
-assert_eq "perf: gamma untouched"      "Gamma=8"      "$(grep '^Gamma=' "$PG/eqclient.ini")"
-assert_eq "perf: keybind untouched"    "Ke_Forward=W" "$(grep '^Ke_Forward=' "$PG/eqclient.ini")"
+}
+write_perf_fixture
+WRAPPER="$PW" GAME_DIR="$PG" P99_APPLY_PERF=1 P99_PERF_PROFILE=smoother EQ_FPS_CAP=60 EQ_FARCLIP=12 ./35-perf-ini.sh >/dev/null 2>&1
+I="$PG/eqclient.ini"
+# The regression this release exists for: the cap lands where EQ reads it.
+assert_eq "perf: MaxFPS lands in [Options]" "60" "$(ini_get "$I" Options MaxFPS)"
+assert_eq "perf: MaxFPS not left in [Defaults]" "" "$(ini_get "$I" Defaults MaxFPS)"
+assert_eq "perf: exactly one MaxFPS in file"  "1" "$(ini_count "$I" MaxFPS)"
+assert_eq "perf: FARCLIP maps to Options/ClipPlane" "12" "$(ini_get "$I" Options ClipPlane)"
+assert_eq "perf: smoother lowers Options/ParticleDensity" "2" "$(ini_get "$I" Options ParticleDensity)"
+# Densities are floats on EQ's own 0.0-1.0 scale, not the old out-of-range 64.
+assert_eq "perf: spell density is a 0-1 float" "0.500000" "$(ini_get "$I" Defaults SpellParticleDensity)"
+assert_eq "perf: env density is a 0-1 float"   "0.500000" "$(ini_get "$I" Defaults EnvironmentParticleDensity)"
+# Legacy no-op keys are swept on apply, not left to rot in the user's file.
+assert_eq "perf: legacy MaxBGFPS swept"    "0" "$(ini_count "$I" MaxBGFPS)"
+assert_eq "perf: legacy FarClipPlane swept" "0" "$(ini_count "$I" FarClipPlane)"
+assert_eq "perf: legacy WaterSpecular swept" "0" "$(ini_count "$I" WaterSpecular)"
+assert_eq "perf: legacy HeatShimmer swept"  "0" "$(ini_count "$I" HeatShimmer)"
+# Untouched-by-contract: resolution, gamma, keybinds, and unmanaged [Options].
+assert_eq "perf: resolution untouched" "1440" "$(ini_get "$I" VideoMode Width)"
+assert_eq "perf: gamma untouched"      "8"    "$(ini_get "$I" Defaults Gamma)"
+assert_eq "perf: keybind untouched"    "W"    "$(ini_get "$I" KeyMaps Ke_Forward)"
+assert_eq "perf: unmanaged Options key untouched" "5" "$(ini_get "$I" Options MouseSensitivity)"
 assert_eq "perf: sentinel -> status ok" "ok" "$(field "$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)" perf_ini)"
 
-# Re-apply is idempotent (no duplicate keys).
-WRAPPER="$PW" GAME_DIR="$PG" P99_APPLY_PERF=1 P99_PERF_PROFILE=smoother EQ_FPS_CAP=60 ./35-perf-ini.sh >/dev/null 2>&1
-assert_eq "perf: idempotent single MaxFPS" "1" "$(grep -c '^MaxFPS=' "$PG/eqclient.ini")"
+# Regression: a managed key this run does NOT set must keep the player's own
+# value, not vanish. Caught on a real 512-line eqclient.ini, where asking for
+# only an FPS cap silently deleted the player's Options/ClipPlane.
+rm -f "$PG/eqclient.ini.perf.bak"; write_perf_fixture
+WRAPPER="$PW" GAME_DIR="$PG" P99_APPLY_PERF=1 EQ_FPS_CAP=30 ./35-perf-ini.sh >/dev/null 2>&1
+assert_eq "perf: unrequested ClipPlane survives apply" "20" "$(ini_get "$I" Options ClipPlane)"
+assert_eq "perf: unrequested ParticleDensity survives" "3"  "$(ini_get "$I" Options ParticleDensity)"
+assert_eq "perf: requested cap still applied"          "30" "$(ini_get "$I" Options MaxFPS)"
 
-# Revert removes only the managed keys; everything else survives.
+# Full-state contract: dropping the profile on a later run returns the keys it
+# had set to the pre-apply baseline, not to the previous run's values.
+WRAPPER="$PW" GAME_DIR="$PG" P99_APPLY_PERF=1 P99_PERF_PROFILE=smoother EQ_FPS_CAP=30 ./35-perf-ini.sh >/dev/null 2>&1
+assert_eq "perf: profile lowers density" "2" "$(ini_get "$I" Options ParticleDensity)"
+WRAPPER="$PW" GAME_DIR="$PG" P99_APPLY_PERF=1 EQ_FPS_CAP=30 ./35-perf-ini.sh >/dev/null 2>&1
+assert_eq "perf: dropping profile restores baseline density" "3" "$(ini_get "$I" Options ParticleDensity)"
+assert_eq "perf: dropping profile keeps the cap" "30" "$(ini_get "$I" Options MaxFPS)"
+
+rm -f "$PG/eqclient.ini.perf.bak"; write_perf_fixture
+WRAPPER="$PW" GAME_DIR="$PG" P99_APPLY_PERF=1 P99_PERF_PROFILE=smoother EQ_FPS_CAP=60 EQ_FARCLIP=12 ./35-perf-ini.sh >/dev/null 2>&1
+
+# Re-apply is idempotent (no duplicate keys, in any section).
+WRAPPER="$PW" GAME_DIR="$PG" P99_APPLY_PERF=1 P99_PERF_PROFILE=smoother EQ_FPS_CAP=60 ./35-perf-ini.sh >/dev/null 2>&1
+assert_eq "perf: idempotent single MaxFPS" "1" "$(ini_count "$I" MaxFPS)"
+assert_eq "perf: idempotent single density" "1" "$(ini_count "$I" SpellParticleDensity)"
+
+# Revert is a true round-trip: managed keys go back to their PRE-APPLY values
+# (read from the one-time eqclient.ini.perf.bak), not to EQ's defaults and not
+# deleted — they are keys the player may have set in-game.
 WRAPPER="$PW" GAME_DIR="$PG" P99_APPLY_PERF=0 ./35-perf-ini.sh >/dev/null 2>&1
-assert_eq "perf: revert clears MaxFPS" "0"       "$(grep -c '^MaxFPS=' "$PG/eqclient.ini")"
-assert_eq "perf: revert keeps gamma"   "Gamma=8" "$(grep '^Gamma=' "$PG/eqclient.ini")"
+assert_eq "perf: revert restores player's MaxFPS"   "100" "$(ini_get "$I" Options MaxFPS)"
+assert_eq "perf: revert restores player's ClipPlane" "20" "$(ini_get "$I" Options ClipPlane)"
+assert_eq "perf: revert restores ParticleDensity"     "3" "$(ini_get "$I" Options ParticleDensity)"
+assert_eq "perf: revert restores spell density" "1.000000" "$(ini_get "$I" Defaults SpellParticleDensity)"
+assert_eq "perf: revert leaves no stray MaxFPS"       "1" "$(ini_count "$I" MaxFPS)"
+assert_eq "perf: revert keeps gamma"                  "8" "$(ini_get "$I" Defaults Gamma)"
+assert_eq "perf: revert keeps unmanaged Options"      "5" "$(ini_get "$I" Options MouseSensitivity)"
 assert_eq "perf: revert -> status missing" "missing" "$(field "$(WRAPPER="$PW" GAME_DIR="$PG" ./status.sh)" perf_ini)"
+
+# Revert still sweeps the inert legacy keys — those are never restored, since
+# getting them out of the user's file is the point.
+write_perf_fixture
+WRAPPER="$PW" GAME_DIR="$PG" P99_APPLY_PERF=0 ./35-perf-ini.sh >/dev/null 2>&1
+assert_eq "perf: revert sweeps legacy MaxBGFPS"     "0" "$(ini_count "$I" MaxBGFPS)"
+assert_eq "perf: revert sweeps legacy FarClipPlane" "0" "$(ini_count "$I" FarClipPlane)"
+assert_eq "perf: revert sweeps Defaults/MaxFPS"      "" "$(ini_get "$I" Defaults MaxFPS)"
+assert_eq "perf: revert keeps EQ's Options/MaxFPS" "100" "$(ini_get "$I" Options MaxFPS)"
 
 # 60-renderer.sh: lossless round-trip (stock d3d9.dll present).
 printf 'STOCK' > "$PSW/d3d9.dll"

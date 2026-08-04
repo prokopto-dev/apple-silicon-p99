@@ -574,48 +574,204 @@ check_perf_ini()  { [ -f "$GAME_DIR/.p99-perf-applied" ]; }
 
 # --- EQ eqclient.ini performance keys (shared by 30-apply-mac-fixes.sh and
 # 35-perf-ini.sh) ------------------------------------------------------------
-# All are [Defaults] keys. EQ silently ignores any key it doesn't recognize and
-# regenerates unset keys at its own default, so applying and reverting these is
-# safe and non-destructive. Resolution/window keys are intentionally absent —
-# they are never touched. EQ's in-game Options window is the authoritative place
-# to tune these; the keys give a repeatable scripted default.
+# Keys are section-qualified as Section/Key, because eqclient.ini has TWO stores
+# and EQ reads each key from exactly one of them:
+#
+#   [Options]  — the in-game Options > Display page. Every key here is backed by
+#                a control in uifiles/*/EQUI_OptionsWindow.xml (ODP_MaxFPSSlider
+#                -> MaxFPS, ODP_ClipPlaneSlider -> ClipPlane, ...), and EQ
+#                rewrites the whole section from the live UI state on exit.
+#   [Defaults] — startup/engine state, including the Luclin-era advanced
+#                particle floats behind the Options window's "Advanced" button.
+#
+# Writing an [Options] key into [Defaults] is INERT: EQ preserves the stray key
+# forever but never reads it. Through v0.8.0 this project wrote MaxFPS into
+# [Defaults] (no effect) alongside four keys the Titanium client has no code for
+# at all — see perf_ini_legacy_keys. EQ still ignores keys it doesn't recognize
+# and regenerates unset keys at its own default, so apply/revert remain safe and
+# non-destructive. Resolution/window keys are intentionally absent — never
+# touched. The in-game Options window stays the authoritative place to tune
+# these; the keys just give a repeatable scripted default.
 
-# perf_ini_managed_keys — the exact keys this project may set, one per line.
-# Reverting means deleting exactly these, leaving every other key untouched.
+# perf_ini_managed_keys — the exact keys this project may set, one per line,
+# section-qualified. Reverting means deleting exactly these (plus the legacy
+# list below), leaving every other key untouched.
 perf_ini_managed_keys() {
   cat <<'EOF'
-FarClipPlane
-SpellParticleDensity
-EnvironmentParticleDensity
-WaterSpecular
-HeatShimmer
-MaxFPS
-MaxBGFPS
+Options/MaxFPS
+Options/ClipPlane
+Options/ParticleDensity
+Defaults/SpellParticleDensity
+Defaults/EnvironmentParticleDensity
 EOF
 }
 
-# perf_ini_lines — the KEY=VALUE lines to apply for the current env. No output
-# means "apply nothing". The `smoother` profile supplies conservative defaults;
-# any explicit EQ_* var overrides the profile value for that key.
+# perf_ini_legacy_keys — keys this project wrote before v0.8.1 that this client
+# has no code for. Verified absent two independent ways: no such string in
+# eqgame.exe's string table, and never present in any EQ-authored eqclient.ini
+# (including a pristine Titanium one EQ had rewritten many times). Defaults/MaxFPS
+# is the right key in the wrong section. All are swept on BOTH apply and revert,
+# so an install that ran the old profile ends up clean either way.
+perf_ini_legacy_keys() {
+  cat <<'EOF'
+Defaults/FarClipPlane
+Defaults/WaterSpecular
+Defaults/HeatShimmer
+Defaults/MaxFPS
+Defaults/MaxBGFPS
+EOF
+}
+
+# perf_ini_lines — the Section/KEY=VALUE lines to apply for the current env. No
+# output means "apply nothing". The `smoother` profile supplies conservative
+# defaults; any explicit EQ_* var overrides the profile value for that key.
+#
+# Scales below are the client's own, read off the values EQ itself writes — not
+# invented here. A wrong-scale value is not harmless: the old profile's `64` on
+# the 0.0-1.0 density floats clamps to full density, i.e. the exact opposite of
+# what "smoother" promises.
+#   Options/MaxFPS           integer frame cap (ODP_MaxFPSSlider)
+#   Options/ClipPlane        integer, higher = further; 20 is EQ's own default
+#   Options/ParticleDensity  integer, higher = more; 3 is EQ's own default
+#   Defaults/*ParticleDensity  float 0.0-1.0; EQ writes 1.000000 at full density
 perf_ini_lines() {
   local smoother="" spell="$EQ_SPELL_PARTICLES" env_p="$EQ_ENV_PARTICLES"
   [ "$P99_PERF_PROFILE" = "smoother" ] && smoother=1
   if [ -n "$smoother" ]; then
-    [ -n "$spell" ] || spell=64
-    [ -n "$env_p" ] || env_p=64
+    [ -n "$spell" ] || spell=0.500000
+    [ -n "$env_p" ] || env_p=0.500000
   fi
-  [ -n "$EQ_FARCLIP" ] && printf 'FarClipPlane=%s\n' "$EQ_FARCLIP"
-  [ -n "$spell" ]      && printf 'SpellParticleDensity=%s\n' "$spell"
-  [ -n "$env_p" ]      && printf 'EnvironmentParticleDensity=%s\n' "$env_p"
-  if [ -n "$smoother" ]; then
-    printf 'WaterSpecular=FALSE\n'
-    printf 'HeatShimmer=FALSE\n'
-  fi
-  if [ -n "$EQ_FPS_CAP" ]; then
-    printf 'MaxFPS=%s\n'   "$EQ_FPS_CAP"
-    printf 'MaxBGFPS=%s\n' "$EQ_FPS_CAP"
-  fi
+  [ -n "$EQ_FARCLIP" ] && printf 'Options/ClipPlane=%s\n' "$EQ_FARCLIP"
+  [ -n "$spell" ]      && printf 'Defaults/SpellParticleDensity=%s\n' "$spell"
+  [ -n "$env_p" ]      && printf 'Defaults/EnvironmentParticleDensity=%s\n' "$env_p"
+  [ -n "$smoother" ]   && printf 'Options/ParticleDensity=2\n'
+  [ -n "$EQ_FPS_CAP" ] && printf 'Options/MaxFPS=%s\n' "$EQ_FPS_CAP"
   return 0
+}
+
+# perf_ini_restore_lines <backup-ini> — the managed keys' ORIGINAL values, as
+# Section/Key=Value lines, read out of the one-time pre-apply backup.
+#
+# Why revert needs this: unlike the pre-v0.8.1 key set (which was mostly keys the
+# client doesn't even have), every key we now manage is one EQ itself owns and
+# the player may have set in-game — Options/MaxFPS, Options/ClipPlane,
+# Options/ParticleDensity. Deleting those on revert would silently reset a
+# player's own view distance and frame cap to EQ's defaults, which is not what
+# "revert" should mean. Restoring the pre-apply values makes revert a true
+# round-trip. Legacy keys are deliberately NOT restored — they are inert and the
+# whole point is to get them out of the file.
+perf_ini_restore_lines() {
+  [ -f "$1" ] || return 0
+  local qual sec key
+  while IFS= read -r qual; do
+    [ -n "$qual" ] || continue
+    sec="${qual%%/*}"; key="${qual#*/}"
+    awk -F= -v want="$sec" -v k="$key" '
+      /^\[/ { s = substr($0, 2, length($0) - 2); next }
+      s == want && $1 == k { print want "/" k "=" substr($0, index($0, "=") + 1) }
+    ' "$1"
+  done <<EOF
+$(perf_ini_managed_keys)
+EOF
+  return 0
+}
+
+# perf_ini_effective_lines <backup-ini> <requested-lines> — what the file should
+# actually end up containing for the managed keys: the pre-apply baseline, with
+# the requested values layered on top.
+#
+# This is what makes "each run applies the full requested state" safe now that
+# the managed keys are real EQ-owned settings. Deleting a managed key that this
+# run doesn't set would throw away the player's own value (e.g. asking only for
+# an FPS cap would wipe their in-game view distance); leaving it at the previous
+# run's value would break the full-state contract. Falling back to the baseline
+# does both: unrequested keys return to what they were before this project ever
+# touched the file, requested keys win.
+perf_ini_effective_lines() {
+  local backup="$1" requested="$2" line qual
+  {
+    perf_ini_restore_lines "$backup" | while IFS= read -r line; do
+      [ -n "$line" ] || continue
+      qual="${line%%=*}"
+      # Drop the baseline value only if this run sets the same Section/Key.
+      # Matched against the start of the list or the start of any later line, so
+      # a key name that is a suffix of another cannot false-positive.
+      case "$requested" in
+        "$qual="*|*"
+$qual="*) ;;                 # this run sets it — the requested value wins
+        *) printf '%s\n' "$line" ;;
+      esac
+    done
+    [ -n "$requested" ] && printf '%s\n' "$requested"
+  } | grep -v '^[[:space:]]*$' || true
+}
+
+# perf_ini_apply <eqclient.ini> <set-lines> — rewrite the managed performance
+# keys in place. Every managed and legacy key is first deleted from its OWN
+# section (never from any other), then <set-lines> are appended to the sections
+# they name. Section order, every other key, and unknown sections are preserved,
+# so keybinds/colors/resolution are untouched. Shared by 30-apply-mac-fixes.sh
+# and 35-perf-ini.sh so the fresh-install and retrofit paths cannot drift.
+perf_ini_apply() {
+  PERF_KEYS="$(perf_ini_managed_keys; perf_ini_legacy_keys)" PERF_SET="$2" \
+  python3 - "$1" <<'PYEOF'
+import os, re, sys
+
+path = sys.argv[1]
+
+def qualified(s):
+    sec, sep, key = s.partition('/')
+    if not sep:               # tolerate an unqualified key as [Defaults]
+        return 'Defaults', sec
+    return sec, key
+
+managed = set()
+for k in os.environ.get('PERF_KEYS', '').splitlines():
+    k = k.strip()
+    if k:
+        managed.add(qualified(k))
+
+set_pairs = []
+for line in os.environ.get('PERF_SET', '').splitlines():
+    line = line.strip()
+    if not line or '=' not in line:
+        continue
+    qual, _, value = line.partition('=')
+    sec, key = qualified(qual)
+    set_pairs.append((sec, key, value))
+
+sections, order, cur = {}, [], None
+for line in open(path, encoding='latin-1'):
+    line = line.rstrip('\r\n')
+    m = re.match(r'\[(.+)\]\s*$', line)
+    if m:
+        cur = m.group(1)
+        if cur not in sections:
+            sections[cur] = []
+            order.append(cur)
+    elif cur is not None:
+        sections[cur].append(line)
+
+def key_of(l):
+    return l.split('=', 1)[0].strip() if '=' in l else None
+
+for sec, key in managed:
+    if sec in sections:
+        sections[sec] = [l for l in sections[sec] if key_of(l) != key]
+
+for sec, key, value in set_pairs:
+    if sec not in sections:
+        sections[sec] = []
+        order.append(sec)
+    sections[sec].append('%s=%s' % (key, value))
+
+with open(path, 'w', encoding='latin-1') as f:
+    for sec in order:
+        f.write('[%s]\n' % sec)
+        for l in sections[sec]:
+            if l.strip():
+                f.write(l + '\n')
+PYEOF
 }
 
 # Apple's Command Line Tools (~500 MB — NOT the full Xcode app). Needed by
