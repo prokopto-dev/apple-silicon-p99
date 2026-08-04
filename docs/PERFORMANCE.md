@@ -434,10 +434,19 @@ graphics renderer, apply EQ graphics settings — completed successfully.](img/p
   (particles/FPS cap) help most.
 - **`./status.sh`** reports the active `renderer`, the MoltenVK pairing
   (`moltenvk`), display scaling (`hidpi`), the Metal HUD (`metal_hud`), quiet
-  wine logging (`winedebug`), the wined3d registry values (`wined3d_*`), and
-  whether the smoother INI profile is applied (`perf_ini`) — each read back
-  from where the setting actually lands, so "status says on" means the game
-  session sees it.
+  wine logging (`winedebug`), the wined3d registry values (`wined3d_*`), mouse
+  warping (`mousewarp`), whether the wrapper has the current launch environment
+  (`wrapper_env`), and whether the smoother INI profile is still in effect
+  (`perf_ini`) — each read back from where the setting actually lands, so
+  "status says on" means the game session sees it.
+
+  Three of those need a word of explanation:
+
+  | Line | Values | Meaning |
+  |---|---|---|
+  | `winedebug` | `quiet` / `conflict` / `default` | WINEDEBUG can arrive via the bundle's `LSEnvironment` *or* the template's own top-level key, which the launcher reads by name. `conflict` means the two disagree, so which one the game gets depends on launcher internals — it is reported rather than guessed. |
+  | `wrapper_env` | `ok` / `stale` | Whether this wrapper ever got the msync + quiet-logging baseline. Wrappers built before v0.8.0 didn't, and neither the Performance panel nor `50-update.sh` re-runs the wrapper build — `stale` means run `./10-build-wrapper.sh`. |
+  | `perf_ini` | `ok` / `drifted` / `applied` / `missing` | Compares the keys that were applied against the live file. `drifted` means EQ or you changed one in-game since. `applied` is a pre-v0.8.3 sentinel that recorded no values, so drift can't be judged. |
 
 ## What doesn't help (or we can't expose)
 

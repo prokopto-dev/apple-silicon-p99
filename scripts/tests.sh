@@ -140,6 +140,17 @@ mkdir -p "$PW/Contents/SharedSupport/wine/bin" "$PSW" "$PG" \
          "$PW/Contents/Frameworks/moltenvkcx"
 printf '#!/bin/sh\nexit 0\n' > "$PW/Contents/SharedSupport/wine/bin/wine"
 chmod +x "$PW/Contents/SharedSupport/wine/bin/wine"
+# Stub `pgrep` for this section. 35-perf-ini.sh legitimately refuses to touch a
+# live config while eqgame.exe is running, but that guard consults HOST process
+# state — so with the developer's own game open the suite died at the first
+# perf call and, because those calls redirect stderr, printed nothing at all
+# while `make` reported a bare "Error 1". A suite working entirely inside
+# `mktemp -d` must not depend on what else is running on the machine; stubbing
+# the lookup keeps the guard fully intact in production.
+mkdir -p "$T/bin"
+printf '#!/bin/sh\nexit 1\n' > "$T/bin/pgrep"
+chmod +x "$T/bin/pgrep"
+PATH="$T/bin:$PATH"
 touch "$PW/Contents/SharedSupport/prefix/system.reg" "$PG/eqgame.exe" \
       "$PW/Contents/Frameworks/libMoltenVK.dylib" \
       "$PW/Contents/Frameworks/moltenvkcx/libMoltenVK.dylib"
@@ -263,6 +274,82 @@ assert_eq "perf: revert sweeps legacy MaxBGFPS"     "0" "$(ini_count "$I" MaxBGF
 assert_eq "perf: revert sweeps legacy FarClipPlane" "0" "$(ini_count "$I" FarClipPlane)"
 assert_eq "perf: revert sweeps Defaults/MaxFPS"      "" "$(ini_get "$I" Defaults MaxFPS)"
 assert_eq "perf: revert keeps EQ's Options/MaxFPS" "100" "$(ini_get "$I" Options MaxFPS)"
+
+# --- perf_ini_status: content-aware, not marker-only (#10) --------------------
+probe() { WRAPPER="$PW" GAME_DIR="$PG" bash -c "source ./config.sh; $1"; }
+
+rm -f "$PG/eqclient.ini.perf.bak" "$PG/.p99-perf-applied"; write_perf_fixture
+assert_eq "status: no sentinel -> missing" "missing" "$(probe perf_ini_status)"
+
+WRAPPER="$PW" GAME_DIR="$PG" P99_APPLY_PERF=1 EQ_FPS_CAP=30 ./35-perf-ini.sh >/dev/null 2>&1
+assert_eq "status: freshly applied -> ok" "ok" "$(probe perf_ini_status)"
+assert_eq "status: sentinel records what was applied" "Options/MaxFPS=30" "$(cat "$PG/.p99-perf-applied")"
+
+# EQ rewriting the file on exit is the real-world drift case.
+perl -pi -e 's/^MaxFPS=30$/MaxFPS=100/' "$PG/eqclient.ini"
+assert_eq "status: EQ changed the value -> drifted" "drifted" "$(probe perf_ini_status)"
+
+# A key the player deleted outright is drift too, not "ok".
+perl -ni -e 'print unless /^MaxFPS=/' "$PG/eqclient.ini"
+assert_eq "status: applied key removed -> drifted" "drifted" "$(probe perf_ini_status)"
+
+# Drift detection must survive CRLF, since that is how EQ writes the file.
+write_perf_fixture
+WRAPPER="$PW" GAME_DIR="$PG" P99_APPLY_PERF=1 EQ_FPS_CAP=30 ./35-perf-ini.sh >/dev/null 2>&1
+perl -pi -e 's/\n/\r\n/' "$PG/eqclient.ini"
+assert_eq "status: CRLF file still reads as ok" "ok" "$(probe perf_ini_status)"
+
+# Legacy empty sentinel (<= v0.8.2): honest "applied", never a fake "ok".
+: > "$PG/.p99-perf-applied"
+assert_eq "status: legacy empty sentinel -> applied" "applied" "$(probe perf_ini_status)"
+
+WRAPPER="$PW" GAME_DIR="$PG" P99_APPLY_PERF=0 ./35-perf-ini.sh >/dev/null 2>&1
+assert_eq "status: revert -> missing" "missing" "$(probe perf_ini_status)"
+
+# --- mousewarp probe (#11) ----------------------------------------------------
+PREG="$PW/Contents/SharedSupport/prefix/user.reg"
+cat > "$PREG" <<'REG'
+WINE REGISTRY Version 2
+
+[Software\\Wine\\Direct3D] 1785414101
+"VideoMemorySize"="1024"
+
+[Software\\Wine\\DirectInput] 1785854587
+"MouseWarpOverride"="force"
+REG
+assert_eq "mousewarp: reads force"  "force"  "$(probe active_mousewarp)"
+perl -pi -e 's/"force"/"enable"/' "$PREG"
+assert_eq "mousewarp: reads enable" "enable" "$(probe active_mousewarp)"
+# Unset must not leak the Direct3D section's values (adjacent section, same file).
+perl -ni -e 'print unless /MouseWarpOverride/' "$PREG"
+assert_eq "mousewarp: unset -> default" "default" "$(probe active_mousewarp)"
+assert_eq "mousewarp: sibling section intact" "\"1024\"" "$(probe 'wined3d_reg_value VideoMemorySize')"
+
+# --- winedebug both-channel readback + wrapper_env staleness (#9, #11) --------
+if command -v plutil >/dev/null 2>&1; then
+  PPL="$PW/Contents/Info.plist"
+  # A wrapper built before v0.8.0: no LSEnvironment at all, template's own
+  # noisy WINEDEBUG present. This is what a real stale install looks like.
+  plutil -create xml1 "$PPL" >/dev/null 2>&1 || printf '{}' > "$PPL"
+  plutil -replace WINEDEBUG -string '-plugplay,+loaddll' "$PPL"
+  assert_eq "winedebug: stale wrapper -> default" "default" "$(probe active_winedebug)"
+  assert_eq "wrapper_env: no LSEnvironment -> stale" "stale" "$(probe wrapper_env_status)"
+
+  # LSEnvironment set but the template key left noisy — the #9 conflict.
+  probe "set_plist_env WINEDEBUG '-all'"
+  assert_eq "winedebug: LSEnv quiet vs noisy top-level -> conflict" "conflict" "$(probe active_winedebug)"
+
+  # The baseline sets both, which is the whole point of the fix.
+  probe apply_wrapper_baseline_env
+  assert_eq "winedebug: baseline sets both -> quiet" "quiet" "$(probe active_winedebug)"
+  assert_eq "winedebug: top-level actually rewritten" "-all" "$(plutil -extract WINEDEBUG raw -o - "$PPL")"
+  assert_eq "wrapper_env: baseline applied -> ok" "ok" "$(probe wrapper_env_status)"
+
+  # A template that ships no top-level key at all must still read as quiet.
+  plutil -remove WINEDEBUG "$PPL" >/dev/null 2>&1
+  assert_eq "winedebug: absent top-level -> quiet" "quiet" "$(probe active_winedebug)"
+  rm -f "$PPL"
+fi
 
 # 60-renderer.sh: lossless round-trip (stock d3d9.dll present).
 printf 'STOCK' > "$PSW/d3d9.dll"

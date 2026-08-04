@@ -43,10 +43,20 @@ if check_prefix; then printf 'renderer\t%s\n' "$(active_renderer)"; else printf 
 # the one d9vk is paired with; stock = the template's newer build). Informational.
 if check_wrapper; then printf 'moltenvk\t%s\n' "$(active_moltenvk)"; else printf 'moltenvk\tn/a\n'; fi
 
-# Whether WINEDEBUG=-all reaches the play session (read back from the bundle's
-# LSEnvironment — the only channel the detached launch sees). quiet|default;
-# n/a without a wrapper or without plutil (Linux CI). Informational.
+# Whether WINEDEBUG=-all reaches the play session. Read back from BOTH channels
+# that can carry it (the bundle's LSEnvironment and the template's own top-level
+# key, which the launcher reads): quiet|conflict|default. Informational.
 if check_wrapper; then printf 'winedebug\t%s\n' "$(active_winedebug)"; else printf 'winedebug\tn/a\n'; fi
+
+# Whether this wrapper has the current launch-environment baseline at all
+# (msync + quiet logging). Wrappers built before v0.8.0 don't, and nothing
+# re-runs the wrapper build for them — so "stale" means: run ./10-build-wrapper.sh.
+if check_wrapper; then printf 'wrapper_env\t%s\n' "$(wrapper_env_status)"; else printf 'wrapper_env\tn/a\n'; fi
+
+# DirectInput mouse warping (10-build-wrapper.sh), read from the prefix's
+# user.reg. "force" re-centers the cursor whenever the game holds the mouse —
+# which for EQ is the whole session, menus included. Informational.
+if check_prefix; then printf 'mousewarp\t%s\n' "$(active_mousewarp)"; else printf 'mousewarp\tn/a\n'; fi
 
 # Display scaling (55-wrapper.sh): on = Retina forced, off = 1x forced,
 # default = template's shipped behavior. Read from the live plist where
@@ -100,7 +110,8 @@ if check_game; then
   stat_line fix_dsetup check_fix_dsetup
   stat_line fix_dpvs   check_fix_dpvs
   stat_line fix_ini    check_fix_ini
-  stat_line perf_ini   check_perf_ini
+  # Content-aware, not marker-only: ok|drifted|applied|missing (perf_ini_status).
+  printf 'perf_ini\t%s\n' "$(perf_ini_status)"
 else
   printf 'p99files\tn/a\n'
   printf 'fix_dsetup\tn/a\n'

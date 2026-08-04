@@ -161,7 +161,9 @@ PYEOF
   # produce identical files.
   if [ -n "$PERF_LINES" ]; then
     perf_ini_apply "$GAME_DIR/eqclient.ini" "$PERF_LINES"
-    touch "$GAME_DIR/.p99-perf-applied"
+    # Record what was applied so status.sh can detect later drift, not just that
+    # a profile was once applied (see perf_ini_status).
+    printf '%s\n' "$PERF_LINES" > "$GAME_DIR/.p99-perf-applied"
     say "  applied performance keys"
   fi
 fi

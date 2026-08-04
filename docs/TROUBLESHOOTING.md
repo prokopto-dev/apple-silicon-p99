@@ -316,10 +316,18 @@ mouse back in.
 **Fix:** current `10-build-wrapper.sh` sets the wine registry key
 `HKCU\Software\Wine\DirectInput` → `MouseWarpOverride=force`, which makes
 wine continuously re-center the cursor while the game holds the mouse — no
-macOS permission needed. This only applies **during** mouselook: with the
-right button up the cursor roams free, and Cmd-Tab mid-turn releases it
-(losing focus unacquires the mouse). On an existing wrapper, re-run the
-build script once (idempotent): `cd scripts && ./10-build-wrapper.sh`.
+macOS permission needed. On an existing wrapper, re-run the build script once
+(idempotent): `cd scripts && ./10-build-wrapper.sh`.
+
+> **Known drawback — read before applying.** This page previously claimed the
+> re-centering "only applies during mouselook, with the right button up the
+> cursor roams free." That is **not** what happens: EQ acquires the DirectInput
+> mouse for the whole session, not just while the right button is down, so
+> `force` snaps the cursor to centre **constantly — including in menus,
+> inventory, and the options window**. If that is what you are seeing, this
+> setting is the cause. `./status.sh` now reports it as `mousewarp`. See
+> [issue #14](https://github.com/prokopto-dev/apple-silicon-p99/issues/14) for
+> whether `force` should remain the default.
 A routine `./50-update.sh` does **not** do this, but the installer app's
 **Update Game Files** button does — it re-runs the wrapper build first.
 If forced warping bothers you, revert with

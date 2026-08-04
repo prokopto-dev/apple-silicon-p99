@@ -56,8 +56,11 @@ perf_ini_apply "$INI" "$PERF_SET"
 
 if [ "$MODE" = "0" ]; then
   rm -f "$GAME_DIR/.p99-perf-applied"
-  say "Done — removed the managed keys; EQ regenerates its defaults on next boot."
+  say "Done — restored the managed keys to their pre-apply values."
 else
-  touch "$GAME_DIR/.p99-perf-applied"
+  # Record WHAT was applied, not just that something was. EQ rewrites
+  # eqclient.ini on exit, so status has to compare against the live file to be
+  # meaningful — see perf_ini_status.
+  printf '%s\n' "$REQUESTED" > "$GAME_DIR/.p99-perf-applied"
   say "Done — launch P99 to see the change. Revert any time: P99_APPLY_PERF=0 ./35-perf-ini.sh"
 fi
