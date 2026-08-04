@@ -19,6 +19,7 @@ field() { awk -F'\t' -v k="$2" '$1==k{print $2}' <<<"$1"; }
 # and "in the file somewhere" is exactly the bug these tests now guard against.
 ini_get() {
   awk -F= -v want="$2" -v k="$3" '
+    { sub(/\r$/, "") }
     /^\[/ { sec = substr($0, 2, length($0) - 2); next }
     sec == want && $1 == k { print substr($0, index($0, "=") + 1) }
   ' "$1"
@@ -219,6 +220,19 @@ assert_eq "perf: profile lowers density" "2" "$(ini_get "$I" Options ParticleDen
 WRAPPER="$PW" GAME_DIR="$PG" P99_APPLY_PERF=1 EQ_FPS_CAP=30 ./35-perf-ini.sh >/dev/null 2>&1
 assert_eq "perf: dropping profile restores baseline density" "3" "$(ini_get "$I" Options ParticleDensity)"
 assert_eq "perf: dropping profile keeps the cap" "30" "$(ini_get "$I" Options MaxFPS)"
+
+# Regression: EQ writes eqclient.ini with CRLF, and the baseline is read out of
+# a backup EQ wrote. A CR-blind section parse yields an empty baseline, which
+# reads as "delete these keys" — the LF-only fixtures above cannot catch it.
+rm -f "$PG/eqclient.ini.perf.bak"; write_perf_fixture
+perl -pi -e 's/\n/\r\n/' "$PG/eqclient.ini"
+assert_eq "perf: CRLF fixture really is CRLF" "1" "$(grep -c $'\r' "$PG/eqclient.ini" >/dev/null && echo 1 || echo 0)"
+WRAPPER="$PW" GAME_DIR="$PG" P99_APPLY_PERF=1 EQ_FPS_CAP=30 ./35-perf-ini.sh >/dev/null 2>&1
+assert_eq "perf: CRLF — unrequested ClipPlane survives" "20" "$(ini_get "$I" Options ClipPlane)"
+assert_eq "perf: CRLF — unrequested density survives" "1.000000" "$(ini_get "$I" Defaults SpellParticleDensity)"
+assert_eq "perf: CRLF — requested cap applied" "30" "$(ini_get "$I" Options MaxFPS)"
+assert_eq "perf: CRLF — legacy keys still swept" "0" "$(ini_count "$I" MaxBGFPS)"
+assert_eq "perf: CRLF — keybinds survive" "W" "$(ini_get "$I" KeyMaps Ke_Forward)"
 
 rm -f "$PG/eqclient.ini.perf.bak"; write_perf_fixture
 WRAPPER="$PW" GAME_DIR="$PG" P99_APPLY_PERF=1 P99_PERF_PROFILE=smoother EQ_FPS_CAP=60 EQ_FARCLIP=12 ./35-perf-ini.sh >/dev/null 2>&1
