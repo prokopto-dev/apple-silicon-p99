@@ -109,12 +109,22 @@ exactly three things, all during install, all backed up:
 | `eqclient.ini` known-good graphics block | A minimal `[Defaults]`/`[VideoMode]` config confirmed working on Apple Silicon — with your keybinds, camera, colors, and gamma carried over from your original file. One-shot: never rewritten once applied. | `eqclient.ini.pre-mac.bak` |
 
 Opt-in on top of that (the **Smoother visuals** / **frame-rate cap** settings):
-`35-perf-ini.sh` sets at most these seven `[Defaults]` keys — `FarClipPlane`,
-`SpellParticleDensity`, `EnvironmentParticleDensity`, `WaterSpecular`,
-`HeatShimmer`, `MaxFPS`, `MaxBGFPS` — and reverting deletes exactly those keys,
-nothing else (EQ regenerates its own defaults). A one-time safety copy is kept
-as `eqclient.ini.perf.bak`; the `.p99-perf-applied` sentinel is how `status.sh`
-knows the profile is on.
+`35-perf-ini.sh` sets at most these five keys, each in the section EQ actually
+reads it from — `[Options] MaxFPS`, `[Options] ClipPlane`,
+`[Options] ParticleDensity`, `[Defaults] SpellParticleDensity`,
+`[Defaults] EnvironmentParticleDensity`. Reverting puts exactly those keys back
+to their pre-apply values, nothing else.
+
+Both apply and revert additionally **delete** five keys written by v0.8.0 and
+earlier that this client has no code for: `[Defaults] FarClipPlane`,
+`WaterSpecular`, `HeatShimmer`, `MaxBGFPS`, and `[Defaults] MaxFPS` (the right key
+in the wrong section — EQ reads `MaxFPS` from `[Options]`). Verified absent two
+independent ways: no such string in `eqgame.exe`, and never written by EQ itself
+in any pristine Titanium `eqclient.ini`.
+
+A one-time safety copy is kept as `eqclient.ini.perf.bak` — it is also what
+revert and the unrequested-key fallback read from, so it is never auto-removed.
+The `.p99-perf-applied` sentinel is how `status.sh` knows the profile is on.
 
 ## Verify it yourself
 
