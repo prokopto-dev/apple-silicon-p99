@@ -666,7 +666,12 @@ perf_ini_restore_lines() {
   while IFS= read -r qual; do
     [ -n "$qual" ] || continue
     sec="${qual%%/*}"; key="${qual#*/}"
+    # EQ writes eqclient.ini with CRLF line endings, so strip the CR before
+    # anything else: without it "[Options]\r" makes the section name parse as
+    # "Options]", nothing ever matches, and the caller silently gets an empty
+    # baseline — which then reads as "delete these keys".
     awk -F= -v want="$sec" -v k="$key" '
+      { sub(/\r$/, "") }
       /^\[/ { s = substr($0, 2, length($0) - 2); next }
       s == want && $1 == k { print want "/" k "=" substr($0, index($0, "=") + 1) }
     ' "$1"
