@@ -10,6 +10,14 @@ release's section below becomes its GitHub Release notes automatically
 
 <!-- version list -->
 
+## v0.8.1 (2026-08-04)
+
+### Bug Fixes
+
+- **perf**: Write eqclient.ini keys where EQ actually reads them
+  ([`da61126`](https://github.com/prokopto-dev/apple-silicon-p99/commit/da611267293848ea5cb7bdbf09b78c68a587f426))
+
+
 ## v0.8.0 (2026-07-22)
 
 ### Documentation
