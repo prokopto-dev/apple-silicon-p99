@@ -122,9 +122,23 @@ in the wrong section — EQ reads `MaxFPS` from `[Options]`). Verified absent tw
 independent ways: no such string in `eqgame.exe`, and never written by EQ itself
 in any pristine Titanium `eqclient.ini`.
 
+> **How to check whether a key is real — and how not to.** The two checks above
+> are only conclusive *together*. Searching `eqgame.exe` for a literal key name
+> is **not** sufficient on its own, because EQ builds some key names at runtime:
+> the binary contains the literal `ShowForCard` and nothing else, yet EQ writes
+> `ShowForCard6.14.13.4052` into the file by appending the driver version. Keys
+> such as `TextureQuality`, `MultiPassLighting`, and `UseLitBatches` likewise
+> have no exact-match string in the binary but *are* written by EQ into a
+> pristine Titanium `eqclient.ini`, so they are genuine. Treat "absent from the
+> string table" as a hint to investigate, never as proof — the evidence that
+> settles it is whether EQ itself ever writes the key.
+
 A one-time safety copy is kept as `eqclient.ini.perf.bak` — it is also what
 revert and the unrequested-key fallback read from, so it is never auto-removed.
-The `.p99-perf-applied` sentinel is how `status.sh` knows the profile is on.
+
+The `.p99-perf-applied` sentinel records the `Section/Key=Value` lines that were
+applied, so `status.sh` can compare them against the live file rather than just
+noting that a profile was once applied — see `perf_ini` below.
 
 ## Verify it yourself
 

@@ -281,20 +281,75 @@ apply_wrapper_baseline_env() {
   set_plist_env WINEESYNC 1
   set_plist_env WINEMSYNC 1
   set_plist_env WINEDEBUG '-all'
+  # The template ALSO ships its own top-level WINEDEBUG key (Sikarugir defaults
+  # it to "-plugplay,+loaddll") and the launcher binary reads that key by name:
+  #
+  #   strings -a Contents/MacOS/Sikarugir | grep -x WINEDEBUG
+  #
+  # LSEnvironment sets the environment of the launcher *process*; the launcher
+  # then builds wine's environment itself, so a top-level value can override the
+  # LSEnvironment one for the actual game. Rather than bet on which wins, set
+  # both to the same thing. Without this the play session could still run with
+  # +loaddll and wine's default err+fixme channels — the very cost lever 2 exists
+  # to remove. WINEESYNC/WINEMSYNC need no equivalent: the template already ships
+  # them as 1, which is what we want.
+  set_plist_string WINEDEBUG '-all'
 }
 
-# Whether the play session's wine log channels are silenced: reads WINEDEBUG
-# back from where it actually lands (the bundle's LSEnvironment) — not from a
-# variable a script set. quiet = "-all" injected; default = wine's own
-# (err+fixme); n/a = no wrapper plist or no plutil (Linux CI).
+# Whether the play session's wine log channels are silenced. WINEDEBUG can come
+# from TWO places and they must agree (see apply_wrapper_baseline_env): the
+# bundle's LSEnvironment, which LaunchServices gives the launcher process, and
+# the template's own top-level WINEDEBUG key, which the launcher reads by name
+# and uses when building wine's environment.
+#
+#   quiet    — both say "-all" (or the top-level key is absent entirely)
+#   conflict — one says "-all", the other says something else, so what the game
+#              actually gets depends on launcher internals. Reported rather than
+#              hidden: "quiet" here would be a guess, not a readback.
+#   default  — neither is silenced; wine's own err+fixme channels stay live
+#   n/a      — no wrapper plist, or no plutil (Linux CI)
 active_winedebug() {
+  command -v plutil >/dev/null 2>&1 || { echo n/a; return 0; }
+  local p lsenv toplevel; p="$(plist_path)"
+  [ -f "$p" ] || { echo n/a; return 0; }
+  lsenv="$(plutil -extract LSEnvironment.WINEDEBUG raw -o - "$p" 2>/dev/null || true)"
+  toplevel="$(plutil -extract WINEDEBUG raw -o - "$p" 2>/dev/null || true)"
+  if [ "$lsenv" = "-all" ] && { [ "$toplevel" = "-all" ] || [ -z "$toplevel" ]; }; then
+    echo quiet
+  elif [ "$lsenv" = "-all" ] || [ "$toplevel" = "-all" ]; then
+    echo conflict
+  else
+    echo default
+  fi
+}
+
+# active_mousewarp — the DirectInput MouseWarpOverride the game session will see,
+# read from the prefix's user.reg (the file wine actually loads). 10-build-wrapper.sh
+# writes it; nothing surfaced it before, so a setting that changes how the mouse
+# behaves in every menu was invisible to status. force|enable|disable|default.
+active_mousewarp() {
+  [ -f "$PREFIX/user.reg" ] || { echo n/a; return 0; }
+  local v
+  v="$(awk -v k='"MouseWarpOverride"=' '
+    /^\[Software\\\\Wine\\\\DirectInput\]/ { insec = 1; next }
+    /^\[/ { insec = 0 }
+    insec && index($0, k) == 1 { sub(/^[^=]*=/, ""); gsub(/"/, ""); print; exit }
+  ' "$PREFIX/user.reg")"
+  if [ -n "$v" ]; then echo "$v"; else echo default; fi
+}
+
+# wrapper_env_status — whether this wrapper has had the current baseline applied
+# by 10-build-wrapper.sh, i.e. whether msync and quiet logging reach the play
+# session at all. Wrappers built before v0.8.0 have no LSEnvironment dict, and
+# nothing re-runs the wrapper build for them: the Performance panel and
+# 50-update.sh both skip it, so those installs stay stale indefinitely with no
+# signal. ok = baseline present; stale = needs `./10-build-wrapper.sh`.
+wrapper_env_status() {
   command -v plutil >/dev/null 2>&1 || { echo n/a; return 0; }
   local p; p="$(plist_path)"
   [ -f "$p" ] || { echo n/a; return 0; }
-  case "$(plutil -extract LSEnvironment.WINEDEBUG raw -o - "$p" 2>/dev/null)" in
-    -all) echo quiet ;;
-    *)    echo default ;;
-  esac
+  [ "$(plutil -extract LSEnvironment.WINEMSYNC raw -o - "$p" 2>/dev/null || true)" = "1" ] \
+    && echo ok || echo stale
 }
 
 # set_plist_flag / remove_plist_flag — top-level flags such as the Sikarugir
@@ -306,6 +361,9 @@ remove_plist_flag() { local p; p="$(plist_path)"; [ -f "$p" ] && plutil -remove 
 # set_plist_bool — top-level real booleans (NSHighResolutionCapable must be a
 # bool, not an integer, for AppKit to honor it). Graceful no-op if unsupported.
 set_plist_bool()    { local p; p="$(plist_path)"; [ -f "$p" ] && plutil -replace "$1" -bool "$2" "$p" >/dev/null 2>&1 || true; }
+# set_plist_string — top-level strings the launcher reads by name (WINEDEBUG).
+# String, not integer: that is the type the template ships it as.
+set_plist_string()  { local p; p="$(plist_path)"; [ -f "$p" ] && plutil -replace "$1" -string "$2" "$p" >/dev/null 2>&1 || true; }
 
 # refresh_launch_services — LaunchServices caches a bundle's Info.plist, so an
 # edited NSHighResolutionCapable may not take effect on the next `open` without
@@ -572,6 +630,38 @@ remove_dxvk_conf() {
 # (a permanent one-time safety copy) so status reflects the live state.
 check_perf_ini()  { [ -f "$GAME_DIR/.p99-perf-applied" ]; }
 
+# perf_ini_status — whether the applied performance keys are STILL what the file
+# says, not merely whether we once applied them.
+#
+# The sentinel used to be an empty marker, so status reported "ok" purely because
+# a file existed. That is the one probe in this project that wasn't a readback,
+# and it drifts constantly in practice: EQ rewrites eqclient.ini on exit, so any
+# in-game change to particles or frame cap silently diverges from the scripted
+# profile while status kept claiming it was applied.
+#
+# The sentinel now holds the Section/Key=Value lines that were applied, and this
+# compares each against the live file.
+#
+#   ok       — every applied key still holds its applied value
+#   drifted  — at least one differs (EQ or the player changed it)
+#   applied  — legacy empty sentinel from <= v0.8.2: we know a profile was
+#              applied but not which keys, so drift cannot be judged
+#   missing  — no sentinel, or no eqclient.ini
+perf_ini_status() {
+  local sentinel="$GAME_DIR/.p99-perf-applied" ini="$GAME_DIR/eqclient.ini"
+  [ -f "$sentinel" ] && [ -f "$ini" ] || { echo missing; return 0; }
+  [ -s "$sentinel" ] || { echo applied; return 0; }
+  local line qual sec key want have
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    qual="${line%%=*}"; want="${line#*=}"
+    sec="${qual%%/*}"; key="${qual#*/}"
+    have="$(ini_section_value "$ini" "$sec" "$key")"
+    [ "$have" = "$want" ] || { echo drifted; return 0; }
+  done < "$sentinel"
+  echo ok
+}
+
 # --- EQ eqclient.ini performance keys (shared by 30-apply-mac-fixes.sh and
 # 35-perf-ini.sh) ------------------------------------------------------------
 # Keys are section-qualified as Section/Key, because eqclient.ini has TWO stores
@@ -649,6 +739,20 @@ perf_ini_lines() {
   return 0
 }
 
+# ini_section_value <ini> <Section> <Key> — the value of Key inside Section only,
+# empty when absent. Section-aware because eqclient.ini reuses key names across
+# sections, and CRLF-tolerant because EQ writes the file with CRLF: a CR left on
+# "[Options]\r" parses the section name as "Options]" and matches nothing, which
+# reads downstream as "this key has no value" (the v0.8.2 regression).
+ini_section_value() {
+  [ -f "$1" ] || return 0
+  awk -F= -v want="$2" -v k="$3" '
+    { sub(/\r$/, "") }
+    /^\[/ { s = substr($0, 2, length($0) - 2); next }
+    s == want && $1 == k { print substr($0, index($0, "=") + 1); exit }
+  ' "$1"
+}
+
 # perf_ini_restore_lines <backup-ini> — the managed keys' ORIGINAL values, as
 # Section/Key=Value lines, read out of the one-time pre-apply backup.
 #
@@ -662,19 +766,12 @@ perf_ini_lines() {
 # whole point is to get them out of the file.
 perf_ini_restore_lines() {
   [ -f "$1" ] || return 0
-  local qual sec key
+  local qual sec key v
   while IFS= read -r qual; do
     [ -n "$qual" ] || continue
     sec="${qual%%/*}"; key="${qual#*/}"
-    # EQ writes eqclient.ini with CRLF line endings, so strip the CR before
-    # anything else: without it "[Options]\r" makes the section name parse as
-    # "Options]", nothing ever matches, and the caller silently gets an empty
-    # baseline — which then reads as "delete these keys".
-    awk -F= -v want="$sec" -v k="$key" '
-      { sub(/\r$/, "") }
-      /^\[/ { s = substr($0, 2, length($0) - 2); next }
-      s == want && $1 == k { print want "/" k "=" substr($0, index($0, "=") + 1) }
-    ' "$1"
+    v="$(ini_section_value "$1" "$sec" "$key")"
+    [ -n "$v" ] && printf '%s/%s=%s\n' "$sec" "$key" "$v"
   done <<EOF
 $(perf_ini_managed_keys)
 EOF
