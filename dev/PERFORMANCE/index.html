@@ -1411,11 +1411,39 @@ graphics renderer, apply EQ graphics settings — completed successfully." src="
   (particles/FPS cap) help most.</li>
 <li><strong><code>./status.sh</code></strong> reports the active <code>renderer</code>, the MoltenVK pairing
   (<code>moltenvk</code>), display scaling (<code>hidpi</code>), the Metal HUD (<code>metal_hud</code>), quiet
-  wine logging (<code>winedebug</code>), the wined3d registry values (<code>wined3d_*</code>), and
-  whether the smoother INI profile is applied (<code>perf_ini</code>) — each read back
-  from where the setting actually lands, so "status says on" means the game
-  session sees it.</li>
+  wine logging (<code>winedebug</code>), the wined3d registry values (<code>wined3d_*</code>), mouse
+  warping (<code>mousewarp</code>), whether the wrapper has the current launch environment
+  (<code>wrapper_env</code>), and whether the smoother INI profile is still in effect
+  (<code>perf_ini</code>) — each read back from where the setting actually lands, so
+  "status says on" means the game session sees it.</li>
 </ul>
+<p>Three of those need a word of explanation:</p>
+<table>
+<thead>
+<tr>
+<th>Line</th>
+<th>Values</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>winedebug</code></td>
+<td><code>quiet</code> / <code>conflict</code> / <code>default</code></td>
+<td>WINEDEBUG can arrive via the bundle's <code>LSEnvironment</code> <em>or</em> the template's own top-level key, which the launcher reads by name. <code>conflict</code> means the two disagree, so which one the game gets depends on launcher internals — it is reported rather than guessed.</td>
+</tr>
+<tr>
+<td><code>wrapper_env</code></td>
+<td><code>ok</code> / <code>stale</code></td>
+<td>Whether this wrapper ever got the msync + quiet-logging baseline. Wrappers built before v0.8.0 didn't, and neither the Performance panel nor <code>50-update.sh</code> re-runs the wrapper build — <code>stale</code> means run <code>./10-build-wrapper.sh</code>.</td>
+</tr>
+<tr>
+<td><code>perf_ini</code></td>
+<td><code>ok</code> / <code>drifted</code> / <code>applied</code> / <code>missing</code></td>
+<td>Compares the keys that were applied against the live file. <code>drifted</code> means EQ or you changed one in-game since. <code>applied</code> is a pre-v0.8.3 sentinel that recorded no values, so drift can't be judged.</td>
+</tr>
+</tbody>
+</table>
 <h2 id="what-doesnt-help-or-we-cant-expose">What doesn't help (or we can't expose)<a class="headerlink" href="#what-doesnt-help-or-we-cant-expose" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Pinning to performance cores.</strong> The game launches detached via <code>open</code>, so the

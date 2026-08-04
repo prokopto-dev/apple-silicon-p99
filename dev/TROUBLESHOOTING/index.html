@@ -1669,16 +1669,25 @@ mouse back in.
 <strong>Fix:</strong> current <code>10-build-wrapper.sh</code> sets the wine registry key
 <code>HKCU\Software\Wine\DirectInput</code> → <code>MouseWarpOverride=force</code>, which makes
 wine continuously re-center the cursor while the game holds the mouse — no
-macOS permission needed. This only applies <strong>during</strong> mouselook: with the
-right button up the cursor roams free, and Cmd-Tab mid-turn releases it
-(losing focus unacquires the mouse). On an existing wrapper, re-run the
-build script once (idempotent): <code>cd scripts &amp;&amp; ./10-build-wrapper.sh</code>.
+macOS permission needed. On an existing wrapper, re-run the build script once
+(idempotent): <code>cd scripts &amp;&amp; ./10-build-wrapper.sh</code>.</p>
+<blockquote>
+<p><strong>Known drawback — read before applying.</strong> This page previously claimed the
+re-centering "only applies during mouselook, with the right button up the
+cursor roams free." That is <strong>not</strong> what happens: EQ acquires the DirectInput
+mouse for the whole session, not just while the right button is down, so
+<code>force</code> snaps the cursor to centre <strong>constantly — including in menus,
+inventory, and the options window</strong>. If that is what you are seeing, this
+setting is the cause. <code>./status.sh</code> now reports it as <code>mousewarp</code>. See
+<a href="https://github.com/prokopto-dev/apple-silicon-p99/issues/14">issue #14</a> for
+whether <code>force</code> should remain the default.
 A routine <code>./50-update.sh</code> does <strong>not</strong> do this, but the installer app's
 <strong>Update Game Files</strong> button does — it re-runs the wrapper build first.
 If forced warping bothers you, revert with
 <code>P99_MOUSE_WARP=enable ./10-build-wrapper.sh</code> and instead grant the wrapper
 Accessibility permission (System Settings → Privacy &amp; Security →
 Accessibility → add <code>P99.app</code>) so wine's cursor clipping can work.</p>
+</blockquote>
 <h2 id="diagnostic-reference-reading-a-wine-trace">Diagnostic reference: reading a wine trace<a class="headerlink" href="#diagnostic-reference-reading-a-wine-trace" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>dispatch_exception code=c000008e</code> (float divide-by-zero) and

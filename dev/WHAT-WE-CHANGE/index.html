@@ -1213,9 +1213,23 @@ earlier that this client has no code for: <code>[Defaults] FarClipPlane</code>,
 in the wrong section — EQ reads <code>MaxFPS</code> from <code>[Options]</code>). Verified absent two
 independent ways: no such string in <code>eqgame.exe</code>, and never written by EQ itself
 in any pristine Titanium <code>eqclient.ini</code>.</p>
+<blockquote>
+<p><strong>How to check whether a key is real — and how not to.</strong> The two checks above
+are only conclusive <em>together</em>. Searching <code>eqgame.exe</code> for a literal key name
+is <strong>not</strong> sufficient on its own, because EQ builds some key names at runtime:
+the binary contains the literal <code>ShowForCard</code> and nothing else, yet EQ writes
+<code>ShowForCard6.14.13.4052</code> into the file by appending the driver version. Keys
+such as <code>TextureQuality</code>, <code>MultiPassLighting</code>, and <code>UseLitBatches</code> likewise
+have no exact-match string in the binary but <em>are</em> written by EQ into a
+pristine Titanium <code>eqclient.ini</code>, so they are genuine. Treat "absent from the
+string table" as a hint to investigate, never as proof — the evidence that
+settles it is whether EQ itself ever writes the key.</p>
+</blockquote>
 <p>A one-time safety copy is kept as <code>eqclient.ini.perf.bak</code> — it is also what
-revert and the unrequested-key fallback read from, so it is never auto-removed.
-The <code>.p99-perf-applied</code> sentinel is how <code>status.sh</code> knows the profile is on.</p>
+revert and the unrequested-key fallback read from, so it is never auto-removed.</p>
+<p>The <code>.p99-perf-applied</code> sentinel records the <code>Section/Key=Value</code> lines that were
+applied, so <code>status.sh</code> can compare them against the live file rather than just
+noting that a profile was once applied — see <code>perf_ini</code> below.</p>
 <h2 id="verify-it-yourself">Verify it yourself<a class="headerlink" href="#verify-it-yourself" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>scripts<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>./status.sh<span class="w">          </span><span class="c1"># every probe above, one line each</span>
 plutil<span class="w"> </span>-p<span class="w"> </span>/Applications/P99.app/Contents/Info.plist<span class="w">        </span><span class="c1"># flags + LSEnvironment</span>
